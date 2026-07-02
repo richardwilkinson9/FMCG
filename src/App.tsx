@@ -26,7 +26,7 @@ const CALCULATORS = [
 function App() {
   const { activeCalculator, setActiveCalculator } = useStore()
 
-  // Restore state from URL on first load
+  // Restore full state (products + all calculator settings) from a shared URL
   useEffect(() => {
     const decoded = decodeStateFromUrl()
     if (decoded) {
@@ -34,6 +34,7 @@ function App() {
         products: decoded.products,
         activeProductId: decoded.activeProductId,
         activeCalculator: decoded.activeCalculator,
+        scenario: decoded.scenario,
       })
     }
   }, [])
@@ -47,12 +48,14 @@ function App() {
       {/* Header */}
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-6xl mx-auto px-4 py-4 sm:py-5">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-slate-900">FMCG Maths</h1>
               <p className="text-sm text-slate-500 mt-0.5">Commercial calculators for UK brand teams</p>
             </div>
-            <ShareExport />
+            <div className="no-print">
+              <ShareExport />
+            </div>
           </div>
         </div>
       </header>
@@ -63,7 +66,7 @@ function App() {
 
         {/* Calculator tabs */}
         <div className="bg-white rounded-xl border border-slate-200">
-          <nav className="border-b border-slate-200 px-4 pt-4 overflow-x-auto">
+          <nav aria-label="Calculators" className="border-b border-slate-200 px-4 pt-4 overflow-x-auto no-print">
             <div className="flex gap-6">
               {groups.map((group) => (
                 <div key={group} className="flex flex-col">
@@ -73,6 +76,7 @@ function App() {
                       <button
                         key={calc.id}
                         onClick={() => setActiveCalculator(calc.id)}
+                        aria-current={activeCalculator === calc.id ? 'page' : undefined}
                         className={`px-3 py-2 text-sm rounded-t-lg border border-b-0 transition-colors whitespace-nowrap ${
                           activeCalculator === calc.id
                             ? 'bg-white text-blue-700 border-slate-200 font-medium'
@@ -96,7 +100,8 @@ function App() {
 
         {/* Footer */}
         <footer className="text-center text-xs text-slate-400 py-4">
-          FMCG Maths — free tools for UK brand teams. All calculations run in your browser. Nothing is stored on a server.
+          FMCG Maths — free tools for UK brand teams. All calculations run in your browser; nothing is stored on a server.
+          Fee defaults are dated estimates — always verify against current rate cards.
         </footer>
       </main>
     </div>

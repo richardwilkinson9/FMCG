@@ -1,23 +1,26 @@
-import { useState } from 'react'
 import { useStore } from '../store/useStore'
+import { activeWholesalerMargin } from '../store/scenario'
 import { tradeSpendROI, formatGBP, formatNumber } from '../utils/calculations'
-import { GROCERY_DEFAULTS } from '../config/fees'
-import FeeInput from '../components/FeeInput'
+import GroceryChainSettings from '../components/GroceryChainSettings'
+import NumberInput from '../components/NumberInput'
 import ResultCard from '../components/ResultCard'
-import Tooltip from '../components/Tooltip'
 
 export default function TradeSpendROI() {
   const product = useStore((s) => s.getActiveProduct())
-  const [retailerMargin, setRetailerMargin] = useState(GROCERY_DEFAULTS.retailerMarginPercent.value)
-  const [useWholesaler, setUseWholesaler] = useState(false)
-  const [wholesalerMargin, setWholesalerMargin] = useState(GROCERY_DEFAULTS.wholesalerMarginPercent.value)
-  const [investment, setInvestment] = useState(10000)
-  const [targetROI, setTargetROI] = useState(200)
+  const grocery = useStore((s) => s.scenario.grocery)
+  const tradeSpend = useStore((s) => s.scenario.tradeSpend)
+  const updateScenario = useStore((s) => s.updateScenario)
 
   if (!product) return <p className="text-slate-500">Select a product to begin.</p>
 
-  const wsMargin = useWholesaler ? wholesalerMargin : 0
-  const result = tradeSpendROI(product, retailerMargin, investment, targetROI / 100, wsMargin)
+  const result = tradeSpendROI(
+    product,
+    grocery.retailerMargin,
+    tradeSpend.investment,
+    tradeSpend.targetROI,
+    activeWholesalerMargin(grocery),
+  )
+  const noMargin = result.marginPerUnit <= 0
 
   return (
     <div className="space-y-6">
@@ -28,46 +31,31 @@ export default function TradeSpendROI() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-xl">
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Investment £</label>
-          <input type="number" step="500" min="0" value={investment}
-            onChange={(e) => setInvestment(parseFloat(e.target.value) || 0)}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Target ROI %</label>
-          <input type="number" step="10" min="0" value={targetROI}
-            onChange={(e) => setTargetROI(parseFloat(e.target.value) || 0)}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-        </div>
-        <FeeInput fee={GROCERY_DEFAULTS.retailerMarginPercent} value={retailerMargin} onChange={setRetailerMargin} isPercent step="0.5" />
+      <div className="grid grid-cols-2 gap-4 max-w-md">
+        <NumberInput label="Investment" prefix="£" min={0} value={tradeSpend.investment}
+          onChange={(v) => updateScenario('tradeSpend', { investment: v })}
+          help="Total trade spend at risk" />
+        <NumberInput label="Target ROI" suffix="%" min={0} value={tradeSpend.targetROI * 100}
+          onChange={(v) => updateScenario('tradeSpend', { targetROI: v / 100 })}
+          help="e.g. 200% = £3 back per £1 spent" />
       </div>
 
-      <div className="flex flex-wrap gap-4 items-end">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" checked={useWholesaler} onChange={(e) => setUseWholesaler(e.target.checked)}
-            className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-          <span className="text-sm font-medium text-slate-700">
-            Via wholesaler
-            <Tooltip text={GROCERY_DEFAULTS.wholesalerMarginPercent.note} />
-          </span>
-        </label>
-        {useWholesaler && (
-          <div className="w-48">
-            <FeeInput fee={GROCERY_DEFAULTS.wholesalerMarginPercent} value={wholesalerMargin} onChange={setWholesalerMargin} isPercent step="0.5" />
-          </div>
-        )}
-      </div>
+      <GroceryChainSettings />
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <ResultCard label="Margin per unit" value={formatGBP(result.marginPerUnit)} />
-        <ResultCard label="Margin per case" value={formatGBP(result.marginPerCase)} />
-        <ResultCard label="Break-even units" value={formatNumber(Math.ceil(result.breakEvenUnits))} highlight />
-        <ResultCard label="Break-even cases" value={formatNumber(Math.ceil(result.breakEvenCases))} highlight />
-        <ResultCard label={`Units for ${targetROI}% ROI`} value={formatNumber(Math.ceil(result.targetReturnUnits))} />
-        <ResultCard label={`Cases for ${targetROI}% ROI`} value={formatNumber(Math.ceil(result.targetReturnCases))} />
-      </div>
+      {noMargin ? (
+        <p className="p-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg">
+          Your margin per unit is zero or negative at these chain margins — no volume of incremental sales can pay back the investment. Fix the margin first.
+        </p>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <ResultCard label="Margin per unit" value={formatGBP(result.marginPerUnit)} />
+          <ResultCard label="Margin per case" value={formatGBP(result.marginPerCase)} />
+          <ResultCard label="Break-even units" value={formatNumber(Math.ceil(result.breakEvenUnits))} sub="Incremental units to recover the spend" highlight />
+          <ResultCard label="Break-even cases" value={formatNumber(Math.ceil(result.breakEvenCases))} highlight />
+          <ResultCard label={`Units for ${Math.round(tradeSpend.targetROI * 100)}% ROI`} value={formatNumber(Math.ceil(result.targetReturnUnits))} />
+          <ResultCard label={`Cases for ${Math.round(tradeSpend.targetROI * 100)}% ROI`} value={formatNumber(Math.ceil(result.targetReturnCases))} />
+        </div>
+      )}
     </div>
   )
 }

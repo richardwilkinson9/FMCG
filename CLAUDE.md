@@ -3,25 +3,34 @@
 ## What is this?
 A single-page web app hosting linked commercial calculators for UK FMCG brand teams. Built with Vite + React + TypeScript + Tailwind CSS. Deploys on Vercel.
 
-## Core design principle: Shared Product Spine
-A Product is defined ONCE and every calculator reads from it. The Product type lives in `src/types/product.ts`. Users can create multiple products and switch between them.
+## Core design principle: Shared Product Spine + Shared Scenario
+- A **Product** is defined ONCE and every calculator reads from it. Type in `src/types/product.ts`.
+- All **calculator settings** (retailer margin, wholesaler, store counts, Amazon dimensions, TikTok category…) live in a single `Scenario` object in the store — NOT component state. This means settings survive tab switches, the Cross-Channel view reads the exact same fees as the individual tabs, and share URLs capture the complete model.
+- Do not put calculator settings in `useState` — add a field to the relevant `Scenario` section in `src/store/scenario.ts` instead.
 
 ## Project structure
 ```
 src/
-  types/product.ts        — Product interface, CategoryTemplate type
-  config/fees.ts          — ALL fee defaults (Amazon, TikTok, Grocery, VAT) with dated notes
-  config/templates.ts     — Category templates (confectionery, drinks, snacks, etc.)
-  store/useStore.ts       — Zustand store: products[], activeProductId, activeCalculator
-  utils/calculations.ts   — Pure functions: all commercial maths (margin, P&L, stock, etc.)
-  utils/urlState.ts       — Encode/decode app state to/from URL for sharing
-  components/             — Shared UI: ProductManager, Tooltip, FeeInput, ResultCard, ShareExport
-  calculators/            — One file per calculator, all read from the shared store
+  types/product.ts          — Product interface, CategoryTemplate type
+  config/fees.ts            — ALL fee defaults (Amazon, TikTok, Grocery, VAT) with dated notes
+  config/templates.ts       — Category templates (confectionery, drinks, snacks, etc.)
+  store/scenario.ts         — Scenario types, defaults, merge (for old URLs), effective-fee resolvers
+  store/useStore.ts         — Zustand store: products[], activeProductId, activeCalculator, scenario
+  utils/calculations.ts     — Pure functions: all commercial maths (margin, P&L, stock, etc.)
+  utils/urlState.ts         — Encode/decode app state (incl. scenario) to/from URL for sharing
+  utils/export.ts           — Full-scenario CSV builder (product + assumptions + all results)
+  components/
+    NumberInput.tsx         — THE number field. Free typing (no zero-snap), £/% adornments,
+                              proper label association, disabled+note mode. Use this, never a raw input.
+    FeeInput.tsx            — NumberInput wrapper bound to a FeeDefault (label + tooltip from config)
+    GroceryChainSettings.tsx— Shared retailer-margin + wholesaler controls, bound to the store
+    ProductManager, Tooltip, ResultCard, ShareExport
+  calculators/              — One file per calculator, all read product + scenario from the store
 ```
 
 ## State management
 - **Zustand** — chosen over Context for selective subscriptions (less re-rendering) and simpler API.
-- State is in-memory. No localStorage. Shareable via URL query string (`?s=<base64>`).
+- State is in-memory. No localStorage. Shareable via URL query string (`?s=<base64>`), which encodes products **and** the full scenario. Old links without a scenario decode against defaults (see `mergeScenario`).
 
 ## Fee config
 All editable fee defaults live in `src/config/fees.ts`. Each has a `label`, `value`, and `note` (tooltip). Update this one file when rate cards change. Also contains:
@@ -29,14 +38,20 @@ All editable fee defaults live in `src/config/fees.ts`. Each has a `label`, `val
 - `AMAZON_CATEGORY_FEES` — referral fee % by Amazon category
 - `TIKTOK_CATEGORY_FEES` — platform commission % by TikTok Shop category
 
+When an estimator is ON, the derived fee inputs render disabled with a "set by … above" note — resolution happens in `effectiveAmazonFees` / `effectiveTikTokFees` in `store/scenario.ts` (no useEffect syncing).
+
 ## Wholesaler support
-All grocery calculators (P&L, Min Margin, Listing Model, Trade Spend, Cross-Channel) support an optional wholesaler in the chain. When enabled, the wholesaler takes a margin on the retailer's buy price, reducing the brand's net revenue. Default 25%, editable.
+All grocery calculators (P&L, Min Margin, Listing Model, Trade Spend, Cross-Channel) support an optional wholesaler in the chain, configured once via `GroceryChainSettings`. When enabled, the wholesaler takes a margin on the retailer's buy price, reducing the brand's net revenue. Default 25%, editable.
 
 ## Conventions
 - British English throughout the UI ("optimise", "programme", £ not $).
 - Every fee is an editable input, never hardcoded logic.
+- Percentages are stored as decimals (0.35) everywhere; only the UI converts to/from "35".
 - Pure calculation functions in `utils/calculations.ts` — no side effects.
-- Each calculator is a self-contained component reading from the Zustand store.
+- Money formatting via `formatGBP` (thousands separators); never `toFixed` directly in the UI.
+- Guard degenerate inputs (margins ≥ 100%, promo weeks > period) with amber warning boxes rather than rendering Infinity/negative nonsense.
+- Accessibility: labels associated via htmlFor/id (NumberInput does this), tooltips keyboard-focusable, `scope` on table headers, `aria-current` on active tabs.
+- Print: "Export PDF" = `window.print()`. Mark screen-only chrome with `.no-print`; keep result cards whole with `.print-block` (styles in `index.css`).
 
 ## Commands
 - `npm run dev` — start dev server

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Product } from '../types/product'
 import { UK_VAT_RATE } from '../config/fees'
+import { type Scenario, defaultScenario } from './scenario'
 
 interface AppState {
   products: Product[]
@@ -9,12 +10,17 @@ interface AppState {
   addProduct: (product: Product) => void
   updateProduct: (id: string, updates: Partial<Product>) => void
   removeProduct: (id: string) => void
+  duplicateProduct: (id: string) => void
   setActiveProduct: (id: string) => void
   getActiveProduct: () => Product | undefined
 
   /** The currently selected calculator tab */
   activeCalculator: string
   setActiveCalculator: (id: string) => void
+
+  /** All calculator settings — persists across tab switches and into share URLs */
+  scenario: Scenario
+  updateScenario: <K extends keyof Scenario>(section: K, patch: Partial<Scenario[K]>) => void
 }
 
 /** Generate a short random ID (good enough for client-side MVP) */
@@ -42,6 +48,7 @@ export const useStore = create<AppState>((set, get) => {
     products: [firstProduct],
     activeProductId: firstProduct.id,
     activeCalculator: 'retailer-pnl',
+    scenario: defaultScenario(),
 
     addProduct: (product) =>
       set((state) => ({
@@ -68,6 +75,17 @@ export const useStore = create<AppState>((set, get) => {
         }
       }),
 
+    duplicateProduct: (id) =>
+      set((state) => {
+        const source = state.products.find((p) => p.id === id)
+        if (!source) return state
+        const copy: Product = { ...source, id: generateId(), name: `${source.name} (copy)` }
+        return {
+          products: [...state.products, copy],
+          activeProductId: copy.id,
+        }
+      }),
+
     setActiveProduct: (id) => set({ activeProductId: id }),
 
     getActiveProduct: () => {
@@ -76,5 +94,13 @@ export const useStore = create<AppState>((set, get) => {
     },
 
     setActiveCalculator: (id) => set({ activeCalculator: id }),
+
+    updateScenario: (section, patch) =>
+      set((state) => ({
+        scenario: {
+          ...state.scenario,
+          [section]: { ...state.scenario[section], ...patch },
+        } as Scenario,
+      })),
   }
 })

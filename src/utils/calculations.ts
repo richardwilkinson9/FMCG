@@ -317,9 +317,13 @@ export function getTikTokCommission(categoryName: string): number {
   return match ? match.commissionPercent : 0.09
 }
 
-/** Format a number as GBP */
+/** Format a number as GBP with thousands separators, e.g. £682,500.00 */
 export function formatGBP(value: number): string {
-  return `£${value.toFixed(2)}`
+  const magnitude = Math.abs(value).toLocaleString('en-GB', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+  return `${value < 0 ? '−' : ''}£${magnitude}`
 }
 
 /** Format a number as a percentage */

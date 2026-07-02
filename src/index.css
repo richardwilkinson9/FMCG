@@ -3,3 +3,27 @@
 body {
   margin: 0;
 }
+
+/*
+ * Print stylesheet — makes "Export PDF" (browser print) produce a clean,
+ * deck-ready page: no buttons, no navigation, white background, no cards
+ * split across page breaks.
+ */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .bg-slate-50 {
+    background: white !important;
+  }
+
+  .print-block {
+    break-inside: avoid;
+  }
+
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+}

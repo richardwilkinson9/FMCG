@@ -1,40 +1,29 @@
-import { useState } from 'react'
 import { useStore } from '../store/useStore'
 import {
-  crossChannelComparison,
-  formatGBP,
-  formatPercent,
-  type AmazonFBAFees,
-  type TikTokFees,
-} from '../utils/calculations'
-import { GROCERY_DEFAULTS, AMAZON_FBA_DEFAULTS, TIKTOK_SHOP_DEFAULTS } from '../config/fees'
-import Tooltip from '../components/Tooltip'
+  activeWholesalerMargin,
+  effectiveAmazonFees,
+  effectiveTikTokFees,
+} from '../store/scenario'
+import { crossChannelComparison, formatGBP, formatPercent } from '../utils/calculations'
+import GroceryChainSettings from '../components/GroceryChainSettings'
 
 export default function CrossChannel() {
   const product = useStore((s) => s.getActiveProduct())
-
-  const [retailerMargin, setRetailerMargin] = useState(GROCERY_DEFAULTS.retailerMarginPercent.value)
-  const [useWholesaler, setUseWholesaler] = useState(false)
-  const [wholesalerMargin, setWholesalerMargin] = useState(GROCERY_DEFAULTS.wholesalerMarginPercent.value)
-  const [amazonFees, setAmazonFees] = useState<AmazonFBAFees>({
-    referralFeePercent: AMAZON_FBA_DEFAULTS.referralFeePercent.value,
-    fulfilmentFeePerUnit: AMAZON_FBA_DEFAULTS.fulfilmentFeePerUnit.value,
-    monthlyStoragePerUnit: AMAZON_FBA_DEFAULTS.monthlyStoragePerUnit.value,
-    fuelLogisticsSurcharge: AMAZON_FBA_DEFAULTS.fuelLogisticsSurcharge.value,
-  })
-  const [tiktokFees, setTiktokFees] = useState<TikTokFees>({
-    platformCommission: TIKTOK_SHOP_DEFAULTS.platformCommission.value,
-    affiliateCommission: TIKTOK_SHOP_DEFAULTS.affiliateCommission.value,
-    perOrderFee: TIKTOK_SHOP_DEFAULTS.perOrderFee.value,
-    refundAdminPercent: TIKTOK_SHOP_DEFAULTS.refundAdminPercent.value,
-  })
+  const scenario = useStore((s) => s.scenario)
+  const setActiveCalculator = useStore((s) => s.setActiveCalculator)
 
   if (!product) return <p className="text-slate-500">Select a product to begin.</p>
 
-  const wsMargin = useWholesaler ? wholesalerMargin : 0
-  const comparison = crossChannelComparison(product, retailerMargin, amazonFees, tiktokFees, wsMargin)
+  const amazonFees = effectiveAmazonFees(scenario.amazon)
+  const tiktokFees = effectiveTikTokFees(scenario.tiktok)
+  const comparison = crossChannelComparison(
+    product,
+    scenario.grocery.retailerMargin,
+    amazonFees,
+    tiktokFees,
+    activeWholesalerMargin(scenario.grocery),
+  )
   const channels = [comparison.grocery, comparison.amazon, comparison.tiktok]
-
   const bestMargin = Math.max(...channels.map((c) => c.grossMarginPercent))
 
   return (
@@ -46,110 +35,38 @@ export default function CrossChannel() {
         </p>
       </div>
 
-      {/* Compact fee controls */}
-      <details className="group">
-        <summary className="cursor-pointer text-sm font-medium text-blue-600 hover:text-blue-800">
-          Adjust channel fees
-        </summary>
-        <div className="mt-4 space-y-4 p-4 bg-slate-50 rounded-lg">
-          <div>
-            <h4 className="text-sm font-semibold text-slate-700 mb-2">Grocery</h4>
-            <div className="flex flex-wrap gap-4 items-end">
-              <div className="w-48">
-                <label className="block text-sm text-slate-600 mb-1">Retailer margin %</label>
-                <input type="number" step="0.5" value={retailerMargin * 100}
-                  onChange={(e) => setRetailerMargin((parseFloat(e.target.value) || 0) / 100)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-              </div>
-              <label className="flex items-center gap-2 cursor-pointer pb-2">
-                <input type="checkbox" checked={useWholesaler} onChange={(e) => setUseWholesaler(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-                <span className="text-sm text-slate-700">
-                  Via wholesaler
-                  <Tooltip text={GROCERY_DEFAULTS.wholesalerMarginPercent.note} />
-                </span>
-              </label>
-              {useWholesaler && (
-                <div className="w-48">
-                  <label className="block text-sm text-slate-600 mb-1">Wholesaler margin %</label>
-                  <input type="number" step="0.5" value={wholesalerMargin * 100}
-                    onChange={(e) => setWholesalerMargin((parseFloat(e.target.value) || 0) / 100)}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-                </div>
-              )}
-            </div>
-          </div>
-          <div>
-            <h4 className="text-sm font-semibold text-slate-700 mb-2">Amazon FBA</h4>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div>
-                <label className="block text-sm text-slate-600 mb-1">Referral %</label>
-                <input type="number" step="0.5" value={amazonFees.referralFeePercent * 100}
-                  onChange={(e) => setAmazonFees({ ...amazonFees, referralFeePercent: (parseFloat(e.target.value) || 0) / 100 })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-              </div>
-              <div>
-                <label className="block text-sm text-slate-600 mb-1">Fulfilment £</label>
-                <input type="number" step="0.05" value={amazonFees.fulfilmentFeePerUnit}
-                  onChange={(e) => setAmazonFees({ ...amazonFees, fulfilmentFeePerUnit: parseFloat(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-              </div>
-              <div>
-                <label className="block text-sm text-slate-600 mb-1">Storage £/unit</label>
-                <input type="number" step="0.01" value={amazonFees.monthlyStoragePerUnit}
-                  onChange={(e) => setAmazonFees({ ...amazonFees, monthlyStoragePerUnit: parseFloat(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-              </div>
-              <div>
-                <label className="block text-sm text-slate-600 mb-1">Fuel surcharge %</label>
-                <input type="number" step="0.1" value={amazonFees.fuelLogisticsSurcharge * 100}
-                  onChange={(e) => setAmazonFees({ ...amazonFees, fuelLogisticsSurcharge: (parseFloat(e.target.value) || 0) / 100 })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-              </div>
-            </div>
-          </div>
-          <div>
-            <h4 className="text-sm font-semibold text-slate-700 mb-2">TikTok Shop</h4>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div>
-                <label className="block text-sm text-slate-600 mb-1">Platform %</label>
-                <input type="number" step="0.5" value={tiktokFees.platformCommission * 100}
-                  onChange={(e) => setTiktokFees({ ...tiktokFees, platformCommission: (parseFloat(e.target.value) || 0) / 100 })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-              </div>
-              <div>
-                <label className="block text-sm text-slate-600 mb-1">Affiliate %</label>
-                <input type="number" step="0.5" value={tiktokFees.affiliateCommission * 100}
-                  onChange={(e) => setTiktokFees({ ...tiktokFees, affiliateCommission: (parseFloat(e.target.value) || 0) / 100 })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-              </div>
-              <div>
-                <label className="block text-sm text-slate-600 mb-1">Per-order £</label>
-                <input type="number" step="0.05" value={tiktokFees.perOrderFee}
-                  onChange={(e) => setTiktokFees({ ...tiktokFees, perOrderFee: parseFloat(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-              </div>
-              <div>
-                <label className="block text-sm text-slate-600 mb-1">Refund admin %</label>
-                <input type="number" step="0.5" value={tiktokFees.refundAdminPercent * 100}
-                  onChange={(e) => setTiktokFees({ ...tiktokFees, refundAdminPercent: (parseFloat(e.target.value) || 0) / 100 })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-              </div>
-            </div>
-          </div>
+      {/* One source of truth: this view uses the fees set on each calculator tab */}
+      <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-3 no-print">
+        <GroceryChainSettings />
+        <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-slate-500 pt-1 border-t border-slate-200">
+          <span>
+            Amazon: {formatPercent(amazonFees.referralFeePercent)} referral + {formatGBP(amazonFees.fulfilmentFeePerUnit)} fulfilment
+            {' — '}
+            <button onClick={() => setActiveCalculator('amazon-fba')} className="text-blue-600 hover:underline">
+              edit on the Amazon FBA tab
+            </button>
+          </span>
+          <span>
+            TikTok: {formatPercent(tiktokFees.platformCommission)} commission + {formatPercent(tiktokFees.affiliateCommission)} affiliate
+            {' — '}
+            <button onClick={() => setActiveCalculator('tiktok-shop')} className="text-blue-600 hover:underline">
+              edit on the TikTok Shop tab
+            </button>
+          </span>
         </div>
-      </details>
+      </div>
 
       {/* Comparison table */}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
+          <caption className="sr-only">Net margin comparison across sales channels</caption>
           <thead>
             <tr className="border-b border-slate-200">
-              <th className="text-left py-3 px-4 font-medium text-slate-500">Channel</th>
-              <th className="text-right py-3 px-4 font-medium text-slate-500">Net Revenue/Unit</th>
-              <th className="text-right py-3 px-4 font-medium text-slate-500">COGS/Unit</th>
-              <th className="text-right py-3 px-4 font-medium text-slate-500">Gross Profit/Unit</th>
-              <th className="text-right py-3 px-4 font-medium text-slate-500">Gross Margin %</th>
+              <th scope="col" className="text-left py-3 px-4 font-medium text-slate-500">Channel</th>
+              <th scope="col" className="text-right py-3 px-4 font-medium text-slate-500">Net Revenue/Unit</th>
+              <th scope="col" className="text-right py-3 px-4 font-medium text-slate-500">COGS/Unit</th>
+              <th scope="col" className="text-right py-3 px-4 font-medium text-slate-500">Gross Profit/Unit</th>
+              <th scope="col" className="text-right py-3 px-4 font-medium text-slate-500">Gross Margin %</th>
             </tr>
           </thead>
           <tbody>
@@ -163,14 +80,14 @@ export default function CrossChannel() {
                     isBest ? 'bg-emerald-50' : isNegative ? 'bg-red-50' : ''
                   }`}
                 >
-                  <td className="py-3 px-4 font-medium text-slate-900">
+                  <th scope="row" className="py-3 px-4 font-medium text-slate-900 text-left">
                     {ch.channel}
                     {isBest && (
                       <span className="ml-2 text-xs font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
                         Best
                       </span>
                     )}
-                  </td>
+                  </th>
                   <td className="py-3 px-4 text-right text-slate-700">{formatGBP(ch.netRevenuePerUnit)}</td>
                   <td className="py-3 px-4 text-right text-slate-700">{formatGBP(ch.cogsPerUnit)}</td>
                   <td className={`py-3 px-4 text-right font-semibold ${isNegative ? 'text-red-700' : 'text-slate-900'}`}>
@@ -204,7 +121,7 @@ export default function CrossChannel() {
                   style={{ width: `${width}%` }}
                 />
                 <span className={`absolute inset-y-0 flex items-center text-xs font-semibold ${
-                  width > 30 ? 'left-3 text-white' : 'left-[calc(100%+8px)] text-slate-700'
+                  width > 30 ? 'left-3 text-white' : 'text-slate-700'
                 }`} style={width <= 30 ? { left: `${width + 2}%` } : undefined}>
                   {pct.toFixed(1)}%
                 </span>
@@ -213,6 +130,10 @@ export default function CrossChannel() {
           )
         })}
       </div>
+
+      <p className="text-xs text-slate-400">
+        Margins shown are gross margins on net revenue per unit, before overheads, advertising and returns. Marketplace channels avoid the retailer's margin but carry per-unit fees — the comparison is most useful for deciding where a given RRP works hardest.
+      </p>
     </div>
   )
 }

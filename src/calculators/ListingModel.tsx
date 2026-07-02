@@ -1,29 +1,27 @@
-import { useState } from 'react'
 import { useStore } from '../store/useStore'
+import { activeWholesalerMargin } from '../store/scenario'
 import { listingModel, formatGBP, formatNumber } from '../utils/calculations'
-import { GROCERY_DEFAULTS } from '../config/fees'
-import FeeInput from '../components/FeeInput'
+import GroceryChainSettings from '../components/GroceryChainSettings'
+import NumberInput from '../components/NumberInput'
 import ResultCard from '../components/ResultCard'
-import Tooltip from '../components/Tooltip'
 
 export default function ListingModel() {
   const product = useStore((s) => s.getActiveProduct())
-  const [retailerMargin, setRetailerMargin] = useState(GROCERY_DEFAULTS.retailerMarginPercent.value)
-  const [useWholesaler, setUseWholesaler] = useState(false)
-  const [wholesalerMargin, setWholesalerMargin] = useState(GROCERY_DEFAULTS.wholesalerMarginPercent.value)
-  const [stores, setStores] = useState(500)
-  const [skus, setSkus] = useState(1)
-  const [weeksInPeriod, setWeeksInPeriod] = useState(52)
-  const [promoWeeks, setPromoWeeks] = useState(8)
-  const [promoUplift, setPromoUplift] = useState(50)
+  const grocery = useStore((s) => s.scenario.grocery)
+  const listing = useStore((s) => s.scenario.listing)
+  const updateScenario = useStore((s) => s.updateScenario)
 
   if (!product) return <p className="text-slate-500">Select a product to begin.</p>
 
-  const wsMargin = useWholesaler ? wholesalerMargin : 0
-  const result = listingModel(product, retailerMargin, {
-    stores, skus, weeksInPeriod, promoWeeks,
-    promoUpliftPercent: promoUplift / 100,
-  }, wsMargin)
+  const result = listingModel(product, grocery.retailerMargin, {
+    stores: listing.stores,
+    skus: listing.skus,
+    weeksInPeriod: listing.weeksInPeriod,
+    promoWeeks: listing.promoWeeks,
+    promoUpliftPercent: listing.promoUplift,
+  }, activeWholesalerMargin(grocery))
+
+  const promoExceedsPeriod = listing.promoWeeks > listing.weeksInPeriod
 
   return (
     <div className="space-y-6">
@@ -35,58 +33,38 @@ export default function ListingModel() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-2xl">
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Stores</label>
-          <input type="number" min="1" value={stores} onChange={(e) => setStores(parseInt(e.target.value) || 0)}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">SKUs</label>
-          <input type="number" min="1" value={skus} onChange={(e) => setSkus(parseInt(e.target.value) || 0)}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Weeks in period</label>
-          <input type="number" min="1" value={weeksInPeriod} onChange={(e) => setWeeksInPeriod(parseInt(e.target.value) || 0)}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Promo weeks</label>
-          <input type="number" min="0" value={promoWeeks} onChange={(e) => setPromoWeeks(parseInt(e.target.value) || 0)}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Promo volume uplift %</label>
-          <input type="number" step="5" min="0" value={promoUplift} onChange={(e) => setPromoUplift(parseFloat(e.target.value) || 0)}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-        </div>
-        <FeeInput fee={GROCERY_DEFAULTS.retailerMarginPercent} value={retailerMargin} onChange={setRetailerMargin} isPercent step="0.5" />
+        <NumberInput label="Stores" min={0} value={listing.stores}
+          onChange={(v) => updateScenario('listing', { stores: Math.round(v) })}
+          help="Stores stocking the product" />
+        <NumberInput label="SKUs" min={0} value={listing.skus}
+          onChange={(v) => updateScenario('listing', { skus: Math.round(v) })}
+          help="Listed lines of this product" />
+        <NumberInput label="Weeks in period" min={0} value={listing.weeksInPeriod}
+          onChange={(v) => updateScenario('listing', { weeksInPeriod: Math.round(v) })} />
+        <NumberInput label="Promo weeks" min={0} value={listing.promoWeeks}
+          onChange={(v) => updateScenario('listing', { promoWeeks: Math.round(v) })}
+          help="Weeks on promotion within the period" />
+        <NumberInput label="Promo volume uplift" suffix="%" min={0} value={listing.promoUplift * 100}
+          onChange={(v) => updateScenario('listing', { promoUplift: v / 100 })}
+          help="Extra volume during promo weeks" />
       </div>
 
-      <div className="flex flex-wrap gap-4 items-end">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" checked={useWholesaler} onChange={(e) => setUseWholesaler(e.target.checked)}
-            className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-          <span className="text-sm font-medium text-slate-700">
-            Via wholesaler
-            <Tooltip text={GROCERY_DEFAULTS.wholesalerMarginPercent.note} />
-          </span>
-        </label>
-        {useWholesaler && (
-          <div className="w-48">
-            <FeeInput fee={GROCERY_DEFAULTS.wholesalerMarginPercent} value={wholesalerMargin} onChange={setWholesalerMargin} isPercent step="0.5" />
-          </div>
-        )}
-      </div>
+      <GroceryChainSettings />
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        <ResultCard label="Total volume (units)" value={formatNumber(result.totalVolume)} highlight />
-        <ResultCard label="Total cases" value={formatNumber(result.totalCases)} />
-        <ResultCard label="Total revenue" value={formatGBP(result.totalRevenue)} highlight />
-        <ResultCard label="Gross margin" value={formatGBP(result.totalGrossMargin)} highlight />
-        <ResultCard label="Base weekly volume" value={formatNumber(result.weeklyVolume)} />
-        <ResultCard label="Promo weekly volume" value={formatNumber(result.promoWeeklyVolume)} />
-      </div>
+      {promoExceedsPeriod ? (
+        <p className="p-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg">
+          Promo weeks can't exceed the weeks in the period.
+        </p>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <ResultCard label="Total volume (units)" value={formatNumber(result.totalVolume)} highlight />
+          <ResultCard label="Total cases" value={formatNumber(result.totalCases)} />
+          <ResultCard label="Total revenue" value={formatGBP(result.totalRevenue)} sub="Your net revenue, not retail sales value" highlight />
+          <ResultCard label="Gross margin" value={formatGBP(result.totalGrossMargin)} highlight />
+          <ResultCard label="Base weekly volume" value={formatNumber(result.weeklyVolume)} />
+          <ResultCard label="Promo weekly volume" value={formatNumber(result.promoWeeklyVolume)} />
+        </div>
+      )}
     </div>
   )
 }

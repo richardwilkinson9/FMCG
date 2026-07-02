@@ -1,20 +1,17 @@
-import { useState } from 'react'
 import { useStore } from '../store/useStore'
+import { activeWholesalerMargin } from '../store/scenario'
 import { retailerPnL, formatGBP, formatPercent } from '../utils/calculations'
-import { GROCERY_DEFAULTS } from '../config/fees'
-import FeeInput from '../components/FeeInput'
+import GroceryChainSettings from '../components/GroceryChainSettings'
 import ResultCard from '../components/ResultCard'
 
 export default function RetailerPnL() {
   const product = useStore((s) => s.getActiveProduct())
-  const [retailerMargin, setRetailerMargin] = useState(GROCERY_DEFAULTS.retailerMarginPercent.value)
-  const [useWholesaler, setUseWholesaler] = useState(false)
-  const [wholesalerMargin, setWholesalerMargin] = useState(GROCERY_DEFAULTS.wholesalerMarginPercent.value)
+  const grocery = useStore((s) => s.scenario.grocery)
 
   if (!product) return <p className="text-slate-500">Select a product to begin.</p>
 
-  const wsMargin = useWholesaler ? wholesalerMargin : 0
-  const result = retailerPnL(product, retailerMargin, wsMargin)
+  const marginsInvalid = grocery.retailerMargin >= 1 || (grocery.wholesalerEnabled && grocery.wholesalerMargin >= 1)
+  const result = retailerPnL(product, grocery.retailerMargin, activeWholesalerMargin(grocery))
 
   return (
     <div className="space-y-6">
@@ -25,79 +22,66 @@ export default function RetailerPnL() {
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-4 items-end max-w-2xl">
-        <div className="w-48">
-          <FeeInput
-            fee={GROCERY_DEFAULTS.retailerMarginPercent}
-            value={retailerMargin}
-            onChange={setRetailerMargin}
-            isPercent
-            step="0.5"
-          />
-        </div>
+      <GroceryChainSettings />
 
-        <div className="flex items-center gap-3 pb-1">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={useWholesaler}
-              onChange={(e) => setUseWholesaler(e.target.checked)}
-              className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+      {marginsInvalid ? (
+        <p className="p-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg">
+          Margins must be below 100% — at 100% or more, nobody in the chain pays anything for the product.
+        </p>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <ResultCard
+              label="RSP ex-VAT"
+              value={formatGBP(result.rspExVat)}
+              sub="What the shopper pays, minus VAT"
             />
-            <span className="text-sm font-medium text-slate-700">Via wholesaler</span>
-          </label>
-        </div>
+            <ResultCard
+              label="Cost to retailer"
+              value={formatGBP(result.costToRetailer)}
+              sub="RSP ex-VAT less the retailer's margin"
+            />
+            <ResultCard label="Retailer margin/unit" value={formatGBP(result.retailerMarginPerUnit)} />
+            <ResultCard label="Retailer margin %" value={formatPercent(result.retailerMarginPercent)} />
+          </div>
 
-        {useWholesaler && (
-          <div className="w-48">
-            <FeeInput
-              fee={GROCERY_DEFAULTS.wholesalerMarginPercent}
-              value={wholesalerMargin}
-              onChange={setWholesalerMargin}
-              isPercent
-              step="0.5"
+          {grocery.wholesalerEnabled && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <ResultCard label="Wholesaler margin/unit" value={formatGBP(result.wholesalerMarginPerUnit)} />
+              <ResultCard label="Wholesaler margin %" value={formatPercent(result.wholesalerMarginPercent)} />
+              <ResultCard
+                label="Cost to wholesaler"
+                value={formatGBP(result.costToWholesaler)}
+                sub="The price you invoice — your net revenue"
+              />
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <ResultCard
+              label="Your gross margin/unit"
+              value={formatGBP(result.brandGrossMarginPerUnit)}
+              sub="Net revenue less COGS"
+              highlight={result.brandGrossMarginPerUnit > 0}
+              negative={result.brandGrossMarginPerUnit < 0}
+            />
+            <ResultCard
+              label="Your gross margin %"
+              value={formatPercent(result.brandGrossMarginPercent)}
+              sub="On your net revenue"
+              highlight={result.brandGrossMarginPercent > 0}
+              negative={result.brandGrossMarginPercent < 0}
+            />
+            <ResultCard label="Revenue/case" value={formatGBP(result.revenuePerCase)} />
+            <ResultCard
+              label="Margin/case"
+              value={formatGBP(result.marginPerCase)}
+              highlight={result.marginPerCase > 0}
+              negative={result.marginPerCase < 0}
             />
           </div>
-        )}
-      </div>
-
-      {/* Margin waterfall */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <ResultCard label="RSP ex-VAT" value={formatGBP(result.rspExVat)} />
-        <ResultCard label="Cost to retailer" value={formatGBP(result.costToRetailer)} />
-        <ResultCard label="Retailer margin/unit" value={formatGBP(result.retailerMarginPerUnit)} />
-        <ResultCard label="Retailer margin %" value={formatPercent(result.retailerMarginPercent)} />
-      </div>
-
-      {useWholesaler && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <ResultCard label="Wholesaler margin/unit" value={formatGBP(result.wholesalerMarginPerUnit)} />
-          <ResultCard label="Wholesaler margin %" value={formatPercent(result.wholesalerMarginPercent)} />
-          <ResultCard label="Cost to wholesaler (your price)" value={formatGBP(result.costToWholesaler)} />
-        </div>
+        </>
       )}
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <ResultCard
-          label="Your gross margin/unit"
-          value={formatGBP(result.brandGrossMarginPerUnit)}
-          highlight={result.brandGrossMarginPerUnit > 0}
-          negative={result.brandGrossMarginPerUnit < 0}
-        />
-        <ResultCard
-          label="Your gross margin %"
-          value={formatPercent(result.brandGrossMarginPercent)}
-          highlight={result.brandGrossMarginPercent > 0}
-          negative={result.brandGrossMarginPercent < 0}
-        />
-        <ResultCard label="Revenue/case" value={formatGBP(result.revenuePerCase)} />
-        <ResultCard
-          label="Margin/case"
-          value={formatGBP(result.marginPerCase)}
-          highlight={result.marginPerCase > 0}
-          negative={result.marginPerCase < 0}
-        />
-      </div>
     </div>
   )
 }
