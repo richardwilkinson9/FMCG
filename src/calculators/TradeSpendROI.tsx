@@ -4,16 +4,20 @@ import { tradeSpendROI, formatGBP, formatNumber } from '../utils/calculations'
 import { GROCERY_DEFAULTS } from '../config/fees'
 import FeeInput from '../components/FeeInput'
 import ResultCard from '../components/ResultCard'
+import Tooltip from '../components/Tooltip'
 
 export default function TradeSpendROI() {
   const product = useStore((s) => s.getActiveProduct())
   const [retailerMargin, setRetailerMargin] = useState(GROCERY_DEFAULTS.retailerMarginPercent.value)
+  const [useWholesaler, setUseWholesaler] = useState(false)
+  const [wholesalerMargin, setWholesalerMargin] = useState(GROCERY_DEFAULTS.wholesalerMarginPercent.value)
   const [investment, setInvestment] = useState(10000)
   const [targetROI, setTargetROI] = useState(200)
 
   if (!product) return <p className="text-slate-500">Select a product to begin.</p>
 
-  const result = tradeSpendROI(product, retailerMargin, investment, targetROI / 100)
+  const wsMargin = useWholesaler ? wholesalerMargin : 0
+  const result = tradeSpendROI(product, retailerMargin, investment, targetROI / 100, wsMargin)
 
   return (
     <div className="space-y-6">
@@ -38,6 +42,22 @@ export default function TradeSpendROI() {
             className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
         </div>
         <FeeInput fee={GROCERY_DEFAULTS.retailerMarginPercent} value={retailerMargin} onChange={setRetailerMargin} isPercent step="0.5" />
+      </div>
+
+      <div className="flex flex-wrap gap-4 items-end">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" checked={useWholesaler} onChange={(e) => setUseWholesaler(e.target.checked)}
+            className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+          <span className="text-sm font-medium text-slate-700">
+            Via wholesaler
+            <Tooltip text={GROCERY_DEFAULTS.wholesalerMarginPercent.note} />
+          </span>
+        </label>
+        {useWholesaler && (
+          <div className="w-48">
+            <FeeInput fee={GROCERY_DEFAULTS.wholesalerMarginPercent} value={wholesalerMargin} onChange={setWholesalerMargin} isPercent step="0.5" />
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">

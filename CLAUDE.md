@@ -24,7 +24,13 @@ src/
 - State is in-memory. No localStorage. Shareable via URL query string (`?s=<base64>`).
 
 ## Fee config
-All editable fee defaults live in `src/config/fees.ts`. Each has a `label`, `value`, and `note` (tooltip). Update this one file when rate cards change.
+All editable fee defaults live in `src/config/fees.ts`. Each has a `label`, `value`, and `note` (tooltip). Update this one file when rate cards change. Also contains:
+- `AMAZON_SIZE_TIERS` — UK FBA fulfilment fee by size/weight tier (used by the fee estimator)
+- `AMAZON_CATEGORY_FEES` — referral fee % by Amazon category
+- `TIKTOK_CATEGORY_FEES` — platform commission % by TikTok Shop category
+
+## Wholesaler support
+All grocery calculators (P&L, Min Margin, Listing Model, Trade Spend, Cross-Channel) support an optional wholesaler in the chain. When enabled, the wholesaler takes a margin on the retailer's buy price, reducing the brand's net revenue. Default 25%, editable.
 
 ## Conventions
 - British English throughout the UI ("optimise", "programme", £ not $).

@@ -8,11 +8,14 @@ import {
   type TikTokFees,
 } from '../utils/calculations'
 import { GROCERY_DEFAULTS, AMAZON_FBA_DEFAULTS, TIKTOK_SHOP_DEFAULTS } from '../config/fees'
+import Tooltip from '../components/Tooltip'
 
 export default function CrossChannel() {
   const product = useStore((s) => s.getActiveProduct())
 
   const [retailerMargin, setRetailerMargin] = useState(GROCERY_DEFAULTS.retailerMarginPercent.value)
+  const [useWholesaler, setUseWholesaler] = useState(false)
+  const [wholesalerMargin, setWholesalerMargin] = useState(GROCERY_DEFAULTS.wholesalerMarginPercent.value)
   const [amazonFees, setAmazonFees] = useState<AmazonFBAFees>({
     referralFeePercent: AMAZON_FBA_DEFAULTS.referralFeePercent.value,
     fulfilmentFeePerUnit: AMAZON_FBA_DEFAULTS.fulfilmentFeePerUnit.value,
@@ -28,7 +31,8 @@ export default function CrossChannel() {
 
   if (!product) return <p className="text-slate-500">Select a product to begin.</p>
 
-  const comparison = crossChannelComparison(product, retailerMargin, amazonFees, tiktokFees)
+  const wsMargin = useWholesaler ? wholesalerMargin : 0
+  const comparison = crossChannelComparison(product, retailerMargin, amazonFees, tiktokFees, wsMargin)
   const channels = [comparison.grocery, comparison.amazon, comparison.tiktok]
 
   const bestMargin = Math.max(...channels.map((c) => c.grossMarginPercent))
@@ -50,11 +54,29 @@ export default function CrossChannel() {
         <div className="mt-4 space-y-4 p-4 bg-slate-50 rounded-lg">
           <div>
             <h4 className="text-sm font-semibold text-slate-700 mb-2">Grocery</h4>
-            <div className="max-w-xs">
-              <label className="block text-sm text-slate-600 mb-1">Retailer margin %</label>
-              <input type="number" step="0.5" value={retailerMargin * 100}
-                onChange={(e) => setRetailerMargin((parseFloat(e.target.value) || 0) / 100)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+            <div className="flex flex-wrap gap-4 items-end">
+              <div className="w-48">
+                <label className="block text-sm text-slate-600 mb-1">Retailer margin %</label>
+                <input type="number" step="0.5" value={retailerMargin * 100}
+                  onChange={(e) => setRetailerMargin((parseFloat(e.target.value) || 0) / 100)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer pb-2">
+                <input type="checkbox" checked={useWholesaler} onChange={(e) => setUseWholesaler(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                <span className="text-sm text-slate-700">
+                  Via wholesaler
+                  <Tooltip text={GROCERY_DEFAULTS.wholesalerMarginPercent.note} />
+                </span>
+              </label>
+              {useWholesaler && (
+                <div className="w-48">
+                  <label className="block text-sm text-slate-600 mb-1">Wholesaler margin %</label>
+                  <input type="number" step="0.5" value={wholesalerMargin * 100}
+                    onChange={(e) => setWholesalerMargin((parseFloat(e.target.value) || 0) / 100)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                </div>
+              )}
             </div>
           </div>
           <div>
@@ -173,7 +195,7 @@ export default function CrossChannel() {
           const isNegative = pct < 0
           return (
             <div key={ch.channel} className="flex items-center gap-3">
-              <div className="w-28 text-sm text-slate-700 shrink-0">{ch.channel}</div>
+              <div className="w-44 text-sm text-slate-700 shrink-0">{ch.channel}</div>
               <div className="flex-1 h-8 bg-slate-100 rounded-lg overflow-hidden relative">
                 <div
                   className={`h-full rounded-lg transition-all ${

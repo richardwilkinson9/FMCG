@@ -91,6 +91,12 @@ export const GROCERY_DEFAULTS = {
     note: 'Typical UK grocery retailer margin is 30–40% on RSP ex-VAT. Varies by category and retailer.',
   } as FeeDefault,
 
+  wholesalerMarginPercent: {
+    label: 'Wholesaler margin',
+    value: 0.25,
+    note: 'Typical UK wholesaler margin is 20–30% on their selling price. Set to 0 if selling direct to retailer.',
+  } as FeeDefault,
+
   /** Used in the trade spend calculator */
   averagePromoDiscount: {
     label: 'Average promo discount',
@@ -98,3 +104,72 @@ export const GROCERY_DEFAULTS = {
     note: 'Typical promotional price reduction, e.g. 25% off RSP. Adjust per mechanic.',
   } as FeeDefault,
 }
+
+// ─── Amazon FBA Size Tiers (UK, as of mid-2026) ──────────────────────────────
+// Based on Amazon's published FBA fee schedule. Fulfilment fees depend on
+// product size tier and unit weight. These are approximations — always verify
+// against Seller Central.
+
+export interface AmazonSizeTier {
+  name: string
+  maxWeightG: number
+  maxLongestCm: number
+  maxMedianCm: number
+  maxShortestCm: number
+  fee: number
+}
+
+export const AMAZON_SIZE_TIERS: AmazonSizeTier[] = [
+  { name: 'Small envelope',       maxWeightG: 80,   maxLongestCm: 33, maxMedianCm: 23, maxShortestCm: 2.5, fee: 1.83 },
+  { name: 'Standard envelope',    maxWeightG: 460,  maxLongestCm: 33, maxMedianCm: 23, maxShortestCm: 2.5, fee: 2.04 },
+  { name: 'Large envelope',       maxWeightG: 960,  maxLongestCm: 33, maxMedianCm: 23, maxShortestCm: 6,   fee: 2.28 },
+  { name: 'Small parcel',         maxWeightG: 150,  maxLongestCm: 35, maxMedianCm: 25, maxShortestCm: 12,  fee: 2.73 },
+  { name: 'Standard parcel',      maxWeightG: 400,  maxLongestCm: 45, maxMedianCm: 34, maxShortestCm: 26,  fee: 3.15 },
+  { name: 'Small oversize',       maxWeightG: 2000, maxLongestCm: 61, maxMedianCm: 46, maxShortestCm: 46,  fee: 4.47 },
+  { name: 'Standard oversize',    maxWeightG: 12000,maxLongestCm: 120,maxMedianCm: 60, maxShortestCm: 60,  fee: 6.28 },
+  { name: 'Large oversize',       maxWeightG: 23500,maxLongestCm: 175,maxMedianCm: 120,maxShortestCm: 80,  fee: 15.66 },
+]
+
+// ─── Amazon Referral Fee by Category ─────────────────────────────────────────
+
+export interface AmazonCategoryFee {
+  category: string
+  referralPercent: number
+}
+
+export const AMAZON_CATEGORY_FEES: AmazonCategoryFee[] = [
+  { category: 'Grocery & Gourmet Food',        referralPercent: 0.15 },
+  { category: 'Health & Personal Care',         referralPercent: 0.15 },
+  { category: 'Beauty',                         referralPercent: 0.15 },
+  { category: 'Baby Products',                  referralPercent: 0.15 },
+  { category: 'Home & Kitchen',                 referralPercent: 0.15 },
+  { category: 'Pet Supplies',                   referralPercent: 0.15 },
+  { category: 'Sports & Outdoors',              referralPercent: 0.15 },
+  { category: 'Electronics',                    referralPercent: 0.08 },
+  { category: 'Computers & Accessories',        referralPercent: 0.08 },
+  { category: 'Video Games',                    referralPercent: 0.15 },
+  { category: 'Books',                          referralPercent: 0.15 },
+  { category: 'Clothing & Accessories',         referralPercent: 0.15 },
+  { category: 'DIY & Tools',                    referralPercent: 0.12 },
+  { category: 'Other',                          referralPercent: 0.15 },
+]
+
+// ─── TikTok Shop Commission by Category ──────────────────────────────────────
+
+export interface TikTokCategoryFee {
+  category: string
+  commissionPercent: number
+}
+
+export const TIKTOK_CATEGORY_FEES: TikTokCategoryFee[] = [
+  { category: 'Food & Beverages',               commissionPercent: 0.09 },
+  { category: 'Health & Wellness',               commissionPercent: 0.09 },
+  { category: 'Beauty & Personal Care',          commissionPercent: 0.05 },
+  { category: 'Home & Living',                   commissionPercent: 0.09 },
+  { category: 'Sports & Outdoor',                commissionPercent: 0.09 },
+  { category: 'Baby & Maternity',                commissionPercent: 0.09 },
+  { category: 'Pet Supplies',                    commissionPercent: 0.09 },
+  { category: 'Electronics',                     commissionPercent: 0.05 },
+  { category: 'Fashion & Accessories',           commissionPercent: 0.09 },
+  { category: 'Other',                           commissionPercent: 0.09 },
+]

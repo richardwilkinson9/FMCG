@@ -21,17 +21,27 @@ export function costPerCase(product: Product): number {
 }
 
 /**
- * Retailer P&L breakdown.
- * "Cost price to retailer" = the price the brand sells to the retailer at.
- * Retailer margin is on the RSP ex-VAT.
+ * Retailer P&L breakdown, optionally via a wholesaler.
+ *
+ * Chain: Consumer pays RSP inc VAT
+ *   → Retailer takes their margin on RSP ex-VAT
+ *   → (if wholesaler) Wholesaler takes their margin on what the retailer pays
+ *   → Brand receives the remainder
+ *
+ * wholesalerMarginPercent = 0 means selling direct to retailer (no wholesaler).
  */
-export function retailerPnL(product: Product, retailerMarginPercent: number) {
+export function retailerPnL(product: Product, retailerMarginPercent: number, wholesalerMarginPercent = 0) {
   const rsp = rspExVat(product)
   const costToRetailer = rsp * (1 - retailerMarginPercent)
   const retailerMarginPerUnit = rsp - costToRetailer
-  const brandGrossMarginPerUnit = costToRetailer - product.cogsPerUnit
-  const brandGrossMarginPercent = costToRetailer > 0
-    ? brandGrossMarginPerUnit / costToRetailer
+
+  const wholesalerMarginPerUnit = costToRetailer * wholesalerMarginPercent
+  const costToWholesaler = costToRetailer - wholesalerMarginPerUnit
+
+  const brandNetRevenue = costToWholesaler
+  const brandGrossMarginPerUnit = brandNetRevenue - product.cogsPerUnit
+  const brandGrossMarginPercent = brandNetRevenue > 0
+    ? brandGrossMarginPerUnit / brandNetRevenue
     : 0
 
   return {
@@ -39,9 +49,13 @@ export function retailerPnL(product: Product, retailerMarginPercent: number) {
     costToRetailer,
     retailerMarginPerUnit,
     retailerMarginPercent,
+    wholesalerMarginPerUnit,
+    wholesalerMarginPercent,
+    costToWholesaler,
+    brandNetRevenue,
     brandGrossMarginPerUnit,
     brandGrossMarginPercent,
-    revenuePerCase: costToRetailer * product.unitsPerCase,
+    revenuePerCase: brandNetRevenue * product.unitsPerCase,
     marginPerCase: brandGrossMarginPerUnit * product.unitsPerCase,
   }
 }
@@ -56,11 +70,13 @@ export function solveForCostPrice(
   vatRate: number,
   retailerMarginPercent: number,
   targetBrandMarginPercent: number,
+  wholesalerMarginPercent = 0,
 ) {
   const rsp = exVat(rrpIncVat, vatRate)
   const costToRetailer = rsp * (1 - retailerMarginPercent)
-  const requiredCogs = costToRetailer * (1 - targetBrandMarginPercent)
-  return { requiredCogs, costToRetailer, rspExVat: rsp }
+  const costToWholesaler = costToRetailer * (1 - wholesalerMarginPercent)
+  const requiredCogs = costToWholesaler * (1 - targetBrandMarginPercent)
+  return { requiredCogs, costToRetailer, costToWholesaler, rspExVat: rsp }
 }
 
 export function solveForRrp(
@@ -68,11 +84,13 @@ export function solveForRrp(
   vatRate: number,
   retailerMarginPercent: number,
   targetBrandMarginPercent: number,
+  wholesalerMarginPercent = 0,
 ) {
-  const costToRetailer = cogsPerUnit / (1 - targetBrandMarginPercent)
+  const costToWholesaler = cogsPerUnit / (1 - targetBrandMarginPercent)
+  const costToRetailer = costToWholesaler / (1 - wholesalerMarginPercent)
   const rsp = costToRetailer / (1 - retailerMarginPercent)
   const rrpIncVat = rsp * (1 + vatRate)
-  return { rrpIncVat, costToRetailer, rspExVat: rsp }
+  return { rrpIncVat, costToRetailer, costToWholesaler, rspExVat: rsp }
 }
 
 /**
@@ -86,14 +104,14 @@ export interface ListingModelInputs {
   promoUpliftPercent: number
 }
 
-export function listingModel(product: Product, retailerMarginPercent: number, inputs: ListingModelInputs) {
-  const pnl = retailerPnL(product, retailerMarginPercent)
+export function listingModel(product: Product, retailerMarginPercent: number, inputs: ListingModelInputs, wholesalerMarginPercent = 0) {
+  const pnl = retailerPnL(product, retailerMarginPercent, wholesalerMarginPercent)
   const baseWeeklyVolume = product.weeklyRateOfSale * inputs.stores * inputs.skus
   const normalWeeks = inputs.weeksInPeriod - inputs.promoWeeks
   const promoWeeklyVolume = baseWeeklyVolume * (1 + inputs.promoUpliftPercent)
 
   const totalVolume = (baseWeeklyVolume * normalWeeks) + (promoWeeklyVolume * inputs.promoWeeks)
-  const totalRevenue = totalVolume * pnl.costToRetailer
+  const totalRevenue = totalVolume * pnl.brandNetRevenue
   const totalGrossMargin = totalVolume * pnl.brandGrossMarginPerUnit
 
   return {
@@ -114,8 +132,9 @@ export function tradeSpendROI(
   retailerMarginPercent: number,
   investment: number,
   targetROI: number,
+  wholesalerMarginPercent = 0,
 ) {
-  const pnl = retailerPnL(product, retailerMarginPercent)
+  const pnl = retailerPnL(product, retailerMarginPercent, wholesalerMarginPercent)
   const marginPerUnit = pnl.brandGrossMarginPerUnit
 
   const breakEvenUnits = marginPerUnit > 0 ? investment / marginPerUnit : Infinity
@@ -236,15 +255,16 @@ export function crossChannelComparison(
   retailerMarginPercent: number,
   amazonFees: AmazonFBAFees,
   tiktokFees: TikTokFees,
+  wholesalerMarginPercent = 0,
 ) {
-  const grocery = retailerPnL(product, retailerMarginPercent)
+  const grocery = retailerPnL(product, retailerMarginPercent, wholesalerMarginPercent)
   const amazon = amazonFBAMargin(product, amazonFees)
   const tiktok = tiktokShopMargin(product, tiktokFees)
 
   return {
     grocery: {
-      channel: 'UK Grocery',
-      netRevenuePerUnit: grocery.costToRetailer,
+      channel: wholesalerMarginPercent > 0 ? 'UK Grocery (via wholesaler)' : 'UK Grocery',
+      netRevenuePerUnit: grocery.brandNetRevenue,
       cogsPerUnit: product.cogsPerUnit,
       grossProfitPerUnit: grocery.brandGrossMarginPerUnit,
       grossMarginPercent: grocery.brandGrossMarginPercent,
@@ -264,6 +284,37 @@ export function crossChannelComparison(
       grossMarginPercent: tiktok.grossMarginPercent,
     },
   }
+}
+
+/**
+ * Amazon FBA fee estimator — determines fulfilment fee from product dimensions and weight.
+ * Uses Amazon's UK size-tier schedule.
+ */
+import { AMAZON_SIZE_TIERS, AMAZON_CATEGORY_FEES, TIKTOK_CATEGORY_FEES } from '../config/fees'
+
+export function estimateAmazonFBAFee(weightG: number, longestCm: number, medianCm: number, shortestCm: number) {
+  for (const tier of AMAZON_SIZE_TIERS) {
+    if (
+      weightG <= tier.maxWeightG &&
+      longestCm <= tier.maxLongestCm &&
+      medianCm <= tier.maxMedianCm &&
+      shortestCm <= tier.maxShortestCm
+    ) {
+      return { tier: tier.name, fee: tier.fee }
+    }
+  }
+  const last = AMAZON_SIZE_TIERS[AMAZON_SIZE_TIERS.length - 1]
+  return { tier: last.name + ' (oversize)', fee: last.fee }
+}
+
+export function getAmazonReferralRate(categoryName: string): number {
+  const match = AMAZON_CATEGORY_FEES.find((c) => c.category === categoryName)
+  return match ? match.referralPercent : 0.15
+}
+
+export function getTikTokCommission(categoryName: string): number {
+  const match = TIKTOK_CATEGORY_FEES.find((c) => c.category === categoryName)
+  return match ? match.commissionPercent : 0.09
 }
 
 /** Format a number as GBP */

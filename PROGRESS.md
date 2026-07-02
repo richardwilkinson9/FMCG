@@ -21,6 +21,11 @@
 - [x] Production build passing (tsc + vite)
 - [x] CLAUDE.md and PROGRESS.md created
 - [x] README.md with dev instructions and Vercel deployment guide
+- [x] **Wholesaler margin** — optional wholesaler in the grocery chain (default 25%, editable). Affects Retailer P&L, Min Margin, Listing Model, Trade Spend ROI, and Cross-Channel.
+- [x] **Amazon FBA fee estimator** — enter product weight, dimensions, and category to auto-calculate fulfilment fee (size-tier lookup) and referral rate (category lookup). Still fully overridable.
+- [x] **TikTok Shop category selector** — pick your category to auto-set the correct platform commission (5% for Beauty/Electronics, 9% for most others). Still fully overridable.
+- [x] Amazon category referral fee table (14 categories) and TikTok category commission table (10 categories) in fees.ts
+- [x] Amazon UK FBA size-tier table (8 tiers from small envelope to large oversize) in fees.ts
 
 ## Next
 - [ ] Visual polish: test in browser, responsive tweaks
@@ -32,3 +37,4 @@
 ## Open decisions
 - PDF generation: currently stubbed (suggests browser print). Could add jsPDF or similar if a proper branded export is needed — adds ~100KB to the bundle.
 - Email capture: stubbed in the UI. Needs a backend service (e.g. a simple Vercel serverless function + email provider) when ready.
+- Amazon/TikTok live fee lookup: no free public API exists for barcode-based fee lookups. Current approach uses published fee schedules with product dimensions/weight/category. A future enhancement could integrate with Amazon SP-API if the user has seller credentials.
