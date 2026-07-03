@@ -113,7 +113,19 @@ The maths was not touched — every formula still comes from calculations.ts.
       volume line; £ formatting fixed in the Listing loss verdict.
 - [x] Homepage step-2 copy now says 11 tools.
 
+## Reliability + The Archive (July 2026)
+- [x] **Stale-tab export fix** — after a redeploy, old tabs hold purged lazy
+      chunks so Export silently failed. Now: vite:preloadError triggers one
+      automatic reload (model survives via the URL), and the Export button
+      shows "Failed — refresh the page" instead of doing nothing.
+- [x] **The Archive** — save the current model under a name on The Shelf;
+      LOAD / BIN saved models; survives refresh (localStorage — the LIVE
+      model still never touches storage). Records are versioned so they can
+      sync to an account when log-in lands.
+
 ## Next
+- [ ] Log-in + cloud sync for The Archive (Supabase magic-link; needs a
+      Supabase project + two env vars in Vercel — see chat)
 - [ ] Verify all calculation logic with real-world examples
 - [ ] Consider a proper branded PDF (jsPDF) if print proves insufficient
 - [ ] Possible future: multiple promo windows per period (workaround: edit the

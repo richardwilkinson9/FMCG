@@ -1,6 +1,14 @@
+import { useState } from 'react'
 import { useStore, createBlankProduct, generateId } from '../store/useStore'
 import { CATEGORY_TEMPLATES } from '../config/templates'
 import type { Product } from '../types/product'
+import {
+  listArchive,
+  saveToArchive,
+  deleteFromArchive,
+  hydrateSavedModel,
+  type SavedModel,
+} from '../store/archive'
 import { PageHeader } from '../components/gross/CalcShell'
 import GrossFooter from '../components/gross/GrossFooter'
 import LedgerRat from '../components/gross/LedgerRat'
@@ -13,12 +21,43 @@ import Field, { TextField } from '../components/gross/Field'
 export default function Shelf() {
   const products = useStore((s) => s.products)
   const activeProductId = useStore((s) => s.activeProductId)
+  const scenario = useStore((s) => s.scenario)
   const addProduct = useStore((s) => s.addProduct)
   const updateProduct = useStore((s) => s.updateProduct)
   const removeProduct = useStore((s) => s.removeProduct)
   const duplicateProduct = useStore((s) => s.duplicateProduct)
   const setActiveProduct = useStore((s) => s.setActiveProduct)
   const setActiveCalculator = useStore((s) => s.setActiveCalculator)
+
+  const [archive, setArchive] = useState<SavedModel[]>(() => listArchive())
+  const [saveName, setSaveName] = useState('')
+  const [saveState, setSaveState] = useState<'idle' | 'saved' | 'failed'>('idle')
+
+  const handleSave = () => {
+    const saved = saveToArchive(saveName, products, scenario)
+    if (saved) {
+      setArchive(listArchive())
+      setSaveName('')
+      setSaveState('saved')
+    } else {
+      setSaveState('failed')
+    }
+    setTimeout(() => setSaveState('idle'), 1800)
+  }
+
+  const handleLoad = (model: SavedModel) => {
+    const { products: p, scenario: s } = hydrateSavedModel(model)
+    useStore.setState({
+      products: p,
+      activeProductId: p[0]?.id ?? null,
+      scenario: s,
+    })
+  }
+
+  const handleBin = (id: string) => {
+    deleteFromArchive(id)
+    setArchive(listArchive())
+  }
 
   const addFromTemplate = (index: number) => {
     const template = CATEGORY_TEMPLATES[index]
@@ -130,6 +169,67 @@ export default function Shelf() {
               <div className="font-mono text-[11px] mt-3 opacity-65">
                 The product ON SHELF is the one every calculator uses. The Range reads all of them.
               </div>
+
+              {/* THE ARCHIVE — saved models */}
+              <div className="flex items-center justify-between border-b-2 border-ink pb-2.5 mb-4 mt-10 flex-wrap gap-2">
+                <span className="font-mono text-[13px] tracking-[0.1em] font-bold">THE ARCHIVE</span>
+                <span className="font-mono text-[10px] tracking-[0.05em] opacity-60">
+                  SAVED IN THIS BROWSER · ACCOUNT SYNC COMING
+                </span>
+              </div>
+
+              <div className="flex gap-3 flex-wrap items-end mb-5">
+                <div className="flex-1 min-w-[240px]">
+                  <label className="block">
+                    <span className="block text-xs font-semibold mb-1.5">Save the current model as</span>
+                    <div className="flex border-2 border-ink bg-white h-[52px]">
+                      <input
+                        value={saveName}
+                        onChange={(e) => setSaveName(e.target.value)}
+                        placeholder="e.g. Tesco range review · Sept"
+                        aria-label="Model name"
+                        className="flex-1 min-w-0 border-0 outline-none bg-transparent px-3.5 font-mono text-[15px] text-ink"
+                      />
+                    </div>
+                  </label>
+                </div>
+                <button
+                  onClick={handleSave}
+                  className="border-2 border-ink bg-ink text-receipt h-[52px] px-6 text-sm font-semibold cursor-pointer hover:bg-bile hover:text-ink"
+                  style={saveState === 'failed' ? { color: '#E4002B' } : undefined}
+                >
+                  {saveState === 'saved' ? 'Saved' : saveState === 'failed' ? 'Storage blocked' : 'Save model'}
+                </button>
+              </div>
+
+              {archive.length === 0 ? (
+                <div className="font-mono text-[11px] opacity-65 mb-2">Nothing in the archive yet.</div>
+              ) : (
+                <div className="flex flex-col">
+                  {archive.map((m) => (
+                    <div
+                      key={m.id}
+                      className="flex items-center justify-between gap-3 flex-wrap border-2 border-ink -mt-0.5 first:mt-0 py-2.5 px-3.5 bg-receipt"
+                    >
+                      <span className="font-mono text-[13px]">
+                        <span className="font-bold">{m.name}</span>
+                        <span className="opacity-60">
+                          {'  '}· {m.products.length} product{m.products.length === 1 ? '' : 's'} ·{' '}
+                          {new Date(m.savedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </span>
+                      </span>
+                      <span className="flex gap-2">
+                        <button onClick={() => handleLoad(m)} className={`${chip} text-[10px] py-0.5`}>
+                          LOAD
+                        </button>
+                        <button onClick={() => handleBin(m.id)} className={`${chip} text-[10px] py-0.5 hover:bg-redpen hover:text-receipt`}>
+                          BIN
+                        </button>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Onward */}
               <div className="flex gap-3 mt-7 flex-wrap">

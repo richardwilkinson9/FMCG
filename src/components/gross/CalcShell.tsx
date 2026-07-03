@@ -41,7 +41,7 @@ export function InputsHeader() {
 export function CalcActions() {
   const { products, activeProductId, activeCalculator, scenario, getActiveProduct } = useStore()
   const [copied, setCopied] = useState(false)
-  const [building, setBuilding] = useState(false)
+  const [exportState, setExportState] = useState<'idle' | 'building' | 'failed'>('idle')
 
   const copyLink = () => {
     const url = encodeStateToUrl(products, activeProductId, activeCalculator, scenario)
@@ -52,14 +52,22 @@ export function CalcActions() {
 
   const doExport = async () => {
     const product = getActiveProduct()
-    if (!product || building) return
-    setBuilding(true)
+    if (!product || exportState === 'building') return
+    setExportState('building')
     try {
       await downloadExcelModel(product, scenario)
-    } finally {
-      setBuilding(false)
+      setExportState('idle')
+    } catch {
+      // Almost always a stale tab holding a purged chunk after a redeploy
+      setExportState('failed')
+      setTimeout(() => setExportState('idle'), 4000)
     }
   }
+
+  const exportLabel =
+    exportState === 'building' ? 'Building…'
+      : exportState === 'failed' ? 'Failed — refresh the page'
+        : 'Export'
 
   const base = 'flex-1 border-2 border-ink p-[15px] text-sm font-semibold cursor-pointer hover:bg-bile hover:text-ink'
   return (
@@ -67,8 +75,13 @@ export function CalcActions() {
       <button onClick={copyLink} className={`${base} bg-ink text-receipt`}>
         {copied ? 'Link copied' : 'Copy share link'}
       </button>
-      <button onClick={doExport} className={`${base} bg-receipt text-ink`} disabled={building}>
-        {building ? 'Building…' : 'Export'}
+      <button
+        onClick={doExport}
+        className={`${base} bg-receipt text-ink`}
+        disabled={exportState === 'building'}
+        style={exportState === 'failed' ? { color: '#E4002B' } : undefined}
+      >
+        {exportLabel}
       </button>
     </div>
   )
