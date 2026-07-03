@@ -125,7 +125,11 @@ export const useStore = create<AppState>((set, get) => {
       set((state) => ({
         scenario: {
           ...state.scenario,
-          [section]: { ...state.scenario[section], ...patch },
+          // Array sections (buyers) replace wholesale — spreading an array
+          // into an object would corrupt it
+          [section]: Array.isArray(patch)
+            ? patch
+            : { ...state.scenario[section], ...patch },
         } as Scenario,
       })),
   }

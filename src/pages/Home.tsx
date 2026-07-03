@@ -34,7 +34,16 @@ export default function Home() {
   const scenario = useStore((s) => s.scenario)
   const startProduct = useStore((s) => s.startProduct)
   const [email, setEmail] = useState('')
-  const [signed, setSigned] = useState(false)
+  const [unionState, setUnionState] = useState<'idle' | 'sending' | 'signed' | 'failed'>('idle')
+
+  const joinUnion = async () => {
+    if (!email.includes('@') || unionState === 'sending') return
+    setUnionState('sending')
+    const { unionSignup } = await import('../store/cloud')
+    const { ok } = await unionSignup(email)
+    setUnionState(ok ? 'signed' : 'failed')
+    if (!ok) setTimeout(() => setUnionState('idle'), 3000)
+  }
 
   const go = (id: string) => {
     setActiveCalculator(id)
@@ -206,24 +215,33 @@ export default function Home() {
               </h2>
               <p className="text-sm mt-4 mb-0 font-mono">One email a week. It's called The Ledger and it's mostly maths.</p>
             </div>
-            {signed ? (
-              <p className="font-mono text-sm m-0 self-center">Noted. First issue when it exists.</p>
+            {unionState === 'signed' ? (
+              <p className="font-mono text-sm m-0 self-center">In. First issue when it exists.</p>
             ) : (
-              <div className="flex border-2 border-ink bg-white min-w-[320px] shrink-0">
-                <input
-                  type="email"
-                  aria-label="Email address"
-                  placeholder="name@brand.co.uk"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="border-0 outline-none py-[15px] px-4 font-mono text-sm bg-white text-ink w-[200px]"
-                />
-                <button
-                  onClick={() => email.includes('@') && setSigned(true)}
-                  className="border-0 border-l-2 border-ink bg-ink text-receipt px-[22px] text-sm font-semibold cursor-pointer hover:bg-bile hover:text-ink"
-                >
-                  Sign up
-                </button>
+              <div className="flex flex-col gap-1.5 min-w-[320px] shrink-0">
+                <div className="flex border-2 border-ink bg-white">
+                  <input
+                    type="email"
+                    aria-label="Email address"
+                    placeholder="name@brand.co.uk"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && joinUnion()}
+                    className="border-0 outline-none py-[15px] px-4 font-mono text-sm bg-white text-ink w-[200px]"
+                  />
+                  <button
+                    onClick={joinUnion}
+                    disabled={unionState === 'sending'}
+                    className="border-0 border-l-2 border-ink bg-ink text-receipt px-[22px] text-sm font-semibold cursor-pointer hover:bg-bile hover:text-ink"
+                  >
+                    {unionState === 'sending' ? 'Signing…' : 'Sign up'}
+                  </button>
+                </div>
+                {unionState === 'failed' && (
+                  <span className="font-mono text-[11px]" style={{ color: '#E4002B' }}>
+                    That didn't save. Try again in a minute.
+                  </span>
+                )}
               </div>
             )}
           </div>

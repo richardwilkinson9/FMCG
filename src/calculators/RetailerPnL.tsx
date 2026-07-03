@@ -3,6 +3,7 @@ import { activeWholesalerMargin } from '../store/scenario'
 import { retailerPnL, rspExVat } from '../utils/calculations'
 import { GROCERY_DEFAULTS } from '../config/fees'
 import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
+import BuyerStrip from '../components/gross/BuyerStrip'
 import Field, { TextField, InputSection, MonoToggle } from '../components/gross/Field'
 import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
 import { gbp, neg, pct, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components/gross/format'
@@ -49,6 +50,7 @@ export default function RetailerPnL() {
         <div className="font-mono text-[11px] mt-1.5 opacity-65">
           {GROCERY_DEFAULTS.retailerMarginPercent.note}
         </div>
+        <BuyerStrip />
       </div>
     )
   }

@@ -97,6 +97,22 @@ export interface TikTokScenario {
   refundAdmin: number
 }
 
+/**
+ * A Buyer — one retailer's saved commercial terms. Applying a buyer copies
+ * its terms into scenario.grocery + scenario.waterfall, which every grocery
+ * calculator already reads, so switching buyers reprices the whole site.
+ */
+export interface Buyer {
+  id: string
+  name: string
+  retailerMargin: number
+  wholesalerEnabled: boolean
+  wholesalerMargin: number
+  promoFunding: number
+  backMargin: number
+  otherTrade: number
+}
+
 export interface Scenario {
   grocery: GroceryScenario
   minMargin: MinMarginScenario
@@ -106,6 +122,7 @@ export interface Scenario {
   waterfall: WaterfallScenario
   amazon: AmazonScenario
   tiktok: TikTokScenario
+  buyers: Buyer[]
 }
 
 export function defaultScenario(): Scenario {
@@ -164,6 +181,7 @@ export function defaultScenario(): Scenario {
       perOrderFee: TIKTOK_SHOP_DEFAULTS.perOrderFee.value,
       refundAdmin: TIKTOK_SHOP_DEFAULTS.refundAdminPercent.value,
     },
+    buyers: [],
   }
 }
 
@@ -174,7 +192,11 @@ export function mergeScenario(partial: unknown): Scenario {
   const source = partial as Record<string, unknown>
   for (const key of Object.keys(base) as (keyof Scenario)[]) {
     const section = source[key]
-    if (section && typeof section === 'object') {
+    if (Array.isArray(base[key])) {
+      // Array sections (buyers) replace wholesale — spreading an array into
+      // an object would silently corrupt it
+      if (Array.isArray(section)) base[key] = section as never
+    } else if (section && typeof section === 'object') {
       base[key] = { ...base[key], ...(section as object) } as never
     }
   }

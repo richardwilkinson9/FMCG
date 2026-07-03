@@ -123,9 +123,26 @@ The maths was not touched — every formula still comes from calculations.ts.
       model still never touches storage). Records are versioned so they can
       sync to an account when log-in lands.
 
+## Cloud sprint (July 2026)
+- [x] **Log-in** — Supabase magic-link from The Shelf ("SIGN IN TO SYNC");
+      publishable key ships in the bundle (safe by design), schema + RLS in
+      SETUP_SUPABASE.md. All cloud calls timeout-guarded and fail soft.
+- [x] **Synced Archive with version history** — signed in, every save is an
+      INSERT to the models table; re-saving a name stacks versions ("N
+      VERSIONS" chip). Local saves migrate to the account on first sign-in.
+- [x] **THE AUDIT** — pick any two saves and get a receipt-style diff: per
+      product (cost, RSP, ROS, margin/unit, margin %) and whole-model period
+      margin, money-losing deltas in Red-Pen.
+- [x] **The Union for real** — homepage sign-ups insert into union_signups
+      (write-only via the public key; read the list in the dashboard).
+- [x] **THE BUYERS** — save current terms (retailer margin, wholesaler,
+      trade spend) as a named buyer on The P&L / The Waterfall; one chip
+      click reprices every page. Fixed an array-corruption bug in
+      updateScenario/mergeScenario found by the test suite.
+- [ ] USER TO DO: run the SQL in SETUP_SUPABASE.md + set the auth redirect
+      URLs — then sign-in and The Union go live.
+
 ## Next
-- [ ] Log-in + cloud sync for The Archive (Supabase magic-link; needs a
-      Supabase project + two env vars in Vercel — see chat)
 - [ ] Verify all calculation logic with real-world examples
 - [ ] Consider a proper branded PDF (jsPDF) if print proves insufficient
 - [ ] Possible future: multiple promo windows per period (workaround: edit the

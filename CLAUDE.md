@@ -69,6 +69,15 @@ printed at export (numbers recalculate; sentences do not).
 exceljs pins `uuid` via package.json `overrides` to clear an npm audit advisory.
 `utils/export.ts` (flat CSV) is retained but currently unwired.
 
+## Cloud layer (Supabase)
+`src/store/cloud.ts` — magic-link auth + the synced Archive + Union sign-ups.
+Signed out, the Archive is localStorage (`src/store/archive.ts`); signed in it is
+the `models` table (RLS per user), every save an INSERT so same-name saves build
+version history. All calls are timeout-guarded and fail soft. Schema/policies in
+SETUP_SUPABASE.md; the publishable key in `src/config/supabase.ts` is public by
+design. Buyers (named term sets) live in `scenario.buyers` — arrays in the
+scenario must REPLACE on merge (see updateScenario/mergeScenario).
+
 ## State management
 - **Zustand** — selective subscriptions, simple API. State is in-memory; no localStorage.
 - The full model is debounce-synced into the address bar (replaceState in App.tsx), so a
