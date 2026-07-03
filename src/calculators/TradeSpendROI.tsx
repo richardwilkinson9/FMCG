@@ -4,7 +4,7 @@ import { retailerPnL, rspExVat, tradeSpendROI } from '../utils/calculations'
 import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
 import Field, { TextField, InputSection } from '../components/gross/Field'
 import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
-import { gbp, ceil0, BILE, REDUCED, REDPEN, INK } from '../components/gross/format'
+import { gbp, ceil0, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components/gross/format'
 
 /** The Payback — how much volume a promo needs to pay itself back. */
 export default function TradeSpendROI() {
@@ -25,7 +25,7 @@ export default function TradeSpendROI() {
         </div>
         <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
           <Field label="Cost price / unit" prefix="£" value={product.cogsPerUnit} onCommit={(v) => updateProduct(product.id, { cogsPerUnit: v })} />
-          <Field label="RRP (inc VAT)" prefix="£" value={product.rrpIncVat} onCommit={(v) => updateProduct(product.id, { rrpIncVat: v })} />
+          <Field label="RSP" prefix="£" value={product.rrpIncVat} onCommit={(v) => updateProduct(product.id, { rrpIncVat: v })} />
           <Field label="Units per case" inputMode="numeric" value={product.unitsPerCase} onCommit={(v) => updateProduct(product.id, { unitsPerCase: Math.round(v) })} />
           <Field label="VAT rate" suffix="%" scale={100} value={product.vatRate} onCommit={(v) => updateProduct(product.id, { vatRate: v })} />
           <Field label="Retailer margin" suffix="%" scale={100} tag="dated default" value={grocery.retailerMargin} onCommit={(v) => updateScenario('grocery', { retailerMargin: v })} />
@@ -51,10 +51,10 @@ export default function TradeSpendROI() {
 
     const pctOfRsp = rsp > 0 ? gmUnit / rsp : 0
     let healthColor = BILE
-    let healthLabel = 'HEALTHY'
-    if (noMargin) { healthColor = REDPEN; healthLabel = 'UNDERWATER' }
-    else if (pctOfRsp < 0.15) { healthColor = REDPEN; healthLabel = 'THIN' }
-    else if (pctOfRsp < 0.28) { healthColor = REDUCED; healthLabel = 'TIGHT' }
+    let healthLabel = HEALTH.healthy
+    if (noMargin) { healthColor = REDPEN; healthLabel = HEALTH.underwater }
+    else if (pctOfRsp < 0.15) { healthColor = REDPEN; healthLabel = HEALTH.thin }
+    else if (pctOfRsp < 0.28) { healthColor = REDUCED; healthLabel = HEALTH.tight }
 
     const roiLabel = `${Math.round(tradeSpend.targetROI * 100)}%`
     const verdict = noMargin

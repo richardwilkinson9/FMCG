@@ -9,7 +9,7 @@ export default function GrossFooter() {
           <Barcode />
         </div>
         <div className="flex justify-between flex-wrap gap-3.5 font-mono text-[11px] opacity-75">
-          <span>GROSS. THE MATHS IS CHECKED. THE RAT IS NOT REAL.</span>
+          <span>GROSS. CHECK YOUR MATHS. THE RAT IS NOT REAL.</span>
           <span>VAT NUMBER: NOT APPLICABLE. THIS IS A WEBSITE.</span>
         </div>
       </div>

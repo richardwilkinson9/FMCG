@@ -5,7 +5,7 @@ import { AMAZON_CATEGORY_FEES } from '../config/fees'
 import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
 import Field, { TextField, InputSection, MonoToggle } from '../components/gross/Field'
 import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
-import { gbp, neg, pct, BILE, REDUCED, REDPEN, INK } from '../components/gross/format'
+import { gbp, neg, pct, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components/gross/format'
 
 /** The Amazon Cut — what FBA takes before you see a penny. */
 export default function AmazonFBA() {
@@ -27,7 +27,7 @@ export default function AmazonFBA() {
         </div>
         <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
           <Field label="Cost price / unit" prefix="£" value={product.cogsPerUnit} onCommit={(v) => updateProduct(product.id, { cogsPerUnit: v })} />
-          <Field label="Sale price (inc VAT)" prefix="£" value={product.rrpIncVat} onCommit={(v) => updateProduct(product.id, { rrpIncVat: v })} />
+          <Field label="Sale Price" prefix="£" value={product.rrpIncVat} onCommit={(v) => updateProduct(product.id, { rrpIncVat: v })} />
           <Field label="VAT rate" suffix="%" scale={100} value={product.vatRate} onCommit={(v) => updateProduct(product.id, { vatRate: v })} />
         </div>
 
@@ -110,14 +110,14 @@ export default function AmazonFBA() {
     const noMargin = gp <= 0
 
     let healthColor = BILE
-    let healthLabel = 'HEALTHY'
-    if (noMargin) { healthColor = REDPEN; healthLabel = 'UNDERWATER' }
-    else if (pctVal < 0.12) { healthColor = REDPEN; healthLabel = 'THIN' }
-    else if (pctVal < 0.25) { healthColor = REDUCED; healthLabel = 'TIGHT' }
+    let healthLabel = HEALTH.healthy
+    if (noMargin) { healthColor = REDPEN; healthLabel = HEALTH.underwater }
+    else if (pctVal < 0.12) { healthColor = REDPEN; healthLabel = HEALTH.thin }
+    else if (pctVal < 0.25) { healthColor = REDUCED; healthLabel = HEALTH.tight }
 
     const verdict = noMargin
       ? `You lose ${gbp(gp)} on every unit. The fees are bigger than the price. A single unit is not an FBA product — sell a multipack.`
-      : `FBA keeps ${gbp(totalFees)} of the ${gbp(sp)} sale. You keep ${gbp(gp)}. Thin, but real.`
+      : `FBA keeps ${gbp(totalFees)} of the ${gbp(sp)} sale. You keep ${gbp(gp)}. Thin, but hey, Jeff loves you.`
 
     return (
       <div>

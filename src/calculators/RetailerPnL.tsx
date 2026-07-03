@@ -5,7 +5,7 @@ import { GROCERY_DEFAULTS } from '../config/fees'
 import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
 import Field, { TextField, InputSection, MonoToggle } from '../components/gross/Field'
 import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
-import { gbp, neg, pct, BILE, REDUCED, REDPEN, INK } from '../components/gross/format'
+import { gbp, neg, pct, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components/gross/format'
 
 const DATED_TAG = 'dated default — check the rate card'
 
@@ -27,7 +27,7 @@ export default function RetailerPnL() {
         </div>
         <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
           <Field label="Cost price / unit" prefix="£" value={product.cogsPerUnit} onCommit={(v) => updateProduct(product.id, { cogsPerUnit: v })} />
-          <Field label="RRP (inc VAT)" prefix="£" value={product.rrpIncVat} onCommit={(v) => updateProduct(product.id, { rrpIncVat: v })} />
+          <Field label="RSP" prefix="£" value={product.rrpIncVat} onCommit={(v) => updateProduct(product.id, { rrpIncVat: v })} />
           <Field label="Units per case" inputMode="numeric" value={product.unitsPerCase} onCommit={(v) => updateProduct(product.id, { unitsPerCase: Math.round(v) })} />
           <Field label="VAT rate" suffix="%" scale={100} value={product.vatRate} onCommit={(v) => updateProduct(product.id, { vatRate: v })} />
         </div>
@@ -64,10 +64,10 @@ export default function RetailerPnL() {
     const noMargin = gmUnit <= 0
 
     let healthColor = BILE
-    let healthLabel = 'HEALTHY'
-    if (noMargin) { healthColor = REDPEN; healthLabel = 'UNDERWATER' }
-    else if (gmPct < 0.20) { healthColor = REDPEN; healthLabel = 'THIN' }
-    else if (gmPct < 0.35) { healthColor = REDUCED; healthLabel = 'TIGHT' }
+    let healthLabel = HEALTH.healthy
+    if (noMargin) { healthColor = REDPEN; healthLabel = HEALTH.underwater }
+    else if (gmPct < 0.20) { healthColor = REDPEN; healthLabel = HEALTH.thin }
+    else if (gmPct < 0.35) { healthColor = REDUCED; healthLabel = HEALTH.tight }
 
     const verdict = noMargin
       ? `You make ${gbp(gmUnit)} a unit. You are paying to be stocked. Fix the cost price or the RRP.`

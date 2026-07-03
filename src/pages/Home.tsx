@@ -8,15 +8,15 @@ import Barcode from '../components/gross/Barcode'
 import LedgerRat from '../components/gross/LedgerRat'
 
 const CARDS = [
-  { id: 'products', name: 'The Shelf', sub: 'Your range, defined once. Everything reads from here.', sku: '50 00019', group: 'SPINE' },
-  { id: 'retailer-pnl', name: 'The P&L', sub: 'What the retailer really makes on you.', sku: '50 01142', group: 'GROCERY' },
+  { id: 'products', name: 'The Shelf', sub: 'Your Range', sku: '50 00019', group: 'SPINE' },
+  { id: 'retailer-pnl', name: 'The P&L', sub: 'How much is the retailer rinsing you for', sku: '50 01142', group: 'GROCERY' },
   { id: 'waterfall', name: 'The Waterfall', sub: 'Every deduction between shelf and bank.', sku: '50 02231', group: 'GROCERY' },
-  { id: 'min-margin', name: 'The Floor', sub: 'Lowest cost price that still clears.', sku: '50 03318', group: 'GROCERY' },
+  { id: 'min-margin', name: 'The Floor', sub: 'Lowest cost price that still clears cost.', sku: '50 03318', group: 'GROCERY' },
   { id: 'listing-model', name: 'The Listing', sub: 'Model the range review first.', sku: '50 04405', group: 'GROCERY' },
   { id: 'trade-spend', name: 'The Payback', sub: 'How much volume pays the promo back.', sku: '50 05512', group: 'GROCERY' },
   { id: 'stock-forecast', name: 'The Stock Answer', sub: 'What to order. When. Before you run out.', sku: '50 06629', group: 'GROCERY' },
-  { id: 'amazon-fba', name: 'The Amazon Cut', sub: 'What FBA takes before you see a penny.', sku: '50 07706', group: 'MARKETPLACE' },
-  { id: 'tiktok-shop', name: 'The TikTok Cut', sub: 'Commission, affiliate, the per-order nibble.', sku: '50 08813', group: 'MARKETPLACE' },
+  { id: 'amazon-fba', name: 'The Amazon Cut', sub: 'What Bezos takes before you see a penny.', sku: '50 07706', group: 'MARKETPLACE' },
+  { id: 'tiktok-shop', name: 'The TikTok Cut', sub: 'Not as bad as Bezos (but not far off it)', sku: '50 08813', group: 'MARKETPLACE' },
   { id: 'cross-channel', name: 'The Line-Up', sub: 'Net margin, every channel, side by side.', sku: '50 09920', group: 'COMPARE' },
   { id: 'portfolio', name: 'The Range', sub: 'The whole portfolio on one till roll.', sku: '50 11027', group: 'COMPARE', isNew: true },
 ]
@@ -78,7 +78,7 @@ export default function Home() {
             onClick={() => { startProduct(); go('products') }}
             className="inline-flex items-center gap-3 mt-[34px] bg-ink text-receipt border-2 border-ink py-4 px-[26px] text-base font-semibold cursor-pointer hover:bg-receipt hover:text-ink"
           >
-            Start with a product <span className="font-mono">→</span>
+            Feed me a product. <span className="font-mono">→</span>
           </button>
         </div>
       </div>
@@ -86,9 +86,6 @@ export default function Home() {
       {/* SPINE EXPLAINER */}
       <div className="border-b-2 border-ink py-[clamp(48px,6vw,80px)] px-[clamp(22px,4vw,48px)]">
         <div className="max-w-[1200px] mx-auto">
-          <h2 className="font-display text-[clamp(30px,4vw,52px)] leading-[0.95] tracking-[-0.02em] mt-0 mb-10">
-            Define it once. Model it everywhere.
-          </h2>
           <div className="flex flex-col min-[821px]:flex-row items-stretch min-[821px]:items-center gap-5">
             <div className="flex-1 border-2 border-ink bg-white p-[26px]">
               <div className="font-mono text-xs tracking-[0.1em] opacity-55">STEP 01</div>
@@ -105,7 +102,7 @@ export default function Home() {
             <div className="flex-1 border-2 border-ink bg-ink text-receipt p-[26px]">
               <div className="font-mono text-xs tracking-[0.1em] text-bile">STEP 03</div>
               <div className="font-mono text-[26px] font-bold mt-2.5 tracking-[-0.01em] text-bile">RECEIPT</div>
-              <div className="text-sm mt-2">The maths all done for you. You're SO lazy.</div>
+              <div className="text-sm mt-2">The maths all done for you.</div>
             </div>
           </div>
         </div>
@@ -164,7 +161,7 @@ export default function Home() {
               <div className="font-mono text-xs tracking-[0.1em] text-bile">SKU 50 09920 · COMPARE</div>
               <h2 className="font-display text-[clamp(36px,5vw,68px)] leading-[0.9] tracking-[-0.02em] mt-3.5 mb-0 text-bile">The Line-Up</h2>
               <p className="text-base max-w-[44ch] mt-[18px] mb-0 text-receipt">
-                Same product. Three routes to market. The biggest channel rarely pays best.
+                Same products. Different channels.
               </p>
               <p className="text-sm max-w-[44ch] mt-4 mb-0 font-mono text-bile">A £1.50 can on FBA. Don't.</p>
             </div>

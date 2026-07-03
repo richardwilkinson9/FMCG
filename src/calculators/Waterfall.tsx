@@ -4,7 +4,7 @@ import { retailerPnL, rspExVat } from '../utils/calculations'
 import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
 import Field, { TextField, InputSection } from '../components/gross/Field'
 import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
-import { gbp, neg, pct, BILE, REDUCED, REDPEN, INK } from '../components/gross/format'
+import { gbp, neg, pct, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components/gross/format'
 
 /**
  * The Waterfall — gross to net. Starts from the brand's list price
@@ -29,7 +29,7 @@ export default function Waterfall() {
         </div>
         <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
           <Field label="Cost price / unit" prefix="£" value={product.cogsPerUnit} onCommit={(v) => updateProduct(product.id, { cogsPerUnit: v })} />
-          <Field label="RRP (inc VAT)" prefix="£" value={product.rrpIncVat} onCommit={(v) => updateProduct(product.id, { rrpIncVat: v })} />
+          <Field label="RSP" prefix="£" value={product.rrpIncVat} onCommit={(v) => updateProduct(product.id, { rrpIncVat: v })} />
           <Field label="VAT rate" suffix="%" scale={100} value={product.vatRate} onCommit={(v) => updateProduct(product.id, { vatRate: v })} />
           <Field label="Retailer margin" suffix="%" scale={100} tag="default" value={grocery.retailerMargin} onCommit={(v) => updateScenario('grocery', { retailerMargin: v })} />
         </div>
@@ -79,10 +79,10 @@ export default function Waterfall() {
     const marginBar = gm < 0 ? REDPEN : BILE
 
     let healthColor = BILE
-    let healthLabel = 'HEALTHY'
-    if (noMargin) { healthColor = REDPEN; healthLabel = 'UNDERWATER' }
-    else if (gmPct < 0.15) { healthColor = REDPEN; healthLabel = 'THIN' }
-    else if (gmPct < 0.30) { healthColor = REDUCED; healthLabel = 'TIGHT' }
+    let healthLabel = HEALTH.healthy
+    if (noMargin) { healthColor = REDPEN; healthLabel = HEALTH.underwater }
+    else if (gmPct < 0.15) { healthColor = REDPEN; healthLabel = HEALTH.thin }
+    else if (gmPct < 0.30) { healthColor = REDUCED; healthLabel = HEALTH.tight }
 
     const verdict = noMargin
       ? `Trade spend and cost eat the whole list price. You net ${gbp(gm)} a unit. The promo plan does not work.`

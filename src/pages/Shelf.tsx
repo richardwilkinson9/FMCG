@@ -117,7 +117,7 @@ export default function Shelf() {
                       <div className="grid grid-cols-1 min-[901px]:grid-cols-3 gap-4 p-3.5">
                         <TextField label="Product name" value={p.name} onChange={(v) => updateProduct(p.id, { name: v })} />
                         <Field label="Cost price / unit" prefix="£" value={p.cogsPerUnit} onCommit={(v) => updateProduct(p.id, { cogsPerUnit: v })} />
-                        <Field label="RRP (inc VAT)" prefix="£" value={p.rrpIncVat} onCommit={(v) => updateProduct(p.id, { rrpIncVat: v })} />
+                        <Field label="RSP" prefix="£" value={p.rrpIncVat} onCommit={(v) => updateProduct(p.id, { rrpIncVat: v })} />
                         <Field label="Units per case" inputMode="numeric" value={p.unitsPerCase} onCommit={(v) => updateProduct(p.id, { unitsPerCase: Math.round(v) })} />
                         <Field label="VAT rate" suffix="%" scale={100} value={p.vatRate} onCommit={(v) => updateProduct(p.id, { vatRate: v })} />
                         <Field label="Rate of sale / store / wk" value={p.weeklyRateOfSale} onCommit={(v) => updateProduct(p.id, { weeklyRateOfSale: v })} />

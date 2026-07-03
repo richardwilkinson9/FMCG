@@ -13,7 +13,7 @@ import {
 import { PageHeader, EmptyState, CalcActions } from '../components/gross/CalcShell'
 import GrossFooter from '../components/gross/GrossFooter'
 import { Receipt, Rule, RLine, RSection } from '../components/gross/Receipt'
-import { gbp, pct, n0, BILE, REDUCED, REDPEN, INK } from '../components/gross/format'
+import { gbp, pct, n0, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components/gross/format'
 
 /** Traffic light on grocery margin % (same thresholds as The P&L). */
 function light(marginPct: number, negative: boolean): string {
@@ -61,10 +61,10 @@ export default function Portfolio() {
   const losers = rows.filter((r) => r.grocery.brandGrossMarginPerUnit <= 0)
 
   let healthColor = BILE
-  let healthLabel = 'HEALTHY'
-  if (totalMargin <= 0) { healthColor = REDPEN; healthLabel = 'UNDERWATER' }
-  else if (blended < 0.20) { healthColor = REDPEN; healthLabel = 'THIN' }
-  else if (blended < 0.35) { healthColor = REDUCED; healthLabel = 'TIGHT' }
+  let healthLabel = HEALTH.healthy
+  if (totalMargin <= 0) { healthColor = REDPEN; healthLabel = HEALTH.underwater }
+  else if (blended < 0.20) { healthColor = REDPEN; healthLabel = HEALTH.thin }
+  else if (blended < 0.35) { healthColor = REDUCED; healthLabel = HEALTH.tight }
 
   let verdict: string
   let verdictColor = INK

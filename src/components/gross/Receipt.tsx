@@ -18,7 +18,7 @@ export function Receipt({
   subline,
   verdict,
   verdictColor = '#0A0A0A',
-  footer = 'Runs in your browser. Nothing stored.',
+  footer,
   children,
 }: {
   tool: string
@@ -26,6 +26,7 @@ export function Receipt({
   subline: string
   verdict: string
   verdictColor?: string
+  /** Optional extra line above the fixed VAT line (deleted from the default per the copy deck) */
   footer?: string
   children: ReactNode
 }) {
@@ -48,8 +49,12 @@ export function Receipt({
         </div>
         <Rule className="mt-3.5 mb-3" />
         <div className="text-[11px] leading-relaxed opacity-75">
-          {footer}
-          <br />
+          {footer && (
+            <>
+              {footer}
+              <br />
+            </>
+          )}
           VAT number: not applicable. This is a website.
         </div>
       </div>

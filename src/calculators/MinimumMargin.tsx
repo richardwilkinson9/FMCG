@@ -39,7 +39,7 @@ export default function MinimumMargin() {
         </div>
         <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
           {costMode ? (
-            <Field label="RRP (inc VAT)" prefix="£" value={product.rrpIncVat} onCommit={(v) => updateProduct(product.id, { rrpIncVat: v })} />
+            <Field label="RSP" prefix="£" value={product.rrpIncVat} onCommit={(v) => updateProduct(product.id, { rrpIncVat: v })} />
           ) : (
             <Field label="Cost price / unit" prefix="£" value={product.cogsPerUnit} onCommit={(v) => updateProduct(product.id, { cogsPerUnit: v })} />
           )}
@@ -78,7 +78,7 @@ export default function MinimumMargin() {
       currentLabel = 'cost price now'
       currentStr = gbp(product.cogsPerUnit)
       subline = 'cost price ceiling · per unit'
-      knownReceiptLabel = 'RRP (inc VAT)'
+      knownReceiptLabel = 'RSP'
       knownStr = gbp(product.rrpIncVat)
       verdict = ok
         ? `You have ${gbp(headVal)} of headroom on cost price. The maths clears.`

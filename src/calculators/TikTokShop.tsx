@@ -4,7 +4,7 @@ import { tiktokShopMargin, rspExVat } from '../utils/calculations'
 import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
 import Field, { TextField, InputSection } from '../components/gross/Field'
 import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
-import { gbp, neg, pct, BILE, REDUCED, REDPEN, INK } from '../components/gross/format'
+import { gbp, neg, pct, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components/gross/format'
 
 /** The TikTok Cut — commission, affiliate, and the per-order nibble. */
 export default function TikTokShop() {
@@ -26,7 +26,7 @@ export default function TikTokShop() {
         </div>
         <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
           <Field label="Cost price / unit" prefix="£" value={product.cogsPerUnit} onCommit={(v) => updateProduct(product.id, { cogsPerUnit: v })} />
-          <Field label="Sale price (inc VAT)" prefix="£" value={product.rrpIncVat} onCommit={(v) => updateProduct(product.id, { rrpIncVat: v })} />
+          <Field label="Sale Price" prefix="£" value={product.rrpIncVat} onCommit={(v) => updateProduct(product.id, { rrpIncVat: v })} />
           <Field label="VAT rate" suffix="%" scale={100} value={product.vatRate} onCommit={(v) => updateProduct(product.id, { vatRate: v })} />
         </div>
 
@@ -56,10 +56,10 @@ export default function TikTokShop() {
     const noMargin = gp <= 0
 
     let healthColor = BILE
-    let healthLabel = 'HEALTHY'
-    if (noMargin) { healthColor = REDPEN; healthLabel = 'UNDERWATER' }
-    else if (pctVal < 0.12) { healthColor = REDPEN; healthLabel = 'THIN' }
-    else if (pctVal < 0.25) { healthColor = REDUCED; healthLabel = 'TIGHT' }
+    let healthLabel = HEALTH.healthy
+    if (noMargin) { healthColor = REDPEN; healthLabel = HEALTH.underwater }
+    else if (pctVal < 0.12) { healthColor = REDPEN; healthLabel = HEALTH.thin }
+    else if (pctVal < 0.25) { healthColor = REDUCED; healthLabel = HEALTH.tight }
 
     // The verdict names the biggest single fee
     const parts: [string, number][] = [

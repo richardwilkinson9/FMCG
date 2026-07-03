@@ -4,7 +4,7 @@ import { listingModel, retailerPnL } from '../utils/calculations'
 import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
 import Field, { TextField, InputSection } from '../components/gross/Field'
 import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
-import { gbp, n0, BILE, REDUCED, REDPEN, INK } from '../components/gross/format'
+import { gbp, n0, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components/gross/format'
 
 /** The Listing — model the range review before the buyer does. */
 export default function ListingModel() {
@@ -25,7 +25,7 @@ export default function ListingModel() {
         </div>
         <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
           <Field label="Cost price / unit" prefix="£" value={product.cogsPerUnit} onCommit={(v) => updateProduct(product.id, { cogsPerUnit: v })} />
-          <Field label="RRP (inc VAT)" prefix="£" value={product.rrpIncVat} onCommit={(v) => updateProduct(product.id, { rrpIncVat: v })} />
+          <Field label="RSP" prefix="£" value={product.rrpIncVat} onCommit={(v) => updateProduct(product.id, { rrpIncVat: v })} />
           <Field label="Units per case" inputMode="numeric" value={product.unitsPerCase} onCommit={(v) => updateProduct(product.id, { unitsPerCase: Math.round(v) })} />
           <Field label="Retailer margin" suffix="%" scale={100} tag="default" value={grocery.retailerMargin} onCommit={(v) => updateScenario('grocery', { retailerMargin: v })} />
         </div>
@@ -68,12 +68,12 @@ export default function ListingModel() {
     let healthColor = BILE
     let healthLabel = 'WORTH IT'
     if (noMargin) { healthColor = REDPEN; healthLabel = 'LOSS-MAKING' }
-    else if (net > 0 && gmUnit / net < 0.15) { healthColor = REDUCED; healthLabel = 'THIN' }
+    else if (net > 0 && gmUnit / net < 0.15) { healthColor = REDUCED; healthLabel = HEALTH.thin }
 
     const promoUnits = (result.promoWeeklyVolume - result.weeklyVolume) * Math.min(listing.promoWeeks, listing.weeksInPeriod)
     const verdict = noMargin
-      ? `Every unit loses money, so volume just deepens the hole. ${n0(-result.totalGrossMargin)} lost across the period. Fix the margin before you chase the listing.`
-      : `The listing throws off ${gbp(result.totalGrossMargin)} of gross margin. The promo adds ${n0(promoUnits)} units — whether it pays is The Payback’s problem.`
+      ? `Every unit loses money - don't be an idiot. ${n0(-result.totalGrossMargin)} lost across the period.`
+      : `The listing makes ${gbp(result.totalGrossMargin)} of gross margin. The promo adds ${n0(promoUnits)} units - whether it pays is The Payback's problem.`
 
     return (
       <div>
@@ -133,7 +133,7 @@ export default function ListingModel() {
       group="GROCERY"
       type="LISTING MODEL"
       title="The Listing"
-      subtitle="Model the range review before the buyer does."
+      subtitle="Let's look at your next range review."
       inputs={inputs}
       receipt={receipt}
     />
