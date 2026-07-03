@@ -48,13 +48,25 @@ export interface TradeSpendScenario {
 }
 
 /**
- * Supply plan settings. Demand comes from the Listing scenario's weekly
- * projection (stores × ROS, with promo uplift) so stock and sales always agree.
+ * Supply plan settings. Demand comes from the Listing scenario's promo shape
+ * (stores × ROS, with promo uplift) so stock and sales always agree, but the
+ * planning horizon is its own field.
  */
 export interface StockScenario {
   startingStockUnits: number
   weeksOfCover: number
   leadWeeks: number
+  planWeeks: number
+}
+
+/**
+ * The Waterfall — gross-to-net trade-spend deductions, each as a % of the
+ * brand's list price (shelf ex-VAT less the chain margins).
+ */
+export interface WaterfallScenario {
+  promoFunding: number
+  backMargin: number
+  otherTrade: number
 }
 
 export interface AmazonScenario {
@@ -91,6 +103,7 @@ export interface Scenario {
   listing: ListingScenario
   tradeSpend: TradeSpendScenario
   stock: StockScenario
+  waterfall: WaterfallScenario
   amazon: AmazonScenario
   tiktok: TikTokScenario
 }
@@ -122,6 +135,12 @@ export function defaultScenario(): Scenario {
       startingStockUnits: 10000,
       weeksOfCover: 6,
       leadWeeks: 3,
+      planWeeks: 26,
+    },
+    waterfall: {
+      promoFunding: 0.15,
+      backMargin: 0.05,
+      otherTrade: 0.03,
     },
     amazon: {
       estimatorOn: true,

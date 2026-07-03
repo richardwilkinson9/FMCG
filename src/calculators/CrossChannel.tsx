@@ -1,139 +1,161 @@
 import { useStore } from '../store/useStore'
-import {
-  activeWholesalerMargin,
-  effectiveAmazonFees,
-  effectiveTikTokFees,
-} from '../store/scenario'
-import { crossChannelComparison, formatGBP, formatPercent } from '../utils/calculations'
-import GroceryChainSettings from '../components/GroceryChainSettings'
+import { activeWholesalerMargin, effectiveAmazonFees, effectiveTikTokFees } from '../store/scenario'
+import { crossChannelComparison, rspExVat } from '../utils/calculations'
+import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
+import Field, { TextField, InputSection } from '../components/gross/Field'
+import { Receipt, Rule } from '../components/gross/Receipt'
+import { gbp, pct, BILE, REDUCED, REDPEN, INK } from '../components/gross/format'
 
+/** Traffic light on gross profit as a share of shelf ex-VAT. */
+function light(share: number, negative: boolean): string {
+  if (negative || share < 0.12) return REDPEN
+  if (share < 0.25) return REDUCED
+  return BILE
+}
+
+/** The Line-Up — net margin, every channel, side by side. */
 export default function CrossChannel() {
   const product = useStore((s) => s.getActiveProduct())
-  const scenario = useStore((s) => s.scenario)
-  const setActiveCalculator = useStore((s) => s.setActiveCalculator)
+  const grocery = useStore((s) => s.scenario.grocery)
+  const amazon = useStore((s) => s.scenario.amazon)
+  const tiktok = useStore((s) => s.scenario.tiktok)
+  const updateProduct = useStore((s) => s.updateProduct)
+  const updateScenario = useStore((s) => s.updateScenario)
 
-  if (!product) return <p className="text-slate-500">Select a product to begin.</p>
+  const amazonFees = effectiveAmazonFees(amazon)
+  const tiktokFees = effectiveTikTokFees(tiktok)
 
-  const amazonFees = effectiveAmazonFees(scenario.amazon)
-  const tiktokFees = effectiveTikTokFees(scenario.tiktok)
-  const comparison = crossChannelComparison(
-    product,
-    scenario.grocery.retailerMargin,
-    amazonFees,
-    tiktokFees,
-    activeWholesalerMargin(scenario.grocery),
+  const channelDot = (label: string, tag?: string) => (
+    <div className="flex items-center gap-2 font-mono text-[11px] tracking-[0.1em] mt-5 mb-3">
+      <span className="w-3 h-3 border-2 border-ink bg-ink" />
+      {label}
+      {tag && <span className="font-normal opacity-55 border-2 border-ink px-[5px] py-px">{tag}</span>}
+    </div>
   )
-  const channels = [comparison.grocery, comparison.amazon, comparison.tiktok]
-  const bestMargin = Math.max(...channels.map((c) => c.grossMarginPercent))
 
-  return (
-    <div className="space-y-6">
+  const inputs = () => {
+    if (!product) return null
+    return (
       <div>
-        <h3 className="text-lg font-semibold text-slate-900 mb-1">Cross-Channel Comparison</h3>
-        <p className="text-sm text-slate-500">
-          Your true net margin side by side across UK Grocery, Amazon FBA and TikTok Shop. Same product, different economics.
-        </p>
-      </div>
+        <InputsHeader />
+        <InputSection first>THE PRODUCT</InputSection>
+        <div className="mb-[18px]">
+          <TextField label="Product name" value={product.name} onChange={(v) => updateProduct(product.id, { name: v })} />
+        </div>
+        <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
+          <Field label="Cost price / unit" prefix="£" value={product.cogsPerUnit} onCommit={(v) => updateProduct(product.id, { cogsPerUnit: v })} />
+          <Field label="RRP / list (inc VAT)" prefix="£" value={product.rrpIncVat} onCommit={(v) => updateProduct(product.id, { rrpIncVat: v })} />
+          <Field label="VAT rate" suffix="%" scale={100} value={product.vatRate} onCommit={(v) => updateProduct(product.id, { vatRate: v })} />
+        </div>
 
-      {/* One source of truth: this view uses the fees set on each calculator tab */}
-      <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-3 no-print">
-        <GroceryChainSettings />
-        <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-slate-500 pt-1 border-t border-slate-200">
-          <span>
-            Amazon: {formatPercent(amazonFees.referralFeePercent)} referral + {formatGBP(amazonFees.fulfilmentFeePerUnit)} fulfilment
-            {' — '}
-            <button onClick={() => setActiveCalculator('amazon-fba')} className="text-blue-600 hover:underline">
-              edit on the Amazon FBA tab
-            </button>
-          </span>
-          <span>
-            TikTok: {formatPercent(tiktokFees.platformCommission)} commission + {formatPercent(tiktokFees.affiliateCommission)} affiliate
-            {' — '}
-            <button onClick={() => setActiveCalculator('tiktok-shop')} className="text-blue-600 hover:underline">
-              edit on the TikTok Shop tab
-            </button>
-          </span>
+        {channelDot('GROCERY')}
+        <Field label="Retailer margin" suffix="%" scale={100} tag="dated default" value={grocery.retailerMargin} onCommit={(v) => updateScenario('grocery', { retailerMargin: v })} />
+
+        {channelDot('AMAZON FBA', 'dated defaults')}
+        <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
+          <Field label="Referral fee" suffix="%" scale={100} value={amazonFees.referralFeePercent}
+            onCommit={(v) => updateScenario('amazon', { referralFee: v, estimatorOn: false })} />
+          <Field label="Fulfilment / unit" prefix="£" value={amazonFees.fulfilmentFeePerUnit}
+            onCommit={(v) => updateScenario('amazon', { fulfilmentFee: v, estimatorOn: false })} />
+        </div>
+
+        {channelDot('TIKTOK SHOP', 'dated defaults')}
+        <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
+          <Field label="Platform fee" suffix="%" scale={100} value={tiktokFees.platformCommission}
+            onCommit={(v) => updateScenario('tiktok', { platformCommission: v, estimatorOn: false })} />
+          <Field label="Affiliate fee" suffix="%" scale={100} value={tiktok.affiliateCommission}
+            onCommit={(v) => updateScenario('tiktok', { affiliateCommission: v })} />
         </div>
       </div>
+    )
+  }
 
-      {/* Comparison table */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <caption className="sr-only">Net margin comparison across sales channels</caption>
-          <thead>
-            <tr className="border-b border-slate-200">
-              <th scope="col" className="text-left py-3 px-4 font-medium text-slate-500">Channel</th>
-              <th scope="col" className="text-right py-3 px-4 font-medium text-slate-500">Net Revenue/Unit</th>
-              <th scope="col" className="text-right py-3 px-4 font-medium text-slate-500">COGS/Unit</th>
-              <th scope="col" className="text-right py-3 px-4 font-medium text-slate-500">Gross Profit/Unit</th>
-              <th scope="col" className="text-right py-3 px-4 font-medium text-slate-500">Gross Margin %</th>
-            </tr>
-          </thead>
-          <tbody>
-            {channels.map((ch) => {
-              const isBest = ch.grossMarginPercent === bestMargin && bestMargin > 0
-              const isNegative = ch.grossMarginPercent < 0
-              return (
-                <tr
-                  key={ch.channel}
-                  className={`border-b border-slate-100 ${
-                    isBest ? 'bg-emerald-50' : isNegative ? 'bg-red-50' : ''
-                  }`}
-                >
-                  <th scope="row" className="py-3 px-4 font-medium text-slate-900 text-left">
-                    {ch.channel}
-                    {isBest && (
-                      <span className="ml-2 text-xs font-semibold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                        Best
-                      </span>
-                    )}
-                  </th>
-                  <td className="py-3 px-4 text-right text-slate-700">{formatGBP(ch.netRevenuePerUnit)}</td>
-                  <td className="py-3 px-4 text-right text-slate-700">{formatGBP(ch.cogsPerUnit)}</td>
-                  <td className={`py-3 px-4 text-right font-semibold ${isNegative ? 'text-red-700' : 'text-slate-900'}`}>
-                    {formatGBP(ch.grossProfitPerUnit)}
-                  </td>
-                  <td className={`py-3 px-4 text-right font-semibold ${isNegative ? 'text-red-700' : isBest ? 'text-emerald-700' : 'text-slate-900'}`}>
-                    {formatPercent(ch.grossMarginPercent)}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+  const receipt = () => {
+    if (!product) return null
+    const comparison = crossChannelComparison(
+      product,
+      grocery.retailerMargin,
+      amazonFees,
+      tiktokFees,
+      activeWholesalerMargin(grocery),
+    )
+    const rsp = rspExVat(product)
 
-      {/* Visual bar chart */}
-      <div className="space-y-3">
-        <h4 className="text-sm font-medium text-slate-600">Margin comparison</h4>
-        {channels.map((ch) => {
-          const pct = ch.grossMarginPercent * 100
-          const width = Math.min(Math.max(Math.abs(pct), 2), 100)
-          const isNegative = pct < 0
-          return (
-            <div key={ch.channel} className="flex items-center gap-3">
-              <div className="w-44 text-sm text-slate-700 shrink-0">{ch.channel}</div>
-              <div className="flex-1 h-8 bg-slate-100 rounded-lg overflow-hidden relative">
-                <div
-                  className={`h-full rounded-lg transition-all ${
-                    isNegative ? 'bg-red-400' : 'bg-blue-500'
-                  }`}
-                  style={{ width: `${width}%` }}
-                />
-                <span className={`absolute inset-y-0 flex items-center text-xs font-semibold ${
-                  width > 30 ? 'left-3 text-white' : 'text-slate-700'
-                }`} style={width <= 30 ? { left: `${width + 2}%` } : undefined}>
-                  {pct.toFixed(1)}%
-                </span>
+    const raw = [
+      { name: 'GROCERY', disp: 'Grocery', net: comparison.grocery.netRevenuePerUnit, gp: comparison.grocery.grossProfitPerUnit },
+      { name: 'AMAZON FBA', disp: 'Amazon', net: comparison.amazon.netRevenuePerUnit, gp: comparison.amazon.grossProfitPerUnit },
+      { name: 'TIKTOK SHOP', disp: 'TikTok', net: comparison.tiktok.netRevenuePerUnit, gp: comparison.tiktok.grossProfitPerUnit },
+    ]
+    const bestGP = Math.max(...raw.map((r) => r.gp))
+    const winner = raw.reduce((a, b) => (b.gp > a.gp ? b : a))
+    const losers = raw.filter((r) => r.gp < 0)
+
+    let verdict: string
+    let verdictColor = INK
+    if (winner.gp <= 0) {
+      verdictColor = REDPEN
+      verdict = 'Every channel loses money at this cost price. This product does not work online. Fix the cost price first.'
+    } else if (losers.length) {
+      const l = losers[0]
+      verdict = `${winner.disp} wins at ${gbp(winner.gp)} a unit. ${l.disp} loses ${gbp(Math.abs(l.gp))} — a ${gbp(product.rrpIncVat)} single unit is not ${l.disp}’s product.`
+    } else {
+      verdict = `${winner.disp} pays best at ${gbp(winner.gp)} a unit. The biggest channel is rarely the one that pays.`
+    }
+
+    return (
+      <div>
+        <Receipt
+          tool="THE LINE-UP"
+          name={product.name}
+          subline="gross profit / unit · same cost price"
+          verdict={verdict}
+          verdictColor={verdictColor}
+          footer="Same cost price across all three. Runs in your browser."
+        >
+          <Rule className="mt-4 mb-3" />
+          {raw.map((r) => {
+            const share = rsp > 0 ? r.gp / rsp : 0
+            const negative = r.gp < 0
+            const isBest = r.gp === bestGP && r.gp > 0
+            return (
+              <div key={r.name} className="border-2 border-ink mb-3">
+                <div className={`flex items-center justify-between py-2 px-3 border-b-2 border-ink ${isBest ? 'bg-bile' : 'bg-receipt'}`}>
+                  <span className="flex items-center gap-[9px] text-[13px] font-bold">
+                    <span className="w-3 h-3 border-2 border-ink inline-block" style={{ background: light(share, negative) }} />
+                    {r.name}
+                  </span>
+                  {isBest && (
+                    <span className="text-[10px] tracking-[0.08em] border-2 border-ink bg-ink text-bile py-0.5 px-[7px]">BEST</span>
+                  )}
+                </div>
+                <div className="py-[11px] px-3">
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-xs">Gross profit / unit</span>
+                    <span className="text-[23px] font-bold" style={{ color: negative ? REDPEN : INK }}>{gbp(r.gp)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs mt-[5px]">
+                    <span className="opacity-75">net revenue {gbp(r.net)}</span>
+                    <span className="font-bold" style={{ color: negative ? REDPEN : INK }}>{pct(share)} of shelf</span>
+                  </div>
+                </div>
               </div>
-            </div>
-          )
-        })}
+            )
+          })}
+        </Receipt>
+        <CalcActions />
       </div>
+    )
+  }
 
-      <p className="text-xs text-slate-400">
-        Margins shown are gross margins on net revenue per unit, before overheads, advertising and returns. Marketplace channels avoid the retailer's margin but carry per-unit fees — the comparison is most useful for deciding where a given RRP works hardest.
-      </p>
-    </div>
+  return (
+    <CalcShell
+      sku="50 09920"
+      group="COMPARE"
+      type="CROSS-CHANNEL"
+      title="The Line-Up"
+      subtitle="Net margin, every channel, side by side."
+      inputs={inputs}
+      receipt={receipt}
+    />
   )
 }

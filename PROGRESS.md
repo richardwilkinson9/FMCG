@@ -67,14 +67,44 @@ DEPTHS of the same artefacts, not different tools.
 - [x] Verified: downloaded the generated .xlsx and confirmed named ranges, cross-sheet
       formulas and editable order column read back correctly
 
+## GROSS rebrand (July 2026) — full design handover implemented
+Recreated the "GROSS." brutalist design system from the handover bundle
+(design_handoff_gross_rebrand) in the existing React/TS/Zustand codebase.
+The maths was not touched — every formula still comes from calculations.ts.
+- [x] Tokens (Bile/Ink/Receipt/Reduced/Red-Pen), Anton + Space Mono + Inter
+      **self-hosted** in public/fonts (Google Fonts CDN dropped), radius-0 global
+- [x] Brand primitives: Ticker (hover-pause, reduced-motion safe), Receipt with
+      tear-lines + health traffic-lights + Ink answer block + fixed VAT footer,
+      shelf-edge cards, best-before stamp, dated-default tags, Reduced-Yellow
+      NEW sticker (one per page), barcode dividers, Ledger the Rat (verbatim SVG)
+- [x] Homepage: hero, PRODUCTS→CALCULATORS→RECEIPT spine explainer, 9-card grid,
+      Line-Up feature band with a LIVE receipt from the actual product spine,
+      Union strip (client-side stub), full ink footer
+- [x] All nine calculator pages on the shared CalcShell template (inputs left,
+      live receipt right, stacks <901px, rat empty state, deadpan verdicts and
+      health thresholds copied verbatim from the design logic)
+- [x] **The Waterfall** — new gross-to-net view (promo funding / back margin /
+      other trade as % of list) with the Ink/Yellow/Green split bar; new
+      scenario.waterfall section; includes the wholesaler leg when enabled
+- [x] The Stock Answer gained its own planning horizon (scenario.stock.planWeeks)
+      while sharing the promo shape with The Listing
+- [x] Copy share link (full state) and Export (Excel model) wired on every page
+- [x] Old share links still decode; unknown page ids fall back to the homepage
+- [x] Verified in-browser: all pages vs handover screenshots, share-link round
+      trip, empty-state recovery, Export download, fonts, reduced-motion CSS
+
 ## Next
 - [ ] Verify all calculation logic with real-world examples
-- [ ] Potentially add more category templates
-- [ ] Consider a proper branded PDF (jsPDF) if print-to-PDF proves insufficient
+- [ ] Consider a proper branded PDF (jsPDF) if print proves insufficient
 - [ ] Possible future: multiple promo windows per period (workaround: edit the
       promo flag column in the Excel export)
 
 ## Open decisions
+- **The Portfolio** (multi-product table) was not in the GROSS card set. The
+  component is kept in the repo but unrouted, per the handover's note to
+  confirm with the user whether it gets a GROSS name/page.
+- The homepage "Start with a product" button links to The Payback, exactly as
+  in the design reference.
 - PDF generation: currently stubbed (suggests browser print). Could add jsPDF or similar if a proper branded export is needed — adds ~100KB to the bundle.
 - Email capture: stubbed in the UI. Needs a backend service (e.g. a simple Vercel serverless function + email provider) when ready.
 - Amazon/TikTok live fee lookup: no free public API exists for barcode-based fee lookups. Current approach uses published fee schedules with product dimensions/weight/category. A future enhancement could integrate with Amazon SP-API if the user has seller credentials.

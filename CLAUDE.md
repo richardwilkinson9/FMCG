@@ -1,75 +1,86 @@
-# FMCG Maths — Architecture & Conventions
+# GROSS. — Architecture & Conventions
 
 ## What is this?
-A single-page web app hosting linked commercial calculators for UK FMCG brand teams. Built with Vite + React + TypeScript + Tailwind CSS. Deploys on Vercel.
+**GROSS.** ("Do the gross maths.") — free commercial calculators for UK FMCG brand teams.
+A single-page web app: a brutalist homepage plus nine linked calculators. Built with
+Vite + React + TypeScript + Tailwind CSS (v4, tokens via `@theme` in `src/index.css`).
+Deploys on Vercel.
+
+## The golden rule (from the brand handover)
+**The maths is sacred. The humour lives in the frame only.** Never change a formula,
+rounding rule, or any wording that explains the maths. All calculation logic lives in
+`src/utils/calculations.ts` as pure functions and is reused unchanged by every skin.
 
 ## Core design principle: Shared Product Spine + Shared Scenario
-- A **Product** is defined ONCE and every calculator reads from it. Type in `src/types/product.ts`.
-- All **calculator settings** (retailer margin, wholesaler, store counts, Amazon dimensions, TikTok category…) live in a single `Scenario` object in the store — NOT component state. This means settings survive tab switches, the Cross-Channel view reads the exact same fees as the individual tabs, and share URLs capture the complete model.
-- Do not put calculator settings in `useState` — add a field to the relevant `Scenario` section in `src/store/scenario.ts` instead.
+- A **Product** is defined ONCE and every calculator reads/edits it inline. Type in `src/types/product.ts`.
+- All **calculator settings** (chain margins, trade spend, listing shape, supply, Amazon, TikTok)
+  live in a single `Scenario` object in the store — NOT component state. Settings survive page
+  switches, The Line-Up reads the exact same fees as the marketplace pages, and share URLs
+  capture the complete model. Add fields to `src/store/scenario.ts`, never to `useState`.
 
-## Project structure
-```
-src/
-  types/product.ts          — Product interface, CategoryTemplate type
-  config/fees.ts            — ALL fee defaults (Amazon, TikTok, Grocery, VAT) with dated notes
-  config/templates.ts       — Category templates (confectionery, drinks, snacks, etc.)
-  store/scenario.ts         — Scenario types, defaults, merge (for old URLs), effective-fee resolvers
-  store/useStore.ts         — Zustand store: products[], activeProductId, activeCalculator, scenario
-  utils/calculations.ts     — Pure functions: all commercial maths (margin, P&L, weekly
-                              projection, stock ledger, etc.)
-  utils/urlState.ts         — Encode/decode app state (incl. scenario) to/from URL for sharing
-  utils/export.ts           — Flat CSV builder (product + assumptions + results + weekly rows)
-  utils/excelExport.ts      — Excel MODEL builder (exceljs, dynamically imported): named
-                              assumption cells + formula-driven sheets that recalculate in Excel
-  components/
-    NumberInput.tsx         — THE number field. Free typing (no zero-snap), £/% adornments,
-                              proper label association, disabled+note mode. Use this, never a raw input.
-    FeeInput.tsx            — NumberInput wrapper bound to a FeeDefault (label + tooltip from config)
-    GroceryChainSettings.tsx— Shared retailer-margin + wholesaler controls, bound to the store
-    ProductManager, Tooltip, ResultCard, ShareExport
-  calculators/              — One file per calculator, all read product + scenario from the store
-```
+## Brand pages → maths (ids are stable so old share links work)
+| GROSS page | id | Component | Maths |
+|---|---|---|---|
+| The P&L | `retailer-pnl` | `RetailerPnL.tsx` | `retailerPnL()` |
+| The Waterfall | `waterfall` | `Waterfall.tsx` | `retailerPnL().brandNetRevenue` + deduction %s (`scenario.waterfall`) |
+| The Floor | `min-margin` | `MinimumMargin.tsx` | `solveForCostPrice()` / `solveForRrp()` |
+| The Listing | `listing-model` | `ListingModel.tsx` | `listingModel()` / `weeklyProjection()` |
+| The Payback | `trade-spend` | `TradeSpendROI.tsx` | `tradeSpendROI()` |
+| The Stock Answer | `stock-forecast` | `StockForecast.tsx` | `stockLedger()` (horizon: `scenario.stock.planWeeks`) |
+| The Amazon Cut | `amazon-fba` | `AmazonFBA.tsx` | `amazonFBAMargin()` + `estimateAmazonFBAFee()` + plan/units amortisation |
+| The TikTok Cut | `tiktok-shop` | `TikTokShop.tsx` | `tiktokShopMargin()` |
+| The Line-Up | `cross-channel` | `CrossChannel.tsx` | `crossChannelComparison()` |
+| (unrouted) | — | `Portfolio.tsx` | kept in repo; not in the GROSS card set — awaiting a brand decision |
+
+## Design tokens (never invent new colours or a fourth typeface)
+- Colours (in `@theme`, `src/index.css`): `bile #C6F215`, `ink #0A0A0A`, `receipt #F7F5EF`,
+  `reduced #FFD400` (max ONE element per page), `redpen #E4002B` (negatives/errors only).
+- Fonts: Anton (display), Space Mono (**every numeral**), Inter (body) — self-hosted in
+  `public/fonts/` (latin subsets), no third-party runtime dependency.
+- `border-radius: 0` globally (only the circular sticker overrides with `!rounded-full`).
+  All borders 2px Ink. No gradients, shadows, or photography. British English, sentence case,
+  no exclamation marks, no emoji. Green and yellow never touch without a 2px Ink rule.
+
+## Brand components (`src/components/gross/`)
+- `Ticker` — marquee strip (pauses on hover; static under `prefers-reduced-motion`)
+- `GrossNav`, `GrossFooter`, `Barcode`, `LedgerRat` (mascot SVG, `currentColor`, marginal use only)
+- `CalcShell` — the shared calculator template: bile header band (SKU eyebrow, Anton title,
+  best-before stamp), inputs-left / receipt-right split (stacks < 901px), rat empty state
+  ("No product yet." — one line only), footer. `CalcActions` = Copy share link + Export
+  (Export = the Excel model via `excelExport.ts`).
+- `Receipt` + `RLine`/`RSection`/`Rule`/`AnswerBlock` — the till receipt with dashed
+  tear-lines, health traffic-lights, inverted Ink answer block, deadpan verdict, and the
+  fixed footer "VAT number: not applicable. This is a website."
+- `Field`/`TextField`/`MonoToggle`/`InputSection` — 52px inputs, 2px Ink border, £/% affix
+  boxes, Space Mono values; free typing (string buffer, commit-on-valid-parse).
 
 ## The weekly spine
-`weeklyProjection()` in calculations.ts is the single demand engine: the Listing Model
-totals are summed from it, the Supply Plan (stockLedger) consumes its volumes, and the
-Excel export rebuilds it as formulas. If you change phasing logic, change it there only.
+`weeklyProjection()` in calculations.ts is the single demand engine: The Listing sums it,
+The Stock Answer (stockLedger) consumes its promo shape, and the Excel export rebuilds it
+as formulas. If you change phasing logic, change it there only.
 
 ## Excel model export
 `utils/excelExport.ts` builds a real .xlsx via exceljs (dynamic import — never in the
-main bundle). Design rules:
-- Every input is a NAMED cell on the Assumptions sheet (RRP, RetailerMargin, Stores…).
-- Every derived cell is a formula referencing those names, with a cached `result` so
-  non-recalculating viewers still show numbers.
-- The Stock Plan order column is plain editable values; arrivals/closing are formulas,
-  so planners can override orders in Excel and the ledger recalculates.
-- exceljs pins `uuid` via package.json `overrides` to clear an npm audit advisory.
+main bundle). Every input is a NAMED cell on the Assumptions sheet; every derived cell is
+a formula with a cached result. The Stock Plan order column is plain editable values.
+exceljs pins `uuid` via package.json `overrides` to clear an npm audit advisory.
+`utils/export.ts` (flat CSV) is retained but currently unwired.
 
 ## State management
-- **Zustand** — chosen over Context for selective subscriptions (less re-rendering) and simpler API.
-- State is in-memory. No localStorage. Shareable via URL query string (`?s=<base64>`), which encodes products **and** the full scenario. Old links without a scenario decode against defaults (see `mergeScenario`).
+- **Zustand** — selective subscriptions, simple API. State is in-memory; no localStorage.
+- Share URLs (`?s=<base64>`) encode products + full scenario + active page; old links
+  decode against defaults (`mergeScenario`), unknown page ids fall back to home.
 
 ## Fee config
-All editable fee defaults live in `src/config/fees.ts`. Each has a `label`, `value`, and `note` (tooltip). Update this one file when rate cards change. Also contains:
-- `AMAZON_SIZE_TIERS` — UK FBA fulfilment fee by size/weight tier (used by the fee estimator)
-- `AMAZON_CATEGORY_FEES` — referral fee % by Amazon category
-- `TIKTOK_CATEGORY_FEES` — platform commission % by TikTok Shop category
+All dated fee defaults in `src/config/fees.ts` (incl. `AMAZON_SIZE_TIERS`,
+`AMAZON_CATEGORY_FEES`, `TIKTOK_CATEGORY_FEES`). Every fee is an editable input with a
+"dated default — check the rate card" tag. Percentages stored as decimals everywhere;
+only the UI converts.
 
-When an estimator is ON, the derived fee inputs render disabled with a "set by … above" note — resolution happens in `effectiveAmazonFees` / `effectiveTikTokFees` in `store/scenario.ts` (no useEffect syncing).
-
-## Wholesaler support
-All grocery calculators (P&L, Min Margin, Listing Model, Trade Spend, Cross-Channel) support an optional wholesaler in the chain, configured once via `GroceryChainSettings`. When enabled, the wholesaler takes a margin on the retailer's buy price, reducing the brand's net revenue. Default 25%, editable.
-
-## Conventions
-- British English throughout the UI ("optimise", "programme", £ not $).
-- Every fee is an editable input, never hardcoded logic.
-- Percentages are stored as decimals (0.35) everywhere; only the UI converts to/from "35".
-- Pure calculation functions in `utils/calculations.ts` — no side effects.
-- Money formatting via `formatGBP` (thousands separators); never `toFixed` directly in the UI.
-- Guard degenerate inputs (margins ≥ 100%, promo weeks > period) with amber warning boxes rather than rendering Infinity/negative nonsense.
-- Accessibility: labels associated via htmlFor/id (NumberInput does this), tooltips keyboard-focusable, `scope` on table headers, `aria-current` on active tabs.
-- Print: "Export PDF" = `window.print()`. Mark screen-only chrome with `.no-print`; keep result cards whole with `.print-block` (styles in `index.css`).
+## Voice (for any copy)
+Deadpan, dry, blunt, British. Real FMCG jargon used correctly. Short sentences. The exact
+verdict/health strings come from the design handover — don't paraphrase them. Banned:
+empower, unlock, seamless, solution, journey, supercharge, elevate.
 
 ## Commands
 - `npm run dev` — start dev server

@@ -1,61 +1,105 @@
 import { useStore } from '../store/useStore'
 import { activeWholesalerMargin } from '../store/scenario'
-import { tradeSpendROI, formatGBP, formatNumber } from '../utils/calculations'
-import GroceryChainSettings from '../components/GroceryChainSettings'
-import NumberInput from '../components/NumberInput'
-import ResultCard from '../components/ResultCard'
+import { retailerPnL, rspExVat, tradeSpendROI } from '../utils/calculations'
+import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
+import Field, { TextField, InputSection } from '../components/gross/Field'
+import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
+import { gbp, ceil0, BILE, REDUCED, REDPEN, INK } from '../components/gross/format'
 
+/** The Payback — how much volume a promo needs to pay itself back. */
 export default function TradeSpendROI() {
   const product = useStore((s) => s.getActiveProduct())
   const grocery = useStore((s) => s.scenario.grocery)
   const tradeSpend = useStore((s) => s.scenario.tradeSpend)
+  const updateProduct = useStore((s) => s.updateProduct)
   const updateScenario = useStore((s) => s.updateScenario)
 
-  if (!product) return <p className="text-slate-500">Select a product to begin.</p>
+  const inputs = () => {
+    if (!product) return null
+    return (
+      <div>
+        <InputsHeader />
+        <InputSection first>THE PRODUCT</InputSection>
+        <div className="mb-[18px]">
+          <TextField label="Product name" value={product.name} onChange={(v) => updateProduct(product.id, { name: v })} />
+        </div>
+        <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
+          <Field label="Cost price / unit" prefix="£" value={product.cogsPerUnit} onCommit={(v) => updateProduct(product.id, { cogsPerUnit: v })} />
+          <Field label="RRP (inc VAT)" prefix="£" value={product.rrpIncVat} onCommit={(v) => updateProduct(product.id, { rrpIncVat: v })} />
+          <Field label="Units per case" inputMode="numeric" value={product.unitsPerCase} onCommit={(v) => updateProduct(product.id, { unitsPerCase: Math.round(v) })} />
+          <Field label="VAT rate" suffix="%" scale={100} value={product.vatRate} onCommit={(v) => updateProduct(product.id, { vatRate: v })} />
+          <Field label="Retailer margin" suffix="%" scale={100} tag="dated default" value={grocery.retailerMargin} onCommit={(v) => updateScenario('grocery', { retailerMargin: v })} />
+        </div>
 
-  const result = tradeSpendROI(
-    product,
-    grocery.retailerMargin,
-    tradeSpend.investment,
-    tradeSpend.targetROI,
-    activeWholesalerMargin(grocery),
-  )
-  const noMargin = result.marginPerUnit <= 0
+        <InputSection>THE ASK</InputSection>
+        <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
+          <Field label="Investment" prefix="£" value={tradeSpend.investment} onCommit={(v) => updateScenario('tradeSpend', { investment: v })} />
+          <Field label="Target ROI" suffix="%" scale={100} value={tradeSpend.targetROI} onCommit={(v) => updateScenario('tradeSpend', { targetROI: v })} />
+        </div>
+      </div>
+    )
+  }
+
+  const receipt = () => {
+    if (!product) return null
+    const ws = activeWholesalerMargin(grocery)
+    const pnl = retailerPnL(product, grocery.retailerMargin, ws)
+    const result = tradeSpendROI(product, grocery.retailerMargin, tradeSpend.investment, tradeSpend.targetROI, ws)
+    const rsp = rspExVat(product)
+    const gmUnit = result.marginPerUnit
+    const noMargin = gmUnit <= 0
+
+    const pctOfRsp = rsp > 0 ? gmUnit / rsp : 0
+    let healthColor = BILE
+    let healthLabel = 'HEALTHY'
+    if (noMargin) { healthColor = REDPEN; healthLabel = 'UNDERWATER' }
+    else if (pctOfRsp < 0.15) { healthColor = REDPEN; healthLabel = 'THIN' }
+    else if (pctOfRsp < 0.28) { healthColor = REDUCED; healthLabel = 'TIGHT' }
+
+    const roiLabel = `${Math.round(tradeSpend.targetROI * 100)}%`
+    const verdict = noMargin
+      ? `${gbp(gmUnit)} per unit before a penny of promo. You are paying people to take this away. Fix the cost price first.`
+      : `Break-even is ${ceil0(result.breakEvenCases)} incremental cases. Sell fewer than that and the promo lost money.`
+
+    return (
+      <div>
+        <Receipt tool="THE PAYBACK" name={product.name} subline="trade spend payback · per unit basis" verdict={verdict} verdictColor={noMargin ? REDPEN : INK}>
+          <Rule className="mt-4 mb-2.5" />
+          <RSection label="THE PRODUCT" />
+          <RLine label="Cost price / unit" value={gbp(product.cogsPerUnit)} />
+          <RLine label="RSP ex-VAT" value={gbp(rsp)} />
+          <RLine label="Net revenue / unit" value={gbp(pnl.brandNetRevenue)} />
+
+          <Rule className="mt-3.5 mb-2.5" />
+          <RSection label="MARGIN" health={{ color: healthColor, label: healthLabel }} />
+          <RLine label="Margin / unit" value={gbp(gmUnit)} bold color={noMargin ? REDPEN : INK} />
+          <RLine label="Margin / case" value={gbp(result.marginPerCase)} color={noMargin ? REDPEN : INK} />
+
+          <Rule className="mt-3.5 mb-2.5" />
+          <RSection label="THE ANSWER" />
+          <AnswerBlock
+            rows={[
+              { label: 'Break-even units', value: ceil0(result.breakEvenUnits), color: noMargin ? REDPEN : BILE },
+              { label: 'Break-even cases', value: ceil0(result.breakEvenCases), big: false, color: noMargin ? REDPEN : BILE },
+            ]}
+          />
+          <RLine label={`Units for ${roiLabel} ROI`} value={ceil0(result.targetReturnUnits)} />
+          <RLine label={`Cases for ${roiLabel} ROI`} value={ceil0(result.targetReturnCases)} />
+        </Receipt>
+        <CalcActions />
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold text-slate-900 mb-1">Trade Spend ROI</h3>
-        <p className="text-sm text-slate-500">
-          Given an investment (promo funding, listing fees, price support), how much incremental volume do you need to break even and hit your target return?
-        </p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 max-w-md">
-        <NumberInput label="Investment" prefix="£" min={0} value={tradeSpend.investment}
-          onChange={(v) => updateScenario('tradeSpend', { investment: v })}
-          help="Total trade spend at risk" />
-        <NumberInput label="Target ROI" suffix="%" min={0} value={tradeSpend.targetROI * 100}
-          onChange={(v) => updateScenario('tradeSpend', { targetROI: v / 100 })}
-          help="e.g. 200% = £3 back per £1 spent" />
-      </div>
-
-      <GroceryChainSettings />
-
-      {noMargin ? (
-        <p className="p-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg">
-          Your margin per unit is zero or negative at these chain margins — no volume of incremental sales can pay back the investment. Fix the margin first.
-        </p>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <ResultCard label="Margin per unit" value={formatGBP(result.marginPerUnit)} />
-          <ResultCard label="Margin per case" value={formatGBP(result.marginPerCase)} />
-          <ResultCard label="Break-even units" value={formatNumber(Math.ceil(result.breakEvenUnits))} sub="Incremental units to recover the spend" highlight />
-          <ResultCard label="Break-even cases" value={formatNumber(Math.ceil(result.breakEvenCases))} highlight />
-          <ResultCard label={`Units for ${Math.round(tradeSpend.targetROI * 100)}% ROI`} value={formatNumber(Math.ceil(result.targetReturnUnits))} />
-          <ResultCard label={`Cases for ${Math.round(tradeSpend.targetROI * 100)}% ROI`} value={formatNumber(Math.ceil(result.targetReturnCases))} />
-        </div>
-      )}
-    </div>
+    <CalcShell
+      sku="50 05512"
+      group="GROCERY"
+      type="TRADE SPEND"
+      title="The Payback"
+      subtitle="How much volume a promo needs to pay itself back."
+      inputs={inputs}
+      receipt={receipt}
+    />
   )
 }

@@ -1,193 +1,162 @@
 import { useStore } from '../store/useStore'
 import { effectiveAmazonFees } from '../store/scenario'
-import { amazonFBAMargin, estimateAmazonFBAFee, formatGBP, formatPercent } from '../utils/calculations'
-import { AMAZON_FBA_DEFAULTS, AMAZON_CATEGORY_FEES } from '../config/fees'
-import FeeInput from '../components/FeeInput'
-import NumberInput from '../components/NumberInput'
-import ResultCard from '../components/ResultCard'
-import Tooltip from '../components/Tooltip'
+import { amazonFBAMargin, estimateAmazonFBAFee, rspExVat } from '../utils/calculations'
+import { AMAZON_CATEGORY_FEES } from '../config/fees'
+import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
+import Field, { TextField, InputSection, MonoToggle } from '../components/gross/Field'
+import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
+import { gbp, neg, pct, BILE, REDUCED, REDPEN, INK } from '../components/gross/format'
 
+/** The Amazon Cut — what FBA takes before you see a penny. */
 export default function AmazonFBA() {
   const product = useStore((s) => s.getActiveProduct())
   const amazon = useStore((s) => s.scenario.amazon)
+  const updateProduct = useStore((s) => s.updateProduct)
   const updateScenario = useStore((s) => s.updateScenario)
 
-  if (!product) return <p className="text-slate-500">Select a product to begin.</p>
-
-  const fees = effectiveAmazonFees(amazon)
-  const estimated = estimateAmazonFBAFee(amazon.weightG, amazon.longestCm, amazon.medianCm, amazon.shortestCm)
-  const result = amazonFBAMargin(product, fees)
-
-  // Fixed-cost amortisation and pricing floor
-  const planPerUnit = amazon.monthlyUnits > 0 ? amazon.planMonthly / amazon.monthlyUnits : 0
-  const fullyLoadedProfit = result.grossProfit - planPerUnit
-  const perUnitCosts =
-    product.cogsPerUnit +
-    fees.fulfilmentFeePerUnit * (1 + fees.fuelLogisticsSurcharge) +
-    fees.monthlyStoragePerUnit +
-    planPerUnit
-  const breakEvenRrp =
-    fees.referralFeePercent < 1
-      ? (perUnitCosts / (1 - fees.referralFeePercent)) * (1 + product.vatRate)
-      : Infinity
-
-  return (
-    <div className="space-y-6">
+  const inputs = () => {
+    if (!product) return null
+    const estimated = estimateAmazonFBAFee(amazon.weightG, amazon.longestCm, amazon.medianCm, amazon.shortestCm)
+    const fees = effectiveAmazonFees(amazon)
+    return (
       <div>
-        <h3 className="text-lg font-semibold text-slate-900 mb-1">Amazon FBA Margin Calculator</h3>
-        <p className="text-sm text-slate-500">
-          See your true margin after Amazon's referral, fulfilment and storage fees.
-        </p>
-      </div>
+        <InputsHeader />
+        <InputSection first>THE PRODUCT</InputSection>
+        <div className="mb-[18px]">
+          <TextField label="Product name" value={product.name} onChange={(v) => updateProduct(product.id, { name: v })} />
+        </div>
+        <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
+          <Field label="Cost price / unit" prefix="£" value={product.cogsPerUnit} onCommit={(v) => updateProduct(product.id, { cogsPerUnit: v })} />
+          <Field label="Sale price (inc VAT)" prefix="£" value={product.rrpIncVat} onCommit={(v) => updateProduct(product.id, { rrpIncVat: v })} />
+          <Field label="VAT rate" suffix="%" scale={100} value={product.vatRate} onCommit={(v) => updateProduct(product.id, { vatRate: v })} />
+        </div>
 
-      {/* Fee estimator */}
-      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-4">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={amazon.estimatorOn}
-            onChange={(e) => updateScenario('amazon', { estimatorOn: e.target.checked })}
-            className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+        <InputSection>
+          FBA FEES <span className="border-2 border-ink px-[5px] py-px">dated defaults — check the rate card</span>
+        </InputSection>
+
+        <div className="mb-4">
+          <MonoToggle
+            label="ESTIMATE FEE FROM SIZE & WEIGHT"
+            on={amazon.estimatorOn}
+            onToggle={() => updateScenario('amazon', { estimatorOn: !amazon.estimatorOn })}
           />
-          <span className="text-sm font-semibold text-blue-900">
-            Estimate fees from product dimensions
-            <Tooltip text="Enter your product's weight, dimensions and category to auto-calculate the FBA fulfilment fee and referral rate from Amazon UK's published fee schedule. Untick to enter fees manually." />
-          </span>
-        </label>
+        </div>
 
-        {amazon.estimatorOn && (
+        {amazon.estimatorOn ? (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-              <div className="sm:col-span-2">
-                <label htmlFor="amazon-category" className="block text-sm font-medium text-slate-700 mb-1">Amazon category</label>
+            <label className="block mb-4">
+              <span className="block text-xs font-semibold mb-1.5">Category (sets referral fee)</span>
+              <div className="relative border-2 border-ink bg-white h-[52px] flex items-center">
                 <select
-                  id="amazon-category"
                   value={amazon.category}
                   onChange={(e) => updateScenario('amazon', { category: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  aria-label="Amazon category"
+                  className="flex-1 border-0 outline-none bg-transparent px-3.5 font-mono text-[15px] text-ink h-full cursor-pointer appearance-none"
                 >
                   {AMAZON_CATEGORY_FEES.map((c) => (
-                    <option key={c.category} value={c.category}>
-                      {c.category} ({(c.referralPercent * 100).toFixed(0)}%)
-                    </option>
+                    <option key={c.category} value={c.category}>{c.category}</option>
                   ))}
                 </select>
+                <span className="w-11 flex items-center justify-center border-l-2 border-ink font-mono text-sm h-full pointer-events-none">▾</span>
               </div>
-              <NumberInput label="Weight" suffix="g" min={0} value={amazon.weightG}
-                onChange={(v) => updateScenario('amazon', { weightG: v })} />
-              <NumberInput label="Longest side" suffix="cm" min={0} value={amazon.longestCm}
-                onChange={(v) => updateScenario('amazon', { longestCm: v })} />
-              <NumberInput label="Middle side" suffix="cm" min={0} value={amazon.medianCm}
-                onChange={(v) => updateScenario('amazon', { medianCm: v })} />
-              <NumberInput label="Shortest side" suffix="cm" min={0} value={amazon.shortestCm}
-                onChange={(v) => updateScenario('amazon', { shortestCm: v })} />
+            </label>
+            <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
+              <Field label="Unit weight" suffix="g" value={amazon.weightG} onCommit={(v) => updateScenario('amazon', { weightG: v })} />
+              <Field label="Longest side" suffix="cm" value={amazon.longestCm} onCommit={(v) => updateScenario('amazon', { longestCm: v })} />
+              <Field label="Median side" suffix="cm" value={amazon.medianCm} onCommit={(v) => updateScenario('amazon', { medianCm: v })} />
+              <Field label="Shortest side" suffix="cm" value={amazon.shortestCm} onCommit={(v) => updateScenario('amazon', { shortestCm: v })} />
             </div>
-            <p className="text-xs text-blue-700">
-              Size tier: <strong>{estimated.tier}</strong> — estimated fulfilment fee <strong>{formatGBP(estimated.fee)}</strong> · referral rate <strong>{(fees.referralFeePercent * 100).toFixed(0)}%</strong> ({amazon.category}). Always verify against Seller Central.
-            </p>
+            <div className="border-2 border-ink bg-ink text-bile py-3 px-3.5 font-mono text-[13px] flex justify-between flex-wrap gap-1.5 mt-2">
+              <span>SIZE TIER: {estimated.tier}</span>
+              <span>FULFILMENT {gbp(estimated.fee)} · REFERRAL {(fees.referralFeePercent * 100).toFixed(0)}%</span>
+            </div>
           </>
+        ) : (
+          <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
+            <Field label="Referral fee" suffix="%" scale={100} value={amazon.referralFee} onCommit={(v) => updateScenario('amazon', { referralFee: v })} />
+            <Field label="Fulfilment / unit" prefix="£" value={amazon.fulfilmentFee} onCommit={(v) => updateScenario('amazon', { fulfilmentFee: v })} />
+          </div>
         )}
-      </div>
 
-      {/* Fees in force */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <FeeInput
-          fee={AMAZON_FBA_DEFAULTS.referralFeePercent}
-          value={fees.referralFeePercent}
-          onChange={(v) => updateScenario('amazon', { referralFee: v })}
-          isPercent
-          disabled={amazon.estimatorOn}
-          disabledNote="Set by category above"
-        />
-        <FeeInput
-          fee={AMAZON_FBA_DEFAULTS.fulfilmentFeePerUnit}
-          value={fees.fulfilmentFeePerUnit}
-          onChange={(v) => updateScenario('amazon', { fulfilmentFee: v })}
-          disabled={amazon.estimatorOn}
-          disabledNote="Set by size tier above"
-        />
-        <FeeInput
-          fee={AMAZON_FBA_DEFAULTS.monthlyStoragePerUnit}
-          value={amazon.storageFee}
-          onChange={(v) => updateScenario('amazon', { storageFee: v })}
-        />
-        <FeeInput
-          fee={AMAZON_FBA_DEFAULTS.fuelLogisticsSurcharge}
-          value={amazon.fuelSurcharge}
-          onChange={(v) => updateScenario('amazon', { fuelSurcharge: v })}
-          isPercent
-        />
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <ResultCard label="Selling price ex-VAT" value={formatGBP(result.sellingPriceExVat)} />
-        <ResultCard label="Referral fee" value={formatGBP(result.referralFee)} />
-        <ResultCard label="Fulfilment fee" value={formatGBP(result.fulfilmentFee)} sub="Includes fuel surcharge" />
-        <ResultCard label="Storage fee" value={formatGBP(result.storageFee)} />
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <ResultCard label="Total Amazon fees" value={formatGBP(result.totalFees)} />
-        <ResultCard label="Net revenue" value={formatGBP(result.netRevenue)} />
-        <ResultCard
-          label="Gross profit/unit"
-          value={formatGBP(result.grossProfit)}
-          highlight={result.grossProfit > 0}
-          negative={result.grossProfit < 0}
-        />
-        <ResultCard
-          label="Gross margin %"
-          value={formatPercent(result.grossMarginPercent)}
-          highlight={result.grossMarginPercent > 0}
-          negative={result.grossMarginPercent < 0}
-        />
-      </div>
-
-      {/* Fixed costs and pricing floor */}
-      <div className="pt-2 border-t border-slate-100 space-y-4">
-        <h4 className="text-sm font-semibold text-slate-700">Fixed costs & pricing floor</h4>
-        <div className="grid grid-cols-2 gap-4 max-w-md">
-          <FeeInput
-            fee={AMAZON_FBA_DEFAULTS.professionalPlanMonthly}
-            value={amazon.planMonthly}
-            onChange={(v) => updateScenario('amazon', { planMonthly: v })}
-          />
-          <NumberInput
-            label="Expected monthly units"
-            suffix="units"
-            min={0}
-            value={amazon.monthlyUnits}
-            onChange={(v) => updateScenario('amazon', { monthlyUnits: Math.round(v) })}
-            help="Spreads the plan fee across your volume"
-          />
+        <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4 mt-4">
+          <Field label="Storage / unit / mo" prefix="£" value={amazon.storageFee} onCommit={(v) => updateScenario('amazon', { storageFee: v })} />
+          <Field label="Fuel surcharge" suffix="%" scale={100} value={amazon.fuelSurcharge} onCommit={(v) => updateScenario('amazon', { fuelSurcharge: v })} />
+          <Field label="Selling plan / mo" prefix="£" value={amazon.planMonthly} onCommit={(v) => updateScenario('amazon', { planMonthly: v })} />
+          <Field label="Units sold / mo" inputMode="numeric" value={amazon.monthlyUnits} onCommit={(v) => updateScenario('amazon', { monthlyUnits: Math.round(v) })} />
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <ResultCard
-            label="Plan cost/unit"
-            value={formatGBP(planPerUnit)}
-            sub={`£${amazon.planMonthly.toFixed(0)}/month ÷ ${amazon.monthlyUnits || 0} units`}
-          />
-          <ResultCard
-            label="Fully-loaded profit/unit"
-            value={formatGBP(fullyLoadedProfit)}
-            sub="Gross profit less the plan cost"
-            highlight={fullyLoadedProfit > 0}
-            negative={fullyLoadedProfit < 0}
-          />
-          <ResultCard
-            label="Break-even RRP"
-            value={Number.isFinite(breakEvenRrp) ? formatGBP(breakEvenRrp) : '—'}
-            sub="Lowest price (inc. VAT) that covers all costs"
-            highlight
-          />
+        <div className="font-mono text-[11px] mt-1.5 opacity-65">
+          Fixed costs spread across monthly volume. Fewer units, heavier per-unit fees.
         </div>
       </div>
+    )
+  }
 
-      {result.grossProfit < 0 && (
-        <p className="p-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg">
-          This product loses money on Amazon at its current price. Low-priced items often can't absorb the fixed fulfilment fee — consider a multipack (raises the selling price against a similar fee) or a higher RRP. The break-even RRP above is the floor.
-        </p>
-      )}
-    </div>
+  const receipt = () => {
+    if (!product) return null
+    const fees = effectiveAmazonFees(amazon)
+    const result = amazonFBAMargin(product, fees)
+    const sp = rspExVat(product)
+    const tierName = amazon.estimatorOn
+      ? estimateAmazonFBAFee(amazon.weightG, amazon.longestCm, amazon.medianCm, amazon.shortestCm).tier
+      : 'manual'
+
+    // The receipt spreads the selling plan across monthly volume as a per-unit fee
+    const planCut = amazon.planMonthly / (amazon.monthlyUnits || 1)
+    const totalFees = result.totalFees + planCut
+    const net = result.netRevenue - planCut
+    const gp = result.grossProfit - planCut
+    const pctVal = sp > 0 ? gp / sp : 0
+    const noMargin = gp <= 0
+
+    let healthColor = BILE
+    let healthLabel = 'HEALTHY'
+    if (noMargin) { healthColor = REDPEN; healthLabel = 'UNDERWATER' }
+    else if (pctVal < 0.12) { healthColor = REDPEN; healthLabel = 'THIN' }
+    else if (pctVal < 0.25) { healthColor = REDUCED; healthLabel = 'TIGHT' }
+
+    const verdict = noMargin
+      ? `You lose ${gbp(gp)} on every unit. The fees are bigger than the price. A single unit is not an FBA product — sell a multipack.`
+      : `FBA keeps ${gbp(totalFees)} of the ${gbp(sp)} sale. You keep ${gbp(gp)}. Thin, but real.`
+
+    return (
+      <div>
+        <Receipt tool="THE AMAZON CUT" name={product.name} subline="FBA margin · per unit" verdict={verdict} verdictColor={noMargin ? REDPEN : INK}>
+          <Rule className="mt-4 mb-2.5" />
+          <RSection label="WHAT AMAZON TAKES" />
+          <RLine label="Sale price ex-VAT" value={gbp(sp)} bold />
+          <RLine label={`Referral fee (${(fees.referralFeePercent * 100).toFixed(0)}%)`} value={neg(result.referralFee)} dim />
+          <RLine label={`Fulfilment (${tierName})`} value={neg(result.fulfilmentFee)} dim />
+          <RLine label="Storage / unit" value={neg(result.storageFee)} dim />
+          <RLine label="Selling plan / unit" value={neg(planCut)} dim />
+          <Rule dotted className="my-2" />
+          <RLine label="Total Amazon fees" value={neg(totalFees)} bold color={REDPEN} />
+          <RLine label="Net revenue / unit" value={gbp(net)} bold color={net < 0 ? REDPEN : INK} />
+          <RLine label="less cost price" value={neg(product.cogsPerUnit)} dim />
+
+          <Rule className="mt-3.5 mb-2.5" />
+          <RSection label="YOUR MARGIN" health={{ color: healthColor, label: healthLabel }} />
+          <AnswerBlock
+            rows={[
+              { label: 'Gross profit / unit', value: gbp(gp), color: noMargin ? REDPEN : BILE },
+              { label: 'Margin %', value: pct(pctVal), big: false, color: noMargin ? REDPEN : BILE },
+            ]}
+          />
+        </Receipt>
+        <CalcActions />
+      </div>
+    )
+  }
+
+  return (
+    <CalcShell
+      sku="50 07706"
+      group="MARKETPLACE"
+      type="AMAZON FBA"
+      title="The Amazon Cut"
+      subtitle="What FBA takes before you see a penny."
+      inputs={inputs}
+      receipt={receipt}
+    />
   )
 }

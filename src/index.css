@@ -1,29 +1,106 @@
 @import "tailwindcss";
 
-body {
-  margin: 0;
+/*
+ * Fonts — self-hosted (latin subsets from Google Fonts) so the site has no
+ * third-party runtime dependency and loads identically everywhere.
+ */
+@font-face {
+  font-family: "Anton";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/Anton-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Space Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/SpaceMono-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Space Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/SpaceMono-700.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/Inter-var.woff2") format("woff2");
 }
 
 /*
- * Print stylesheet — makes "Export PDF" (browser print) produce a clean,
- * deck-ready page: no buttons, no navigation, white background, no cards
- * split across page breaks.
+ * GROSS design tokens — the only colours and typefaces in the product.
+ * Bile Green / Ink Black / Receipt White / Reduced Yellow / Red-Pen Red.
+ * Anton for display, Space Mono for every numeral, Inter for body.
  */
+@theme {
+  --color-bile: #C6F215;
+  --color-ink: #0A0A0A;
+  --color-receipt: #F7F5EF;
+  --color-reduced: #FFD400;
+  --color-redpen: #E4002B;
+
+  --font-display: "Anton", "Archivo Black", sans-serif;
+  --font-mono: "Space Mono", "JetBrains Mono", monospace;
+  --font-body: "Inter", system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: #f7f5ef;
+  color: #0a0a0a;
+  font-family: "Inter", system-ui, sans-serif;
+  line-height: 1.4;
+}
+
+/* Brand rule: no rounded corners anywhere (the sticker overrides locally) */
+* {
+  border-radius: 0;
+}
+
+input::placeholder {
+  color: #0a0a0a;
+  opacity: 0.35;
+}
+
+/* Ticker marquee — pauses on hover, static under reduced motion */
+@keyframes gross-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.gross-marquee {
+  animation: gross-marquee 32s linear infinite;
+}
+.gross-ticker:hover .gross-marquee {
+  animation-play-state: paused;
+}
+
+/* Receipt reveal — one 150ms upward slide on first render */
+@keyframes gross-reveal {
+  from { transform: translateY(14px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.gross-reveal {
+  animation: gross-reveal 150ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gross-marquee,
+  .gross-reveal {
+    animation: none !important;
+  }
+}
+
 @media print {
   .no-print {
     display: none !important;
   }
-
-  .bg-slate-50 {
-    background: white !important;
-  }
-
   .print-block {
     break-inside: avoid;
-  }
-
-  main {
-    max-width: none !important;
-    padding: 0 !important;
   }
 }

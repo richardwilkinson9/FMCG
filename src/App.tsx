@@ -1,9 +1,11 @@
 import { useEffect } from 'react'
 import { useStore } from './store/useStore'
 import { decodeStateFromUrl } from './utils/urlState'
-import ProductManager from './components/ProductManager'
-import ShareExport from './components/ShareExport'
+import Ticker from './components/gross/Ticker'
+import GrossNav from './components/gross/GrossNav'
+import Home from './pages/Home'
 import RetailerPnL from './calculators/RetailerPnL'
+import Waterfall from './calculators/Waterfall'
 import MinimumMargin from './calculators/MinimumMargin'
 import ListingModel from './calculators/ListingModel'
 import TradeSpendROI from './calculators/TradeSpendROI'
@@ -11,22 +13,26 @@ import StockForecast from './calculators/StockForecast'
 import AmazonFBA from './calculators/AmazonFBA'
 import TikTokShop from './calculators/TikTokShop'
 import CrossChannel from './calculators/CrossChannel'
-import Portfolio from './calculators/Portfolio'
 
-const CALCULATORS = [
-  { id: 'retailer-pnl', label: 'Retailer P&L', group: 'Grocery', component: RetailerPnL },
-  { id: 'min-margin', label: 'Min Margin', group: 'Grocery', component: MinimumMargin },
-  { id: 'listing-model', label: 'Listing Model', group: 'Grocery', component: ListingModel },
-  { id: 'trade-spend', label: 'Trade Spend ROI', group: 'Grocery', component: TradeSpendROI },
-  { id: 'stock-forecast', label: 'Supply Plan', group: 'Grocery', component: StockForecast },
-  { id: 'amazon-fba', label: 'Amazon FBA', group: 'Marketplace', component: AmazonFBA },
-  { id: 'tiktok-shop', label: 'TikTok Shop', group: 'Marketplace', component: TikTokShop },
-  { id: 'cross-channel', label: 'Cross-Channel', group: 'Compare', component: CrossChannel },
-  { id: 'portfolio', label: 'Portfolio', group: 'Compare', component: Portfolio },
-]
+/**
+ * GROSS. — view registry. The homepage plus nine calculators; ids are stable
+ * so pre-rebrand share links keep working.
+ */
+const PAGES: Record<string, () => React.JSX.Element> = {
+  'home': Home,
+  'retailer-pnl': RetailerPnL,
+  'waterfall': Waterfall,
+  'min-margin': MinimumMargin,
+  'listing-model': ListingModel,
+  'trade-spend': TradeSpendROI,
+  'stock-forecast': StockForecast,
+  'amazon-fba': AmazonFBA,
+  'tiktok-shop': TikTokShop,
+  'cross-channel': CrossChannel,
+}
 
 function App() {
-  const { activeCalculator, setActiveCalculator } = useStore()
+  const activeCalculator = useStore((s) => s.activeCalculator)
 
   // Restore full state (products + all calculator settings) from a shared URL
   useEffect(() => {
@@ -35,76 +41,20 @@ function App() {
       useStore.setState({
         products: decoded.products,
         activeProductId: decoded.activeProductId,
-        activeCalculator: decoded.activeCalculator,
+        activeCalculator: decoded.activeCalculator in PAGES ? decoded.activeCalculator : 'home',
         scenario: decoded.scenario,
       })
     }
   }, [])
 
-  const ActiveCalc = CALCULATORS.find((c) => c.id === activeCalculator)?.component ?? RetailerPnL
-
-  const groups = [...new Set(CALCULATORS.map((c) => c.group))]
+  const Page = PAGES[activeCalculator] ?? Home
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200">
-        <div className="max-w-6xl mx-auto px-4 py-4 sm:py-5">
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-900">FMCG Maths</h1>
-              <p className="text-sm text-slate-500 mt-0.5">Commercial calculators for UK brand teams</p>
-            </div>
-            <div className="no-print">
-              <ShareExport />
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
-        {/* Product spine */}
-        <ProductManager />
-
-        {/* Calculator tabs */}
-        <div className="bg-white rounded-xl border border-slate-200">
-          <nav aria-label="Calculators" className="border-b border-slate-200 px-4 pt-4 overflow-x-auto no-print">
-            <div className="flex gap-6">
-              {groups.map((group) => (
-                <div key={group} className="flex flex-col">
-                  <span className="text-[10px] uppercase tracking-wider text-slate-400 mb-1.5">{group}</span>
-                  <div className="flex gap-1 mb-[-1px]">
-                    {CALCULATORS.filter((c) => c.group === group).map((calc) => (
-                      <button
-                        key={calc.id}
-                        onClick={() => setActiveCalculator(calc.id)}
-                        aria-current={activeCalculator === calc.id ? 'page' : undefined}
-                        className={`px-3 py-2 text-sm rounded-t-lg border border-b-0 transition-colors whitespace-nowrap ${
-                          activeCalculator === calc.id
-                            ? 'bg-white text-blue-700 border-slate-200 font-medium'
-                            : 'bg-transparent text-slate-500 border-transparent hover:text-slate-700 hover:bg-slate-50'
-                        }`}
-                      >
-                        {calc.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </nav>
-
-          {/* Active calculator */}
-          <div className="p-6">
-            <ActiveCalc />
-          </div>
-        </div>
-
-        {/* Footer */}
-        <footer className="text-center text-xs text-slate-400 py-4">
-          FMCG Maths — free tools for UK brand teams. All calculations run in your browser; nothing is stored on a server.
-          Fee defaults are dated estimates — always verify against current rate cards.
-        </footer>
+    <div className="min-h-screen bg-receipt text-ink font-body">
+      <Ticker />
+      <GrossNav />
+      <main>
+        <Page />
       </main>
     </div>
   )

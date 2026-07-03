@@ -13,6 +13,10 @@ interface AppState {
   duplicateProduct: (id: string) => void
   setActiveProduct: (id: string) => void
   getActiveProduct: () => Product | undefined
+  /** GROSS "CHANGE PRODUCT" — clears the selection to the empty state */
+  clearProduct: () => void
+  /** GROSS "Start with a product" — reselect an existing product or seed the demo */
+  startProduct: () => void
 
   /** The currently selected calculator tab */
   activeCalculator: string
@@ -41,13 +45,26 @@ export function createBlankProduct(name = 'New Product'): Product {
   }
 }
 
+/** The demo product from the GROSS design references */
+export function createDemoProduct(): Product {
+  return {
+    id: generateId(),
+    name: 'VOLT 250ml',
+    cogsPerUnit: 0.32,
+    unitsPerCase: 24,
+    rrpIncVat: 1.50,
+    vatRate: UK_VAT_RATE.value,
+    weeklyRateOfSale: 10,
+  }
+}
+
 export const useStore = create<AppState>((set, get) => {
-  const firstProduct = createBlankProduct('My Product')
+  const firstProduct = createDemoProduct()
 
   return {
     products: [firstProduct],
     activeProductId: firstProduct.id,
-    activeCalculator: 'retailer-pnl',
+    activeCalculator: 'home',
     scenario: defaultScenario(),
 
     addProduct: (product) =>
@@ -87,6 +104,15 @@ export const useStore = create<AppState>((set, get) => {
       }),
 
     setActiveProduct: (id) => set({ activeProductId: id }),
+
+    clearProduct: () => set({ activeProductId: null }),
+
+    startProduct: () =>
+      set((state) => {
+        if (state.products.length > 0) return { activeProductId: state.products[0].id }
+        const product = createDemoProduct()
+        return { products: [product], activeProductId: product.id }
+      }),
 
     getActiveProduct: () => {
       const state = get()

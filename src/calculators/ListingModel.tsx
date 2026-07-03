@@ -1,143 +1,141 @@
-import { useState } from 'react'
 import { useStore } from '../store/useStore'
 import { activeWholesalerMargin } from '../store/scenario'
-import { listingModel, formatGBP, formatNumber } from '../utils/calculations'
-import GroceryChainSettings from '../components/GroceryChainSettings'
-import NumberInput from '../components/NumberInput'
-import ResultCard from '../components/ResultCard'
+import { listingModel, retailerPnL } from '../utils/calculations'
+import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
+import Field, { TextField, InputSection } from '../components/gross/Field'
+import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
+import { gbp, n0, BILE, REDUCED, REDPEN, INK } from '../components/gross/format'
 
+/** The Listing — model the range review before the buyer does. */
 export default function ListingModel() {
   const product = useStore((s) => s.getActiveProduct())
   const grocery = useStore((s) => s.scenario.grocery)
   const listing = useStore((s) => s.scenario.listing)
+  const updateProduct = useStore((s) => s.updateProduct)
   const updateScenario = useStore((s) => s.updateScenario)
-  const [showWeekly, setShowWeekly] = useState(false)
 
-  if (!product) return <p className="text-slate-500">Select a product to begin.</p>
+  const inputs = () => {
+    if (!product) return null
+    return (
+      <div>
+        <InputsHeader />
+        <InputSection first>THE PRODUCT</InputSection>
+        <div className="mb-[18px]">
+          <TextField label="Product name" value={product.name} onChange={(v) => updateProduct(product.id, { name: v })} />
+        </div>
+        <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
+          <Field label="Cost price / unit" prefix="£" value={product.cogsPerUnit} onCommit={(v) => updateProduct(product.id, { cogsPerUnit: v })} />
+          <Field label="RRP (inc VAT)" prefix="£" value={product.rrpIncVat} onCommit={(v) => updateProduct(product.id, { rrpIncVat: v })} />
+          <Field label="Units per case" inputMode="numeric" value={product.unitsPerCase} onCommit={(v) => updateProduct(product.id, { unitsPerCase: Math.round(v) })} />
+          <Field label="Retailer margin" suffix="%" scale={100} tag="default" value={grocery.retailerMargin} onCommit={(v) => updateScenario('grocery', { retailerMargin: v })} />
+        </div>
 
-  const result = listingModel(product, grocery.retailerMargin, {
-    stores: listing.stores,
-    skus: listing.skus,
-    weeksInPeriod: listing.weeksInPeriod,
-    promoWeeks: listing.promoWeeks,
-    promoStartWeek: listing.promoStartWeek,
-    promoUpliftPercent: listing.promoUplift,
-  }, activeWholesalerMargin(grocery))
+        <InputSection>THE DISTRIBUTION</InputSection>
+        <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
+          <Field label="Stores" inputMode="numeric" value={listing.stores} onCommit={(v) => updateScenario('listing', { stores: Math.round(v) })} />
+          <Field label="Rate of sale / store / wk" value={product.weeklyRateOfSale} onCommit={(v) => updateProduct(product.id, { weeklyRateOfSale: v })} />
+          <Field label="Weeks in period" inputMode="numeric" value={listing.weeksInPeriod} onCommit={(v) => updateScenario('listing', { weeksInPeriod: Math.max(1, Math.min(104, Math.round(v))) })} />
+          <Field label="SKUs listed" inputMode="numeric" value={listing.skus} onCommit={(v) => updateScenario('listing', { skus: Math.round(v) })} />
+        </div>
 
-  const promoExceedsPeriod = listing.promoWeeks > listing.weeksInPeriod
-  const promoClamped =
-    !promoExceedsPeriod &&
-    listing.promoWeeks > 0 &&
-    listing.promoStartWeek + listing.promoWeeks - 1 > listing.weeksInPeriod
+        <InputSection>THE PROMOTION</InputSection>
+        <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
+          <Field label="Promo start week" inputMode="numeric" value={listing.promoStartWeek} onCommit={(v) => updateScenario('listing', { promoStartWeek: Math.round(v) })} />
+          <Field label="Promo weeks" inputMode="numeric" value={listing.promoWeeks} onCommit={(v) => updateScenario('listing', { promoWeeks: Math.round(v) })} />
+          <Field label="Promo uplift" suffix="%" scale={100} value={listing.promoUplift} onCommit={(v) => updateScenario('listing', { promoUplift: v })} />
+        </div>
+      </div>
+    )
+  }
+
+  const receipt = () => {
+    if (!product) return null
+    const result = listingModel(product, grocery.retailerMargin, {
+      stores: listing.stores,
+      skus: listing.skus,
+      weeksInPeriod: listing.weeksInPeriod,
+      promoWeeks: listing.promoWeeks,
+      promoStartWeek: listing.promoStartWeek,
+      promoUpliftPercent: listing.promoUplift,
+    }, activeWholesalerMargin(grocery))
+
+    const pnl = retailerPnL(product, grocery.retailerMargin, activeWholesalerMargin(grocery))
+    const net = pnl.brandNetRevenue
+    const gmUnit = pnl.brandGrossMarginPerUnit
+    const noMargin = gmUnit <= 0
+    const maxVol = Math.max(result.promoWeeklyVolume, result.weeklyVolume, 1)
+
+    let healthColor = BILE
+    let healthLabel = 'WORTH IT'
+    if (noMargin) { healthColor = REDPEN; healthLabel = 'LOSS-MAKING' }
+    else if (net > 0 && gmUnit / net < 0.15) { healthColor = REDUCED; healthLabel = 'THIN' }
+
+    const promoUnits = (result.promoWeeklyVolume - result.weeklyVolume) * Math.min(listing.promoWeeks, listing.weeksInPeriod)
+    const verdict = noMargin
+      ? `Every unit loses money, so volume just deepens the hole. ${n0(-result.totalGrossMargin)} lost across the period. Fix the margin before you chase the listing.`
+      : `The listing throws off ${gbp(result.totalGrossMargin)} of gross margin. The promo adds ${n0(promoUnits)} units — whether it pays is The Payback’s problem.`
+
+    return (
+      <div>
+        <Receipt
+          tool="THE LISTING"
+          name={product.name}
+          subline={`${listing.weeksInPeriod}-week projection · ${listing.stores} stores`}
+          verdict={verdict}
+          verdictColor={noMargin ? REDPEN : INK}
+        >
+          <Rule className="mt-4 mb-2.5" />
+          <RSection label="WEEKLY VOLUME" />
+          <div className="flex items-end gap-[2px] h-[70px] border-b-2 border-ink">
+            {result.weeks.map((w) => (
+              <div
+                key={w.week}
+                className="flex-1 min-w-[2px]"
+                style={{
+                  height: `${Math.max(6, (w.volume / maxVol) * 100).toFixed(0)}%`,
+                  background: w.onPromo ? BILE : INK,
+                }}
+              />
+            ))}
+          </div>
+          <div className="flex justify-between text-[10px] mt-1.5 opacity-70">
+            <span>WK 1</span>
+            <span>
+              <span className="inline-block w-[9px] h-[9px] border-2 border-ink align-middle" style={{ background: BILE }} /> promo weeks
+            </span>
+            <span>WK {listing.weeksInPeriod}</span>
+          </div>
+
+          <Rule className="mt-4 mb-2.5" />
+          <RLine label="Base volume / week" value={`${n0(result.weeklyVolume)} units`} />
+          <RLine label="Promo volume / week" value={`${n0(result.promoWeeklyVolume)} units`} />
+          <RLine label="Total volume" value={`${n0(result.totalVolume)} units`} />
+          <RLine label="Total cases" value={`${n0(result.totalCases)} cases`} />
+          <RLine label="Total revenue (your net)" value={gbp(result.totalRevenue)} />
+
+          <Rule className="mt-3.5 mb-2.5" />
+          <RSection label="THE PRIZE" health={{ color: healthColor, label: healthLabel }} />
+          <AnswerBlock
+            rows={[
+              { label: 'Gross margin, period', value: gbp(result.totalGrossMargin), color: noMargin ? REDPEN : BILE },
+              { label: 'Margin / unit', value: gbp(gmUnit), big: false, color: noMargin ? REDPEN : BILE },
+            ]}
+          />
+        </Receipt>
+        <CalcActions />
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold text-slate-900 mb-1">Retailer Listing Model</h3>
-        <p className="text-sm text-slate-500">
-          Project your revenue, volume and gross margin across a store estate, week by week.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 max-w-2xl">
-        <NumberInput label="Stores" min={0} value={listing.stores}
-          onChange={(v) => updateScenario('listing', { stores: Math.round(v) })}
-          help="Stores stocking the product" />
-        <NumberInput label="SKUs" min={0} value={listing.skus}
-          onChange={(v) => updateScenario('listing', { skus: Math.round(v) })}
-          help="Listed lines of this product" />
-        <NumberInput label="Weeks in period" min={0} value={listing.weeksInPeriod}
-          onChange={(v) => updateScenario('listing', { weeksInPeriod: Math.min(Math.round(v), 104) })}
-          help="52 = a full year (104 max)" />
-        <NumberInput label="Promo start week" min={1} value={listing.promoStartWeek}
-          onChange={(v) => updateScenario('listing', { promoStartWeek: Math.round(v) })}
-          help="Week the promotion begins" />
-        <NumberInput label="Promo weeks" min={0} value={listing.promoWeeks}
-          onChange={(v) => updateScenario('listing', { promoWeeks: Math.round(v) })}
-          help="Length of the promotion" />
-        <NumberInput label="Promo volume uplift" suffix="%" min={0} value={listing.promoUplift * 100}
-          onChange={(v) => updateScenario('listing', { promoUplift: v / 100 })}
-          help="Extra volume during promo weeks" />
-      </div>
-
-      <GroceryChainSettings />
-
-      {promoExceedsPeriod ? (
-        <p className="p-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg">
-          Promo weeks can't exceed the weeks in the period.
-        </p>
-      ) : (
-        <>
-          {promoClamped && (
-            <p className="p-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg">
-              The promotion runs past the end of the period, so only the weeks inside the period are counted. Start it earlier or extend the period.
-            </p>
-          )}
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <ResultCard label="Total volume (units)" value={formatNumber(result.totalVolume)} highlight />
-            <ResultCard label="Total cases" value={formatNumber(result.totalCases)} />
-            <ResultCard label="Total revenue" value={formatGBP(result.totalRevenue)} sub="Your net revenue, not retail sales value" highlight />
-            <ResultCard label="Gross margin" value={formatGBP(result.totalGrossMargin)} highlight />
-            <ResultCard label="Base weekly volume" value={formatNumber(result.weeklyVolume)} />
-            <ResultCard label="Promo weekly volume" value={formatNumber(result.promoWeeklyVolume)} />
-          </div>
-
-          {/* Week-by-week phasing */}
-          <div>
-            <button
-              onClick={() => setShowWeekly(!showWeekly)}
-              className="text-sm font-medium text-blue-600 hover:text-blue-800 no-print"
-              aria-expanded={showWeekly}
-            >
-              {showWeekly ? '▾ Hide' : '▸ Show'} week-by-week phasing
-            </button>
-
-            {showWeekly && (
-              <div className="mt-3 border border-slate-200 rounded-lg overflow-hidden">
-                <div className="max-h-96 overflow-y-auto">
-                  <table className="w-full text-sm">
-                    <caption className="sr-only">Weekly sales phasing</caption>
-                    <thead className="sticky top-0 bg-slate-50">
-                      <tr className="border-b border-slate-200">
-                        <th scope="col" className="text-left py-2 px-3 font-medium text-slate-500">Wk</th>
-                        <th scope="col" className="text-left py-2 px-3 font-medium text-slate-500">Promo</th>
-                        <th scope="col" className="text-right py-2 px-3 font-medium text-slate-500">Volume</th>
-                        <th scope="col" className="text-right py-2 px-3 font-medium text-slate-500">Revenue</th>
-                        <th scope="col" className="text-right py-2 px-3 font-medium text-slate-500">Margin</th>
-                        <th scope="col" className="text-right py-2 px-3 font-medium text-slate-500">Cum. revenue</th>
-                        <th scope="col" className="text-right py-2 px-3 font-medium text-slate-500">Cum. margin</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {result.weeks.map((w) => (
-                        <tr key={w.week} className={`border-b border-slate-100 ${w.onPromo ? 'bg-amber-50' : ''}`}>
-                          <td className="py-1.5 px-3 text-slate-700">{w.week}</td>
-                          <td className="py-1.5 px-3">
-                            {w.onPromo && (
-                              <span className="text-xs font-medium text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
-                                Promo
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-1.5 px-3 text-right text-slate-700">{formatNumber(w.volume)}</td>
-                          <td className="py-1.5 px-3 text-right text-slate-700">{formatGBP(w.revenue)}</td>
-                          <td className="py-1.5 px-3 text-right text-slate-700">{formatGBP(w.grossMargin)}</td>
-                          <td className="py-1.5 px-3 text-right text-slate-500">{formatGBP(w.cumulativeRevenue)}</td>
-                          <td className="py-1.5 px-3 text-right text-slate-500">{formatGBP(w.cumulativeMargin)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <p className="text-xs text-slate-400 px-3 py-2 bg-slate-50 border-t border-slate-200">
-                  This phasing drives the Supply Plan tab, and exports to Excel as a live formula-driven sheet.
-                </p>
-              </div>
-            )}
-          </div>
-        </>
-      )}
-    </div>
+    <CalcShell
+      sku="50 04405"
+      group="GROCERY"
+      type="LISTING MODEL"
+      title="The Listing"
+      subtitle="Model the range review before the buyer does."
+      inputs={inputs}
+      receipt={receipt}
+    />
   )
 }

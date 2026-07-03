@@ -1,120 +1,119 @@
 import { useStore } from '../store/useStore'
 import { effectiveTikTokFees } from '../store/scenario'
-import { tiktokShopMargin, formatGBP, formatPercent } from '../utils/calculations'
-import { TIKTOK_SHOP_DEFAULTS, TIKTOK_CATEGORY_FEES } from '../config/fees'
-import FeeInput from '../components/FeeInput'
-import ResultCard from '../components/ResultCard'
-import Tooltip from '../components/Tooltip'
+import { tiktokShopMargin, rspExVat } from '../utils/calculations'
+import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
+import Field, { TextField, InputSection } from '../components/gross/Field'
+import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
+import { gbp, neg, pct, BILE, REDUCED, REDPEN, INK } from '../components/gross/format'
 
+/** The TikTok Cut — commission, affiliate, and the per-order nibble. */
 export default function TikTokShop() {
   const product = useStore((s) => s.getActiveProduct())
   const tiktok = useStore((s) => s.scenario.tiktok)
+  const updateProduct = useStore((s) => s.updateProduct)
   const updateScenario = useStore((s) => s.updateScenario)
 
-  if (!product) return <p className="text-slate-500">Select a product to begin.</p>
-
   const fees = effectiveTikTokFees(tiktok)
-  const result = tiktokShopMargin(product, fees)
+
+  const inputs = () => {
+    if (!product) return null
+    return (
+      <div>
+        <InputsHeader />
+        <InputSection first>THE PRODUCT</InputSection>
+        <div className="mb-[18px]">
+          <TextField label="Product name" value={product.name} onChange={(v) => updateProduct(product.id, { name: v })} />
+        </div>
+        <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
+          <Field label="Cost price / unit" prefix="£" value={product.cogsPerUnit} onCommit={(v) => updateProduct(product.id, { cogsPerUnit: v })} />
+          <Field label="Sale price (inc VAT)" prefix="£" value={product.rrpIncVat} onCommit={(v) => updateProduct(product.id, { rrpIncVat: v })} />
+          <Field label="VAT rate" suffix="%" scale={100} value={product.vatRate} onCommit={(v) => updateProduct(product.id, { vatRate: v })} />
+        </div>
+
+        <InputSection>
+          TIKTOK SHOP FEES <span className="border-2 border-ink px-[5px] py-px">dated defaults — check the rate card</span>
+        </InputSection>
+        <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
+          <Field label="Platform commission" suffix="%" scale={100} value={fees.platformCommission}
+            onCommit={(v) => updateScenario('tiktok', { platformCommission: v, estimatorOn: false })} />
+          <Field label="Affiliate commission" suffix="%" scale={100} value={tiktok.affiliateCommission}
+            onCommit={(v) => updateScenario('tiktok', { affiliateCommission: v })} />
+          <Field label="Per-order fee" prefix="£" value={tiktok.perOrderFee}
+            onCommit={(v) => updateScenario('tiktok', { perOrderFee: v })} />
+          <Field label="Refund admin" suffix="%" scale={100} value={tiktok.refundAdmin}
+            onCommit={(v) => updateScenario('tiktok', { refundAdmin: v })} />
+        </div>
+      </div>
+    )
+  }
+
+  const receipt = () => {
+    if (!product) return null
+    const result = tiktokShopMargin(product, fees)
+    const sp = rspExVat(product)
+    const gp = result.grossProfit
+    const pctVal = result.grossMarginPercent
+    const noMargin = gp <= 0
+
+    let healthColor = BILE
+    let healthLabel = 'HEALTHY'
+    if (noMargin) { healthColor = REDPEN; healthLabel = 'UNDERWATER' }
+    else if (pctVal < 0.12) { healthColor = REDPEN; healthLabel = 'THIN' }
+    else if (pctVal < 0.25) { healthColor = REDUCED; healthLabel = 'TIGHT' }
+
+    // The verdict names the biggest single fee
+    const parts: [string, number][] = [
+      ['platform commission', result.platformFee],
+      ['affiliate commission', result.affiliateFee],
+      ['per-order fee', result.perOrderFee],
+      ['refund admin', result.refundCost],
+    ]
+    const biggest = parts.reduce((a, b) => (b[1] > a[1] ? b : a))
+
+    const verdict = noMargin
+      ? `You lose ${gbp(gp)} a unit. The ${biggest[0]} is the one that hurts. Drop it or lift the price.`
+      : `TikTok keeps ${gbp(result.totalFees)} of the ${gbp(sp)} sale. The ${biggest[0]} is your biggest single cost.`
+
+    const pl = (v: number) => parseFloat((v * 100).toFixed(4))
+
+    return (
+      <div>
+        <Receipt tool="THE TIKTOK CUT" name={product.name} subline="TikTok Shop margin · per unit" verdict={verdict} verdictColor={noMargin ? REDPEN : INK}>
+          <Rule className="mt-4 mb-2.5" />
+          <RSection label="WHAT TIKTOK TAKES" />
+          <RLine label="Sale price ex-VAT" value={gbp(sp)} bold />
+          <RLine label={`Platform commission (${pl(fees.platformCommission)}%)`} value={neg(result.platformFee)} dim />
+          <RLine label={`Affiliate commission (${pl(fees.affiliateCommission)}%)`} value={neg(result.affiliateFee)} dim />
+          <RLine label="Per-order fee" value={neg(result.perOrderFee)} dim />
+          <RLine label={`Refund admin (${pl(fees.refundAdminPercent)}%)`} value={neg(result.refundCost)} dim />
+          <Rule dotted className="my-2" />
+          <RLine label="Total TikTok fees" value={neg(result.totalFees)} bold color={REDPEN} />
+          <RLine label="Net revenue / unit" value={gbp(result.netRevenue)} bold color={result.netRevenue < 0 ? REDPEN : INK} />
+          <RLine label="less cost price" value={neg(product.cogsPerUnit)} dim />
+
+          <Rule className="mt-3.5 mb-2.5" />
+          <RSection label="YOUR MARGIN" health={{ color: healthColor, label: healthLabel }} />
+          <AnswerBlock
+            rows={[
+              { label: 'Gross profit / unit', value: gbp(gp), color: noMargin ? REDPEN : BILE },
+              { label: 'Margin %', value: pct(pctVal), big: false, color: noMargin ? REDPEN : BILE },
+            ]}
+          />
+        </Receipt>
+        <CalcActions />
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold text-slate-900 mb-1">TikTok Shop Margin Calculator</h3>
-        <p className="text-sm text-slate-500">
-          See your true margin after TikTok's platform commission, affiliate fees and other charges.
-        </p>
-      </div>
-
-      {/* Category estimator */}
-      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={tiktok.estimatorOn}
-            onChange={(e) => updateScenario('tiktok', { estimatorOn: e.target.checked })}
-            className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-          />
-          <span className="text-sm font-semibold text-blue-900">
-            Set commission by category
-            <Tooltip text="Select your product category to auto-set the platform commission. Beauty & Personal Care and Electronics are typically 5%; most other categories are 9%. Untick to enter the rate manually." />
-          </span>
-        </label>
-
-        {tiktok.estimatorOn && (
-          <>
-            <div className="max-w-sm">
-              <label htmlFor="tiktok-category" className="block text-sm font-medium text-slate-700 mb-1">TikTok Shop category</label>
-              <select
-                id="tiktok-category"
-                value={tiktok.category}
-                onChange={(e) => updateScenario('tiktok', { category: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                {TIKTOK_CATEGORY_FEES.map((c) => (
-                  <option key={c.category} value={c.category}>
-                    {c.category} ({(c.commissionPercent * 100).toFixed(0)}%)
-                  </option>
-                ))}
-              </select>
-            </div>
-            <p className="text-xs text-blue-700">
-              Platform commission for <strong>{tiktok.category}</strong>: <strong>{(fees.platformCommission * 100).toFixed(0)}%</strong>. Verify on TikTok Shop Seller Centre — rates can change.
-            </p>
-          </>
-        )}
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <FeeInput
-          fee={TIKTOK_SHOP_DEFAULTS.platformCommission}
-          value={fees.platformCommission}
-          onChange={(v) => updateScenario('tiktok', { platformCommission: v })}
-          isPercent
-          disabled={tiktok.estimatorOn}
-          disabledNote="Set by category above"
-        />
-        <FeeInput
-          fee={TIKTOK_SHOP_DEFAULTS.affiliateCommission}
-          value={tiktok.affiliateCommission}
-          onChange={(v) => updateScenario('tiktok', { affiliateCommission: v })}
-          isPercent
-        />
-        <FeeInput
-          fee={TIKTOK_SHOP_DEFAULTS.perOrderFee}
-          value={tiktok.perOrderFee}
-          onChange={(v) => updateScenario('tiktok', { perOrderFee: v })}
-        />
-        <FeeInput
-          fee={TIKTOK_SHOP_DEFAULTS.refundAdminPercent}
-          value={tiktok.refundAdmin}
-          onChange={(v) => updateScenario('tiktok', { refundAdmin: v })}
-          isPercent
-        />
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <ResultCard label="Selling price ex-VAT" value={formatGBP(result.sellingPriceExVat)} />
-        <ResultCard label="Platform fee" value={formatGBP(result.platformFee)} />
-        <ResultCard label="Affiliate fee" value={formatGBP(result.affiliateFee)} sub="Only paid on creator-driven sales" />
-        <ResultCard label="Per-order fee" value={formatGBP(result.perOrderFee)} />
-      </div>
-
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <ResultCard label="Refund admin cost" value={formatGBP(result.refundCost)} />
-        <ResultCard label="Total fees" value={formatGBP(result.totalFees)} />
-        <ResultCard
-          label="Gross profit/unit"
-          value={formatGBP(result.grossProfit)}
-          highlight={result.grossProfit > 0}
-          negative={result.grossProfit < 0}
-        />
-        <ResultCard
-          label="Gross margin %"
-          value={formatPercent(result.grossMarginPercent)}
-          highlight={result.grossMarginPercent > 0}
-          negative={result.grossMarginPercent < 0}
-        />
-      </div>
-    </div>
+    <CalcShell
+      sku="50 08813"
+      group="MARKETPLACE"
+      type="TIKTOK SHOP"
+      title="The TikTok Cut"
+      subtitle="Commission, affiliate, and the per-order nibble."
+      inputs={inputs}
+      receipt={receipt}
+    />
   )
 }
