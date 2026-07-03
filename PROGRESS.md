@@ -44,10 +44,35 @@
 - [x] Meta description + proper page title for sharing/SEO
 - [x] Verified end-to-end with browser automation: tab-switch persistence, free typing, URL round-trip, print view
 
+## Persona sprint (July 2026) — comprehensive without diluting simplicity
+Approach: analysed the site as a wholesale sales exec, ecom exec, NAM, SNAM,
+Commercial Director, CFO, founder and intern. Conclusion: they need different
+DEPTHS of the same artefacts, not different tools.
+- [x] **Week-by-week projection** in the Listing Model — promo placed at a chosen
+      start week; volume/revenue/margin + cumulatives per week; clamp warning when
+      the promo runs past the period (the NAM's phasing)
+- [x] **Supply Plan** (replaces flat Stock Forecast) — weekly stock ledger driven by
+      the Listing Model's demand incl. promo spikes; order-up-to policy in whole
+      cases; stockout detection with unmet-demand counts (supply chain by SKU)
+- [x] **Excel MODEL export** (.xlsx via exceljs, dynamically imported ~256KB gzip,
+      main bundle unaffected) — Assumptions sheet with NAMED cells; Grocery P&L,
+      Weekly Projection, Stock Plan and Channels sheets are formula-driven and
+      recalculate when any assumption changes in Excel; stock orders are editable
+      values (the CFO's manipulable model, not hard data)
+- [x] **Portfolio tab** — all products side by side: per-channel margins, period
+      volume/revenue/margin, totals row with blended margin (the SNAM/CD view)
+- [x] **Amazon fixed costs** — £25/month plan amortised over expected monthly units;
+      fully-loaded profit; break-even RRP card (the ecom exec's pricing floor)
+- [x] CSV export extended with supply plan summary + weekly phasing rows
+- [x] Verified: downloaded the generated .xlsx and confirmed named ranges, cross-sheet
+      formulas and editable order column read back correctly
+
 ## Next
 - [ ] Verify all calculation logic with real-world examples
 - [ ] Potentially add more category templates
 - [ ] Consider a proper branded PDF (jsPDF) if print-to-PDF proves insufficient
+- [ ] Possible future: multiple promo windows per period (workaround: edit the
+      promo flag column in the Excel export)
 
 ## Open decisions
 - PDF generation: currently stubbed (suggests browser print). Could add jsPDF or similar if a proper branded export is needed — adds ~100KB to the bundle.

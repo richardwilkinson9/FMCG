@@ -11,16 +11,18 @@ import StockForecast from './calculators/StockForecast'
 import AmazonFBA from './calculators/AmazonFBA'
 import TikTokShop from './calculators/TikTokShop'
 import CrossChannel from './calculators/CrossChannel'
+import Portfolio from './calculators/Portfolio'
 
 const CALCULATORS = [
   { id: 'retailer-pnl', label: 'Retailer P&L', group: 'Grocery', component: RetailerPnL },
   { id: 'min-margin', label: 'Min Margin', group: 'Grocery', component: MinimumMargin },
   { id: 'listing-model', label: 'Listing Model', group: 'Grocery', component: ListingModel },
   { id: 'trade-spend', label: 'Trade Spend ROI', group: 'Grocery', component: TradeSpendROI },
-  { id: 'stock-forecast', label: 'Stock Forecast', group: 'Grocery', component: StockForecast },
+  { id: 'stock-forecast', label: 'Supply Plan', group: 'Grocery', component: StockForecast },
   { id: 'amazon-fba', label: 'Amazon FBA', group: 'Marketplace', component: AmazonFBA },
   { id: 'tiktok-shop', label: 'TikTok Shop', group: 'Marketplace', component: TikTokShop },
   { id: 'cross-channel', label: 'Cross-Channel', group: 'Compare', component: CrossChannel },
+  { id: 'portfolio', label: 'Portfolio', group: 'Compare', component: Portfolio },
 ]
 
 function App() {

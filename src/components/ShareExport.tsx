@@ -2,10 +2,12 @@ import { useState } from 'react'
 import { useStore } from '../store/useStore'
 import { encodeStateToUrl } from '../utils/urlState'
 import { buildScenarioCsv } from '../utils/export'
+import { downloadExcelModel } from '../utils/excelExport'
 
 export default function ShareExport() {
   const { products, activeProductId, activeCalculator, scenario } = useStore()
   const [copied, setCopied] = useState(false)
+  const [buildingExcel, setBuildingExcel] = useState(false)
   const [showEmailStub, setShowEmailStub] = useState(false)
   const [email, setEmail] = useState('')
   const [emailNoted, setEmailNoted] = useState(false)
@@ -33,6 +35,19 @@ export default function ShareExport() {
     setShowEmailStub(true)
   }
 
+  const handleExportExcel = async () => {
+    const product = products.find((p) => p.id === activeProductId)
+    if (!product || buildingExcel) return
+    setBuildingExcel(true)
+    try {
+      // Dynamically imported so the spreadsheet library never slows initial load
+      await downloadExcelModel(product, scenario)
+      setShowEmailStub(true)
+    } finally {
+      setBuildingExcel(false)
+    }
+  }
+
   const handleExportPDF = () => {
     // Print stylesheet in index.css hides navigation and buttons
     window.print()
@@ -51,16 +66,24 @@ export default function ShareExport() {
       <button
         onClick={handleExportCSV}
         className="px-4 py-2 text-sm bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
-        title="Downloads the full scenario — product, assumptions and every calculator's results"
+        title="Flat data: product, assumptions, results and weekly rows — quick to paste"
       >
-        Export CSV
+        CSV
       </button>
       <button
         onClick={handleExportPDF}
-        className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        className="px-4 py-2 text-sm bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
         title="Opens your browser's print dialogue — choose 'Save as PDF'"
       >
-        Export PDF
+        PDF
+      </button>
+      <button
+        onClick={handleExportExcel}
+        disabled={buildingExcel}
+        className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-60"
+        title="A live workbook: named assumptions, formula-driven P&L, weekly phasing and an editable stock plan — change any input in Excel and the whole model recalculates"
+      >
+        {buildingExcel ? 'Building…' : 'Excel model'}
       </button>
 
       {showEmailStub && (

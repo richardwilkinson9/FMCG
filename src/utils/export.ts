@@ -9,18 +9,18 @@ import {
   retailerPnL,
   listingModel,
   tradeSpendROI,
-  stockForecast,
+  stockLedger,
   amazonFBAMargin,
   tiktokShopMargin,
 } from './calculations'
 
 /**
- * Build a full-scenario CSV: the product, every assumption, and the computed
- * results from every calculator — everything you'd want to paste into a deck
- * or hand to finance. Not just the six product fields.
+ * Quick flat CSV: the product, every assumption, computed results, and the
+ * week-by-week rows for pasting. For a manipulable model with live formulas,
+ * use the Excel export (utils/excelExport.ts) instead.
  */
 
-type Row = [section: string, metric: string, value: string]
+type Row = string[]
 
 const money = (v: number) => v.toFixed(2)
 const pct = (v: number) => `${(v * 100).toFixed(1)}%`
@@ -33,13 +33,15 @@ function csvField(s: string): string {
 export function buildScenarioCsv(product: Product, scenario: Scenario): string {
   const ws = activeWholesalerMargin(scenario.grocery)
   const grocery = retailerPnL(product, scenario.grocery.retailerMargin, ws)
-  const listing = listingModel(product, scenario.grocery.retailerMargin, {
+  const listingInputs = {
     stores: scenario.listing.stores,
     skus: scenario.listing.skus,
     weeksInPeriod: scenario.listing.weeksInPeriod,
     promoWeeks: scenario.listing.promoWeeks,
+    promoStartWeek: scenario.listing.promoStartWeek,
     promoUpliftPercent: scenario.listing.promoUplift,
-  }, ws)
+  }
+  const listing = listingModel(product, scenario.grocery.retailerMargin, listingInputs, ws)
   const trade = tradeSpendROI(
     product,
     scenario.grocery.retailerMargin,
@@ -47,11 +49,12 @@ export function buildScenarioCsv(product: Product, scenario: Scenario): string {
     scenario.tradeSpend.targetROI,
     ws,
   )
-  const stock = stockForecast(
-    product,
-    scenario.stock.stores,
-    scenario.stock.weeksOfCover,
+  const plan = stockLedger(
+    listing.weeks.map((w) => w.volume),
+    scenario.stock.startingStockUnits,
     scenario.stock.leadWeeks,
+    scenario.stock.weeksOfCover,
+    product.unitsPerCase,
   )
   const amazonFees = effectiveAmazonFees(scenario.amazon)
   const amazon = amazonFBAMargin(product, amazonFees)
@@ -59,6 +62,7 @@ export function buildScenarioCsv(product: Product, scenario: Scenario): string {
   const tiktok = tiktokShopMargin(product, tiktokFees)
 
   const rows: Row[] = [
+    ['Section', 'Metric', 'Value'],
     ['Product', 'Name', product.name],
     ['Product', 'COGS per unit (£)', money(product.cogsPerUnit)],
     ['Product', 'Units per case', num(product.unitsPerCase)],
@@ -67,15 +71,9 @@ export function buildScenarioCsv(product: Product, scenario: Scenario): string {
     ['Product', 'Weekly rate of sale per store', String(product.weeklyRateOfSale)],
 
     ['Grocery chain', 'Retailer margin', pct(scenario.grocery.retailerMargin)],
-    ['Grocery chain', 'Wholesaler in chain', scenario.grocery.wholesalerEnabled ? 'Yes' : 'No'],
-    ...(scenario.grocery.wholesalerEnabled
-      ? [['Grocery chain', 'Wholesaler margin', pct(scenario.grocery.wholesalerMargin)] as Row]
-      : []),
+    ['Grocery chain', 'Wholesaler margin', scenario.grocery.wholesalerEnabled ? pct(scenario.grocery.wholesalerMargin) : 'n/a (direct)'],
     ['Grocery P&L', 'RSP ex-VAT (£)', money(grocery.rspExVat)],
     ['Grocery P&L', 'Cost to retailer (£)', money(grocery.costToRetailer)],
-    ...(scenario.grocery.wholesalerEnabled
-      ? [['Grocery P&L', 'Cost to wholesaler / your price (£)', money(grocery.costToWholesaler)] as Row]
-      : []),
     ['Grocery P&L', 'Your net revenue per unit (£)', money(grocery.brandNetRevenue)],
     ['Grocery P&L', 'Your gross margin per unit (£)', money(grocery.brandGrossMarginPerUnit)],
     ['Grocery P&L', 'Your gross margin %', pct(grocery.brandGrossMarginPercent)],
@@ -84,6 +82,7 @@ export function buildScenarioCsv(product: Product, scenario: Scenario): string {
     ['Listing model', 'Stores', num(scenario.listing.stores)],
     ['Listing model', 'SKUs', num(scenario.listing.skus)],
     ['Listing model', 'Weeks in period', num(scenario.listing.weeksInPeriod)],
+    ['Listing model', 'Promo start week', num(scenario.listing.promoStartWeek)],
     ['Listing model', 'Promo weeks', num(scenario.listing.promoWeeks)],
     ['Listing model', 'Promo volume uplift', pct(scenario.listing.promoUplift)],
     ['Listing model', 'Total volume (units)', num(listing.totalVolume)],
@@ -97,16 +96,19 @@ export function buildScenarioCsv(product: Product, scenario: Scenario): string {
     ['Trade spend', 'Break-even cases', num(Math.ceil(trade.breakEvenCases))],
     ['Trade spend', 'Units for target ROI', num(Math.ceil(trade.targetReturnUnits))],
 
-    ['Stock forecast', 'Stores', num(scenario.stock.stores)],
-    ['Stock forecast', 'Weeks of cover', num(scenario.stock.weeksOfCover)],
-    ['Stock forecast', 'Reorder lead time (weeks)', num(scenario.stock.leadWeeks)],
-    ['Stock forecast', 'Weekly demand (units)', num(stock.weeklyDemand)],
-    ['Stock forecast', 'Stock to hold (units)', num(stock.totalStockUnits)],
-    ['Stock forecast', 'Stock to hold (cases)', num(Math.ceil(stock.totalStockCases))],
-    ['Stock forecast', 'Reorder point (units)', num(stock.reorderPointUnits)],
+    ['Supply plan', 'Starting stock (units)', num(scenario.stock.startingStockUnits)],
+    ['Supply plan', 'Lead time (weeks)', num(scenario.stock.leadWeeks)],
+    ['Supply plan', 'Weeks of cover', num(scenario.stock.weeksOfCover)],
+    ['Supply plan', 'Total to order (units)', num(plan.totalOrdered)],
+    ['Supply plan', 'Total to order (cases)', num(plan.totalOrderedCases)],
+    ['Supply plan', 'Purchase orders', num(plan.orderCount)],
+    ['Supply plan', 'Peak stock (units)', num(plan.peakStock)],
+    ['Supply plan', 'Stockout weeks', num(plan.stockoutWeeks)],
 
     ['Amazon FBA', 'Referral fee', pct(amazonFees.referralFeePercent)],
     ['Amazon FBA', 'Fulfilment fee per unit (£)', money(amazonFees.fulfilmentFeePerUnit)],
+    ['Amazon FBA', 'Plan fee per month (£)', money(scenario.amazon.planMonthly)],
+    ['Amazon FBA', 'Expected monthly units', num(scenario.amazon.monthlyUnits)],
     ['Amazon FBA', 'Total fees per unit (£)', money(amazon.totalFees)],
     ['Amazon FBA', 'Net revenue per unit (£)', money(amazon.netRevenue)],
     ['Amazon FBA', 'Gross profit per unit (£)', money(amazon.grossProfit)],
@@ -122,11 +124,20 @@ export function buildScenarioCsv(product: Product, scenario: Scenario): string {
     ['Cross-channel', 'Grocery gross margin %', pct(grocery.brandGrossMarginPercent)],
     ['Cross-channel', 'Amazon FBA gross margin %', pct(amazon.grossMarginPercent)],
     ['Cross-channel', 'TikTok Shop gross margin %', pct(tiktok.grossMarginPercent)],
+
+    // Week-by-week phasing for pasting into planning docs
+    [],
+    ['Week', 'On promo', 'Volume (units)', 'Revenue (£)', 'Margin (£)', 'Order placed (units)', 'Closing stock (units)'],
+    ...listing.weeks.map((w, i): Row => [
+      String(w.week),
+      w.onPromo ? 'Yes' : '',
+      num(w.volume),
+      money(w.revenue),
+      money(w.grossMargin),
+      num(plan.rows[i]?.orderPlaced ?? 0),
+      num(plan.rows[i]?.closing ?? 0),
+    ]),
   ]
 
-  const lines = ['Section,Metric,Value']
-  for (const [section, metric, value] of rows) {
-    lines.push([csvField(section), csvField(metric), csvField(value)].join(','))
-  }
-  return lines.join('\n')
+  return rows.map((r) => r.map(csvField).join(',')).join('\n')
 }

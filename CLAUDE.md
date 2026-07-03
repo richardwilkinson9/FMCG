@@ -16,9 +16,12 @@ src/
   config/templates.ts       — Category templates (confectionery, drinks, snacks, etc.)
   store/scenario.ts         — Scenario types, defaults, merge (for old URLs), effective-fee resolvers
   store/useStore.ts         — Zustand store: products[], activeProductId, activeCalculator, scenario
-  utils/calculations.ts     — Pure functions: all commercial maths (margin, P&L, stock, etc.)
+  utils/calculations.ts     — Pure functions: all commercial maths (margin, P&L, weekly
+                              projection, stock ledger, etc.)
   utils/urlState.ts         — Encode/decode app state (incl. scenario) to/from URL for sharing
-  utils/export.ts           — Full-scenario CSV builder (product + assumptions + all results)
+  utils/export.ts           — Flat CSV builder (product + assumptions + results + weekly rows)
+  utils/excelExport.ts      — Excel MODEL builder (exceljs, dynamically imported): named
+                              assumption cells + formula-driven sheets that recalculate in Excel
   components/
     NumberInput.tsx         — THE number field. Free typing (no zero-snap), £/% adornments,
                               proper label association, disabled+note mode. Use this, never a raw input.
@@ -27,6 +30,21 @@ src/
     ProductManager, Tooltip, ResultCard, ShareExport
   calculators/              — One file per calculator, all read product + scenario from the store
 ```
+
+## The weekly spine
+`weeklyProjection()` in calculations.ts is the single demand engine: the Listing Model
+totals are summed from it, the Supply Plan (stockLedger) consumes its volumes, and the
+Excel export rebuilds it as formulas. If you change phasing logic, change it there only.
+
+## Excel model export
+`utils/excelExport.ts` builds a real .xlsx via exceljs (dynamic import — never in the
+main bundle). Design rules:
+- Every input is a NAMED cell on the Assumptions sheet (RRP, RetailerMargin, Stores…).
+- Every derived cell is a formula referencing those names, with a cached `result` so
+  non-recalculating viewers still show numbers.
+- The Stock Plan order column is plain editable values; arrivals/closing are formulas,
+  so planners can override orders in Excel and the ledger recalculates.
+- exceljs pins `uuid` via package.json `overrides` to clear an npm audit advisory.
 
 ## State management
 - **Zustand** — chosen over Context for selective subscriptions (less re-rendering) and simpler API.

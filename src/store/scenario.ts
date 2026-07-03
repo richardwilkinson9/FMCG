@@ -38,6 +38,7 @@ export interface ListingScenario {
   skus: number
   weeksInPeriod: number
   promoWeeks: number
+  promoStartWeek: number
   promoUplift: number
 }
 
@@ -46,8 +47,12 @@ export interface TradeSpendScenario {
   targetROI: number
 }
 
+/**
+ * Supply plan settings. Demand comes from the Listing scenario's weekly
+ * projection (stores × ROS, with promo uplift) so stock and sales always agree.
+ */
 export interface StockScenario {
-  stores: number
+  startingStockUnits: number
   weeksOfCover: number
   leadWeeks: number
 }
@@ -64,6 +69,10 @@ export interface AmazonScenario {
   fulfilmentFee: number
   storageFee: number
   fuelSurcharge: number
+  /** Professional selling plan £/month, spread across monthly volume */
+  planMonthly: number
+  /** Expected units sold per month — amortises the plan fee per unit */
+  monthlyUnits: number
 }
 
 export interface TikTokScenario {
@@ -102,6 +111,7 @@ export function defaultScenario(): Scenario {
       skus: 1,
       weeksInPeriod: 52,
       promoWeeks: 8,
+      promoStartWeek: 9,
       promoUplift: 0.5,
     },
     tradeSpend: {
@@ -109,7 +119,7 @@ export function defaultScenario(): Scenario {
       targetROI: 2.0,
     },
     stock: {
-      stores: 500,
+      startingStockUnits: 10000,
       weeksOfCover: 6,
       leadWeeks: 3,
     },
@@ -124,6 +134,8 @@ export function defaultScenario(): Scenario {
       fulfilmentFee: AMAZON_FBA_DEFAULTS.fulfilmentFeePerUnit.value,
       storageFee: AMAZON_FBA_DEFAULTS.monthlyStoragePerUnit.value,
       fuelSurcharge: AMAZON_FBA_DEFAULTS.fuelLogisticsSurcharge.value,
+      planMonthly: AMAZON_FBA_DEFAULTS.professionalPlanMonthly.value,
+      monthlyUnits: 500,
     },
     tiktok: {
       estimatorOn: true,

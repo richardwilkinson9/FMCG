@@ -18,6 +18,19 @@ export default function AmazonFBA() {
   const estimated = estimateAmazonFBAFee(amazon.weightG, amazon.longestCm, amazon.medianCm, amazon.shortestCm)
   const result = amazonFBAMargin(product, fees)
 
+  // Fixed-cost amortisation and pricing floor
+  const planPerUnit = amazon.monthlyUnits > 0 ? amazon.planMonthly / amazon.monthlyUnits : 0
+  const fullyLoadedProfit = result.grossProfit - planPerUnit
+  const perUnitCosts =
+    product.cogsPerUnit +
+    fees.fulfilmentFeePerUnit * (1 + fees.fuelLogisticsSurcharge) +
+    fees.monthlyStoragePerUnit +
+    planPerUnit
+  const breakEvenRrp =
+    fees.referralFeePercent < 1
+      ? (perUnitCosts / (1 - fees.referralFeePercent)) * (1 + product.vatRate)
+      : Infinity
+
   return (
     <div className="space-y-6">
       <div>
@@ -130,9 +143,49 @@ export default function AmazonFBA() {
         />
       </div>
 
+      {/* Fixed costs and pricing floor */}
+      <div className="pt-2 border-t border-slate-100 space-y-4">
+        <h4 className="text-sm font-semibold text-slate-700">Fixed costs & pricing floor</h4>
+        <div className="grid grid-cols-2 gap-4 max-w-md">
+          <FeeInput
+            fee={AMAZON_FBA_DEFAULTS.professionalPlanMonthly}
+            value={amazon.planMonthly}
+            onChange={(v) => updateScenario('amazon', { planMonthly: v })}
+          />
+          <NumberInput
+            label="Expected monthly units"
+            suffix="units"
+            min={0}
+            value={amazon.monthlyUnits}
+            onChange={(v) => updateScenario('amazon', { monthlyUnits: Math.round(v) })}
+            help="Spreads the plan fee across your volume"
+          />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <ResultCard
+            label="Plan cost/unit"
+            value={formatGBP(planPerUnit)}
+            sub={`£${amazon.planMonthly.toFixed(0)}/month ÷ ${amazon.monthlyUnits || 0} units`}
+          />
+          <ResultCard
+            label="Fully-loaded profit/unit"
+            value={formatGBP(fullyLoadedProfit)}
+            sub="Gross profit less the plan cost"
+            highlight={fullyLoadedProfit > 0}
+            negative={fullyLoadedProfit < 0}
+          />
+          <ResultCard
+            label="Break-even RRP"
+            value={Number.isFinite(breakEvenRrp) ? formatGBP(breakEvenRrp) : '—'}
+            sub="Lowest price (inc. VAT) that covers all costs"
+            highlight
+          />
+        </div>
+      </div>
+
       {result.grossProfit < 0 && (
         <p className="p-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg">
-          This product loses money on Amazon at its current price. Low-priced items often can't absorb the fixed fulfilment fee — consider a multipack (raises the selling price against a similar fee) or a higher RRP.
+          This product loses money on Amazon at its current price. Low-priced items often can't absorb the fixed fulfilment fee — consider a multipack (raises the selling price against a similar fee) or a higher RRP. The break-even RRP above is the floor.
         </p>
       )}
     </div>
