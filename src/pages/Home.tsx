@@ -8,6 +8,7 @@ import Barcode from '../components/gross/Barcode'
 import LedgerRat from '../components/gross/LedgerRat'
 
 const CARDS = [
+  { id: 'products', name: 'The Shelf', sub: 'Your range, defined once. Everything reads from here.', sku: '50 00019', group: 'SPINE' },
   { id: 'retailer-pnl', name: 'The P&L', sub: 'What the retailer really makes on you.', sku: '50 01142', group: 'GROCERY' },
   { id: 'waterfall', name: 'The Waterfall', sub: 'Every deduction between shelf and bank.', sku: '50 02231', group: 'GROCERY' },
   { id: 'min-margin', name: 'The Floor', sub: 'Lowest cost price that still clears.', sku: '50 03318', group: 'GROCERY' },
@@ -16,7 +17,8 @@ const CARDS = [
   { id: 'stock-forecast', name: 'The Stock Answer', sub: 'What to order. When. Before you run out.', sku: '50 06629', group: 'GROCERY' },
   { id: 'amazon-fba', name: 'The Amazon Cut', sub: 'What FBA takes before you see a penny.', sku: '50 07706', group: 'MARKETPLACE' },
   { id: 'tiktok-shop', name: 'The TikTok Cut', sub: 'Commission, affiliate, the per-order nibble.', sku: '50 08813', group: 'MARKETPLACE' },
-  { id: 'cross-channel', name: 'The Line-Up', sub: 'Net margin, every channel, side by side.', sku: '50 09920', group: 'COMPARE', isNew: true },
+  { id: 'cross-channel', name: 'The Line-Up', sub: 'Net margin, every channel, side by side.', sku: '50 09920', group: 'COMPARE' },
+  { id: 'portfolio', name: 'The Range', sub: 'The whole portfolio on one till roll.', sku: '50 11027', group: 'COMPARE', isNew: true },
 ]
 
 /** Traffic light for the mock receipt, on gp as a share of shelf ex-VAT. */
@@ -73,7 +75,7 @@ export default function Home() {
             Calculators for FMCG's grossest maths.
           </div>
           <button
-            onClick={() => { startProduct(); go('trade-spend') }}
+            onClick={() => { startProduct(); go('products') }}
             className="inline-flex items-center gap-3 mt-[34px] bg-ink text-receipt border-2 border-ink py-4 px-[26px] text-base font-semibold cursor-pointer hover:bg-receipt hover:text-ink"
           >
             Start with a product <span className="font-mono">→</span>
@@ -114,7 +116,7 @@ export default function Home() {
         <div className="max-w-[1200px] mx-auto">
           <div className="flex items-baseline justify-between flex-wrap gap-3 mb-[34px]">
             <h2 className="font-display text-[clamp(28px,3.6vw,48px)] tracking-[-0.02em] m-0">The calculators</h2>
-            <div className="font-mono text-xs tracking-[0.08em] opacity-60">9 TOOLS · ONE SPINE · NO SIGN-UP</div>
+            <div className="font-mono text-xs tracking-[0.08em] opacity-60">11 TOOLS · ONE SPINE · NO SIGN-UP</div>
           </div>
           <div className="grid grid-cols-1 min-[821px]:grid-cols-3">
             {CARDS.map((card) => (
@@ -142,6 +144,14 @@ export default function Home() {
                 )}
               </button>
             ))}
+            {/* Filler cell — keeps the 3-column grid square */}
+            <div className="hidden min-[821px]:flex flex-col justify-between min-h-[210px] border-2 border-ink -m-px bg-ink text-bile p-[22px]" aria-hidden="true">
+              <div className="font-mono text-[11px] tracking-[0.1em]">SKU PENDING</div>
+              <div>
+                <Barcode height={34} />
+                <div className="font-mono text-xs mt-4">Space reserved. Range review in progress.</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

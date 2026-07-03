@@ -9,21 +9,28 @@ import {
   amazonFBAMargin,
   tiktokShopMargin,
   listingModel,
-  formatGBP,
-  formatPercent,
-  formatNumber,
 } from '../utils/calculations'
+import { PageHeader, EmptyState, CalcActions } from '../components/gross/CalcShell'
+import GrossFooter from '../components/gross/GrossFooter'
+import { Receipt, Rule, RLine, RSection } from '../components/gross/Receipt'
+import { gbp, pct, n0, BILE, REDUCED, REDPEN, INK } from '../components/gross/format'
+
+/** Traffic light on grocery margin % (same thresholds as The P&L). */
+function light(marginPct: number, negative: boolean): string {
+  if (negative || marginPct < 0.20) return REDPEN
+  if (marginPct < 0.35) return REDUCED
+  return BILE
+}
 
 /**
- * Portfolio — every product side by side with grocery-period projections and
- * per-channel margins. Read-only: it aggregates what's already defined, using
- * the same shared scenario as every other tab.
+ * The Range — every product on one till roll. Reads the whole shelf with the
+ * same shared scenario as every other page; grocery projections use the
+ * Listing settings applied to each product.
  */
 export default function Portfolio() {
   const products = useStore((s) => s.products)
   const scenario = useStore((s) => s.scenario)
-  const setActiveProduct = useStore((s) => s.setActiveProduct)
-  const duplicateProduct = useStore((s) => s.duplicateProduct)
+  const setActiveCalculator = useStore((s) => s.setActiveCalculator)
 
   const ws = activeWholesalerMargin(scenario.grocery)
   const amazonFees = effectiveAmazonFees(scenario.amazon)
@@ -42,118 +49,142 @@ export default function Portfolio() {
     const amazon = amazonFBAMargin(p, amazonFees)
     const tiktok = tiktokShopMargin(p, tiktokFees)
     const listing = listingModel(p, scenario.grocery.retailerMargin, listingInputs, ws)
-    const best = Math.max(grocery.brandGrossMarginPercent, amazon.grossMarginPercent, tiktok.grossMarginPercent)
-    const bestChannel =
-      best === grocery.brandGrossMarginPercent ? 'Grocery'
-        : best === amazon.grossMarginPercent ? 'Amazon' : 'TikTok'
-    return { product: p, grocery, amazon, tiktok, listing, bestChannel, best }
+    return { p, grocery, amazon, tiktok, listing }
   })
 
   const totalRevenue = rows.reduce((a, r) => a + r.listing.totalRevenue, 0)
   const totalMargin = rows.reduce((a, r) => a + r.listing.totalGrossMargin, 0)
-  const totalVolume = rows.reduce((a, r) => a + r.listing.totalVolume, 0)
-  const blendedMargin = totalRevenue > 0 ? totalMargin / totalRevenue : 0
+  const blended = totalRevenue > 0 ? totalMargin / totalRevenue : 0
+  const carrier = rows.length
+    ? rows.reduce((a, b) => (b.listing.totalGrossMargin > a.listing.totalGrossMargin ? b : a))
+    : null
+  const losers = rows.filter((r) => r.grocery.brandGrossMarginPerUnit <= 0)
+
+  let healthColor = BILE
+  let healthLabel = 'HEALTHY'
+  if (totalMargin <= 0) { healthColor = REDPEN; healthLabel = 'UNDERWATER' }
+  else if (blended < 0.20) { healthColor = REDPEN; healthLabel = 'THIN' }
+  else if (blended < 0.35) { healthColor = REDUCED; healthLabel = 'TIGHT' }
+
+  let verdict: string
+  let verdictColor = INK
+  if (rows.length === 0) {
+    verdict = ''
+  } else if (totalMargin <= 0) {
+    verdictColor = REDPEN
+    verdict = 'The whole range loses money over the period. This is not a range, it is a leak. Fix the cost prices first.'
+  } else if (losers.length > 0) {
+    verdict = `${carrier!.p.name} carries the range. ${losers[0].p.name} loses money every time it sells — the buyer will spot it before you do.`
+  } else if (rows.length === 1) {
+    verdict = `One product is a start, not a range. Blended margin ${pct(blended)}. Duplicate it on The Shelf to test a price move.`
+  } else {
+    verdict = `Blended margin ${pct(blended)} across ${rows.length} products. ${carrier!.p.name} carries the range.`
+  }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold text-slate-900 mb-1">Portfolio</h3>
-        <p className="text-sm text-slate-500">
-          Every product side by side — grocery projection over {scenario.listing.weeksInPeriod} weeks
-          ({formatNumber(scenario.listing.stores)} stores) and margin by channel. Uses the same assumptions as every other tab.
-        </p>
-      </div>
+    <div className="bg-receipt text-ink font-body min-h-screen">
+      <PageHeader
+        sku="50 11027"
+        group="COMPARE"
+        type="PORTFOLIO"
+        title="The Range"
+        subtitle="Every product on one till roll."
+        stampNote="same assumptions as every page"
+      />
 
-      {products.length === 1 && (
-        <p className="p-3 text-sm text-blue-800 bg-blue-50 border border-blue-200 rounded-lg no-print">
-          One product so far — this view earns its keep with a range.{' '}
-          <button
-            onClick={() => duplicateProduct(products[0].id)}
-            className="font-medium text-blue-700 underline hover:text-blue-900"
-          >
-            Duplicate it to compare scenarios
-          </button>{' '}
-          (e.g. current vs proposed pricing), or add products above.
-        </p>
+      {rows.length === 0 ? (
+        <EmptyState />
+      ) : (
+        <div className="py-[clamp(26px,4vw,52px)] px-[clamp(20px,4vw,44px)]">
+          <div className="max-w-[900px] mx-auto">
+            <Receipt
+              tool="THE RANGE"
+              name={`${rows.length} product${rows.length === 1 ? '' : 's'} · ${scenario.listing.weeksInPeriod} weeks · ${n0(scenario.listing.stores)} stores`}
+              subline="grocery projection uses your Listing settings on every product"
+              verdict={verdict}
+              verdictColor={verdictColor}
+            >
+              <Rule className="mt-4 mb-2.5" />
+              <RSection label="THE RANGE, PRODUCT BY PRODUCT" health={{ color: healthColor, label: healthLabel }} />
+
+              {/* Table — margin by channel + period margin per product */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-[13px] border-collapse min-w-[640px]">
+                  <thead>
+                    <tr className="border-b-2 border-ink text-[11px] tracking-[0.08em] opacity-60">
+                      <th scope="col" className="text-left py-2 pr-2 font-normal">PRODUCT</th>
+                      <th scope="col" className="text-right py-2 px-2 font-normal">RRP</th>
+                      <th scope="col" className="text-right py-2 px-2 font-normal">GROCERY</th>
+                      <th scope="col" className="text-right py-2 px-2 font-normal">AMAZON</th>
+                      <th scope="col" className="text-right py-2 px-2 font-normal">TIKTOK</th>
+                      <th scope="col" className="text-right py-2 pl-2 font-normal">PERIOD MARGIN</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map(({ p, grocery, amazon, tiktok, listing }) => {
+                      const isCarrier = carrier && p.id === carrier.p.id && totalMargin > 0 && rows.length > 1
+                      const cell = (v: number, str: string) => (
+                        <td className="text-right py-2 px-2" style={{ color: v < 0 ? REDPEN : INK }}>{str}</td>
+                      )
+                      return (
+                        <tr key={p.id} className="border-b-2 border-dotted border-ink">
+                          <th scope="row" className="text-left py-2 pr-2 font-bold">
+                            <span className="flex items-center gap-2">
+                              <span
+                                className="w-3 h-3 border-2 border-ink inline-block shrink-0"
+                                style={{ background: light(grocery.brandGrossMarginPercent, grocery.brandGrossMarginPerUnit <= 0) }}
+                              />
+                              {p.name || 'Unnamed'}
+                              {isCarrier && (
+                                <span className="text-[10px] font-normal tracking-[0.08em] border-2 border-ink bg-ink text-bile py-px px-1.5">
+                                  CARRIES
+                                </span>
+                              )}
+                            </span>
+                          </th>
+                          <td className="text-right py-2 px-2">{gbp(p.rrpIncVat)}</td>
+                          {cell(grocery.brandGrossMarginPercent, pct(grocery.brandGrossMarginPercent))}
+                          {cell(amazon.grossMarginPercent, pct(amazon.grossMarginPercent))}
+                          {cell(tiktok.grossMarginPercent, pct(tiktok.grossMarginPercent))}
+                          {cell(listing.totalGrossMargin, gbp(listing.totalGrossMargin))}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-ink font-bold">
+                      <th scope="row" className="text-left py-2.5 pr-2">TOTAL</th>
+                      <td />
+                      <td colSpan={3} className="text-right py-2.5 px-2">
+                        blended {pct(blended)}
+                      </td>
+                      <td className="text-right py-2.5 pl-2" style={{ color: totalMargin < 0 ? REDPEN : INK }}>
+                        {gbp(totalMargin)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              <Rule className="mt-3.5 mb-2.5" />
+              <RLine label="Period net revenue, range" value={gbp(totalRevenue)} />
+              <RLine label="Period gross margin, range" value={gbp(totalMargin)} bold color={totalMargin < 0 ? REDPEN : INK} />
+            </Receipt>
+
+            <div className="no-print flex gap-3 mt-4">
+              <button
+                onClick={() => { setActiveCalculator('products'); window.scrollTo(0, 0) }}
+                className="flex-1 border-2 border-ink bg-receipt text-ink p-[15px] text-sm font-semibold cursor-pointer hover:bg-bile"
+              >
+                Edit the range on The Shelf
+              </button>
+            </div>
+            <CalcActions />
+          </div>
+        </div>
       )}
 
-      <div className="overflow-x-auto border border-slate-200 rounded-lg">
-        <table className="w-full text-sm">
-          <caption className="sr-only">Product portfolio summary</caption>
-          <thead className="bg-slate-50">
-            <tr className="border-b border-slate-200">
-              <th scope="col" className="text-left py-2.5 px-3 font-medium text-slate-500">Product</th>
-              <th scope="col" className="text-right py-2.5 px-3 font-medium text-slate-500">RRP</th>
-              <th scope="col" className="text-right py-2.5 px-3 font-medium text-slate-500">COGS</th>
-              <th scope="col" className="text-right py-2.5 px-3 font-medium text-slate-500">Grocery %</th>
-              <th scope="col" className="text-right py-2.5 px-3 font-medium text-slate-500">Amazon %</th>
-              <th scope="col" className="text-right py-2.5 px-3 font-medium text-slate-500">TikTok %</th>
-              <th scope="col" className="text-right py-2.5 px-3 font-medium text-slate-500">Period volume</th>
-              <th scope="col" className="text-right py-2.5 px-3 font-medium text-slate-500">Period revenue</th>
-              <th scope="col" className="text-right py-2.5 px-3 font-medium text-slate-500">Period margin</th>
-              <th scope="col" className="text-left py-2.5 px-3 font-medium text-slate-500">Best channel</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(({ product: p, grocery, amazon, tiktok, listing, bestChannel, best }) => (
-              <tr key={p.id} className="border-b border-slate-100">
-                <th scope="row" className="py-2.5 px-3 text-left">
-                  <button
-                    onClick={() => setActiveProduct(p.id)}
-                    className="font-medium text-slate-900 hover:text-blue-700 hover:underline"
-                    title="Make this the active product"
-                  >
-                    {p.name || 'Unnamed'}
-                  </button>
-                </th>
-                <td className="py-2.5 px-3 text-right text-slate-700">{formatGBP(p.rrpIncVat)}</td>
-                <td className="py-2.5 px-3 text-right text-slate-700">{formatGBP(p.cogsPerUnit)}</td>
-                <td className={`py-2.5 px-3 text-right font-medium ${grocery.brandGrossMarginPercent < 0 ? 'text-red-700' : 'text-slate-900'}`}>
-                  {formatPercent(grocery.brandGrossMarginPercent)}
-                </td>
-                <td className={`py-2.5 px-3 text-right font-medium ${amazon.grossMarginPercent < 0 ? 'text-red-700' : 'text-slate-900'}`}>
-                  {formatPercent(amazon.grossMarginPercent)}
-                </td>
-                <td className={`py-2.5 px-3 text-right font-medium ${tiktok.grossMarginPercent < 0 ? 'text-red-700' : 'text-slate-900'}`}>
-                  {formatPercent(tiktok.grossMarginPercent)}
-                </td>
-                <td className="py-2.5 px-3 text-right text-slate-700">{formatNumber(listing.totalVolume)}</td>
-                <td className="py-2.5 px-3 text-right text-slate-700">{formatGBP(listing.totalRevenue)}</td>
-                <td className={`py-2.5 px-3 text-right font-medium ${listing.totalGrossMargin < 0 ? 'text-red-700' : 'text-slate-900'}`}>
-                  {formatGBP(listing.totalGrossMargin)}
-                </td>
-                <td className="py-2.5 px-3">
-                  {best > 0 && (
-                    <span className="text-xs font-medium text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                      {bestChannel}
-                    </span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr className="bg-slate-50 font-semibold border-t border-slate-200">
-              <th scope="row" className="py-2.5 px-3 text-left text-slate-900">
-                Total ({rows.length} product{rows.length !== 1 ? 's' : ''})
-              </th>
-              <td className="py-2.5 px-3" />
-              <td className="py-2.5 px-3" />
-              <td colSpan={3} className="py-2.5 px-3 text-right text-slate-500 font-normal text-xs">
-                Blended grocery margin: <span className="font-semibold text-slate-900">{formatPercent(blendedMargin)}</span>
-              </td>
-              <td className="py-2.5 px-3 text-right text-slate-900">{formatNumber(totalVolume)}</td>
-              <td className="py-2.5 px-3 text-right text-slate-900">{formatGBP(totalRevenue)}</td>
-              <td className="py-2.5 px-3 text-right text-slate-900">{formatGBP(totalMargin)}</td>
-              <td className="py-2.5 px-3" />
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-
-      <p className="text-xs text-slate-400">
-        Period volume, revenue and margin use the grocery channel with your Listing Model settings applied to every product. Channel margin columns show per-unit gross margin on net revenue.
-      </p>
+      <GrossFooter />
     </div>
   )
 }

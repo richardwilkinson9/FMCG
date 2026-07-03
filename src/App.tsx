@@ -4,6 +4,8 @@ import { decodeStateFromUrl } from './utils/urlState'
 import Ticker from './components/gross/Ticker'
 import GrossNav from './components/gross/GrossNav'
 import Home from './pages/Home'
+import Shelf from './pages/Shelf'
+import Portfolio from './calculators/Portfolio'
 import RetailerPnL from './calculators/RetailerPnL'
 import Waterfall from './calculators/Waterfall'
 import MinimumMargin from './calculators/MinimumMargin'
@@ -20,6 +22,8 @@ import CrossChannel from './calculators/CrossChannel'
  */
 const PAGES: Record<string, () => React.JSX.Element> = {
   'home': Home,
+  'products': Shelf,
+  'portfolio': Portfolio,
   'retailer-pnl': RetailerPnL,
   'waterfall': Waterfall,
   'min-margin': MinimumMargin,

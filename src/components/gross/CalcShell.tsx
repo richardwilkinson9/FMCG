@@ -74,8 +74,8 @@ export function CalcActions() {
   )
 }
 
-function EmptyState() {
-  const startProduct = useStore((s) => s.startProduct)
+export function EmptyState() {
+  const setActiveCalculator = useStore((s) => s.setActiveCalculator)
   return (
     <div className="py-[clamp(50px,7vw,110px)] px-[clamp(20px,4vw,44px)]">
       <div className="max-w-[640px] mx-auto text-center">
@@ -86,11 +86,50 @@ function EmptyState() {
           No product yet.
         </h2>
         <button
-          onClick={startProduct}
+          onClick={() => {
+            setActiveCalculator('products')
+            window.scrollTo(0, 0)
+          }}
           className="inline-flex items-center gap-3 mt-7 bg-ink text-receipt border-2 border-ink py-4 px-[26px] text-base font-semibold cursor-pointer hover:bg-bile hover:text-ink"
         >
           Start with a product <span className="font-mono">→</span>
         </button>
+      </div>
+    </div>
+  )
+}
+
+/** The Bile-Green header band, shared by every GROSS page. */
+export function PageHeader({
+  sku,
+  group,
+  type,
+  title,
+  subtitle,
+  stampNote,
+}: {
+  sku: string
+  group: string
+  type: string
+  title: string
+  subtitle: string
+  stampNote?: string
+}) {
+  return (
+    <div className="bg-bile border-b-2 border-ink py-[clamp(30px,4vw,52px)] px-[clamp(20px,4vw,44px)]">
+      <div className="max-w-[1180px] mx-auto">
+        <div className="flex items-end justify-between flex-wrap gap-[18px]">
+          <div>
+            <div className="font-mono text-xs tracking-[0.12em]">
+              SKU {sku} · {group} · {type}
+            </div>
+            <h1 className="font-display text-[clamp(48px,8vw,104px)] leading-[0.85] tracking-[-0.03em] mt-2.5 mb-0">
+              {title}
+            </h1>
+            <p className="text-[clamp(15px,1.6vw,18px)] font-medium mt-4 mb-0 max-w-[52ch]">{subtitle}</p>
+          </div>
+          <BestBeforeStamp note={stampNote} />
+        </div>
       </div>
     </div>
   )
@@ -120,23 +159,7 @@ export default function CalcShell({
 
   return (
     <div className="bg-receipt text-ink font-body min-h-screen">
-      {/* Header band */}
-      <div className="bg-bile border-b-2 border-ink py-[clamp(30px,4vw,52px)] px-[clamp(20px,4vw,44px)]">
-        <div className="max-w-[1180px] mx-auto">
-          <div className="flex items-end justify-between flex-wrap gap-[18px]">
-            <div>
-              <div className="font-mono text-xs tracking-[0.12em]">
-                SKU {sku} · {group} · {type}
-              </div>
-              <h1 className="font-display text-[clamp(48px,8vw,104px)] leading-[0.85] tracking-[-0.03em] mt-2.5 mb-0">
-                {title}
-              </h1>
-              <p className="text-[clamp(15px,1.6vw,18px)] font-medium mt-4 mb-0 max-w-[52ch]">{subtitle}</p>
-            </div>
-            <BestBeforeStamp note={stampNote} />
-          </div>
-        </div>
-      </div>
+      <PageHeader sku={sku} group={group} type={type} title={title} subtitle={subtitle} stampNote={stampNote} />
 
       {hasProduct ? (
         <div className="py-[clamp(26px,4vw,52px)] px-[clamp(20px,4vw,44px)]">
