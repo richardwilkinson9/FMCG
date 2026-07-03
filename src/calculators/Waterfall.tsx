@@ -111,6 +111,8 @@ export default function Waterfall() {
           />
           <Rule dotted className="my-2" />
           <RLine label="Net net revenue" value={gbp(net)} bold color={net < 0 ? REDPEN : INK} />
+          <RLine label="Net as % of list (gross)" value={pct(list > 0 ? net / list : 0)} dim />
+          <RLine label="Net as % of shelf ex-VAT" value={pct(rsp > 0 ? net / rsp : 0)} dim />
           <RLine label="less cost price" value={neg(product.cogsPerUnit)} dim />
 
           <Rule className="mt-3.5 mb-2.5" />
@@ -121,6 +123,7 @@ export default function Waterfall() {
               { label: 'Margin on list', value: pct(gmPct), big: false, color: noMargin ? REDPEN : BILE },
             ]}
           />
+          <RLine label="Margin as % of net revenue" value={net > 0 ? pct(gm / net) : '—'} color={noMargin ? REDPEN : INK} />
 
           <div className="mt-3.5 mb-1.5 text-[11px] tracking-[0.1em] opacity-60">WHERE YOUR LIST PRICE GOES</div>
           <div className="flex h-[34px] border-2 border-ink overflow-hidden">

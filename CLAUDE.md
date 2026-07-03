@@ -59,6 +59,21 @@ rounding rule, or any wording that explains the maths. All calculation logic liv
 The Stock Answer (stockLedger) consumes its promo shape, and the Excel export rebuilds it
 as formulas. If you change phasing logic, change it there only.
 
+## The promo calendar (multi-promo model)
+`scenario.listing.promos` is an array of up to six `Promo` windows (start week, length,
+mechanic label, `discount`, `uplift`, `supplierFunded`). Mechanic presets live in
+`PROMO_MECHANICS` (scenario.ts); `suggestPromoTiming()` spreads promos evenly. Gross-to-net
+convention: GSV = volume × list price (invoice, never moves); a supplier-funded promo
+deducts `GSV × discount` off invoice (retailer keeps their margin %); NSV = GSV − funding;
+GM = NSV − COGS. Weekly rows carry gsv/funding/nsv; helpers `promoUpliftForWeek` /
+`promoFundingRateForWeek` are the only way to read the calendar. In the Excel deck the six
+slots are named column ranges (PromoStarts/PromoLens/PromoUplifts/PromoDiscs/PromoFunded)
+consumed by SUMPRODUCT — overlapping promos stack in both engines. Old share links with
+the single-promo fields (promoStartWeek/promoWeeks/promoUplift) are migrated in
+`mergeScenario`. Full-year marketplace P&L: `amazonAnnualPnL` / `tiktokAnnualPnL` read
+`scenario.amazon.casesPerYear` / `scenario.tiktok.casesPerYear` (named cells AmzCasesYear /
+TtkCasesYear in the deck); NSV always shown as % of GSV, GM as % of NSV.
+
 ## Excel model export
 `utils/excelExport.ts` builds a real .xlsx via exceljs (dynamic import — never in the
 main bundle). Branded as "the GROSS deck": Ink/Bile cover, receipt-styled sheets, answer

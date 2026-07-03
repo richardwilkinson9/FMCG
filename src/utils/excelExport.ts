@@ -10,8 +10,12 @@ import {
   rspExVat,
   amazonFBAMargin,
   tiktokShopMargin,
+  amazonAnnualPnL,
+  tiktokAnnualPnL,
   weeklyProjection,
+  listingModel,
   stockLedger,
+  promoUpliftForWeek,
 } from './calculations'
 
 /**
@@ -72,17 +76,15 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
     stores: scenario.listing.stores,
     skus: scenario.listing.skus,
     weeksInPeriod: scenario.listing.weeksInPeriod,
-    promoWeeks: scenario.listing.promoWeeks,
-    promoStartWeek: scenario.listing.promoStartWeek,
-    promoUpliftPercent: scenario.listing.promoUplift,
+    promos: scenario.listing.promos,
   }
   const weeks = weeklyProjection(product, scenario.grocery.retailerMargin, listingInputs, ws)
+  const listing = listingModel(product, scenario.grocery.retailerMargin, listingInputs, ws)
+  const amazonYear = amazonAnnualPnL(product, amazonFees, scenario.amazon.planMonthly, scenario.amazon.casesPerYear)
+  const tiktokYear = tiktokAnnualPnL(product, tiktokFees, scenario.tiktok.casesPerYear)
   const stockDemand: number[] = []
   for (let w = 1; w <= scenario.stock.planWeeks; w++) {
-    const onPromo = w >= scenario.listing.promoStartWeek && w < scenario.listing.promoStartWeek + scenario.listing.promoWeeks
-    stockDemand.push(onPromo
-      ? product.weeklyRateOfSale * scenario.listing.stores * (1 + scenario.listing.promoUplift)
-      : product.weeklyRateOfSale * scenario.listing.stores)
+    stockDemand.push(product.weeklyRateOfSale * scenario.listing.stores * (1 + promoUpliftForWeek(scenario.listing.promos, w)))
   }
   const plan = stockLedger(stockDemand, scenario.stock.startingStockUnits, scenario.stock.leadWeeks, scenario.stock.weeksOfCover, product.unitsPerCase)
   const stamp = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase().replace(/,/g, '')
@@ -217,15 +219,19 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
   // ── ASSUMPTIONS ────────────────────────────────────────────────────────────
   const aws = wb.addWorksheet('Assumptions', { properties: { tabColor: { argb: INK } } })
   aws.views = [{ showGridLines: false }]
-  for (let i = 1; i <= 6; i++) aws.getColumn(i).fill = fill(RECEIPT)
+  for (let i = 1; i <= 8; i++) aws.getColumn(i).fill = fill(RECEIPT)
   aws.getColumn(1).width = 2
   aws.getColumn(2).width = 34
   aws.getColumn(3).width = 16
-  aws.getColumn(4).width = 62
+  aws.getColumn(4).width = 12
+  aws.getColumn(5).width = 12
+  aws.getColumn(6).width = 12
+  aws.getColumn(7).width = 14
+  aws.getColumn(8).width = 60
 
   let ar = 2
   const heading = (text: string) => {
-    for (let i = 2; i <= 4; i++) aws.getCell(ar, i).fill = fill(INK)
+    for (let i = 2; i <= 8; i++) aws.getCell(ar, i).fill = fill(INK)
     const c = aws.getCell(ar, 2)
     c.value = text
     c.font = { name: MONO, size: 10, bold: true, color: { argb: BILE } }
@@ -243,7 +249,7 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
     v.border = { top: { style: 'thin', color: { argb: INK } }, bottom: { style: 'thin', color: { argb: INK } }, left: { style: 'thin', color: { argb: INK } }, right: { style: 'thin', color: { argb: INK } } }
     mono(v, { bold: true })
     v.alignment = { horizontal: 'right' }
-    if (note) { const n = aws.getCell(ar, 4); n.value = note; mono(n, { size: 8, color: 'FF666666' }) }
+    if (note) { const n = aws.getCell(ar, 8); n.value = note; mono(n, { size: 8, color: 'FF666666' }) }
     if (name) wb.definedNames.add(`Assumptions!$C$${ar}`, name)
     ar++
   }
@@ -277,9 +283,61 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
   assumption('Stores', scenario.listing.stores, 'Stores', INT)
   assumption('SKUs listed', scenario.listing.skus, 'SKUs', INT)
   assumption('Weeks in period', scenario.listing.weeksInPeriod, null, INT, 'Add rows on Weekly Projection if you extend this')
-  assumption('Promo start week', scenario.listing.promoStartWeek, 'PromoStart', INT)
-  assumption('Promo weeks', scenario.listing.promoWeeks, 'PromoWeeks', INT)
-  assumption('Promo uplift', scenario.listing.promoUplift, 'PromoUplift', PCT)
+  ar++
+
+  heading('THE PROMO CALENDAR (up to six a year)')
+  {
+    // Header row for the six-slot promo table
+    const promoHeaders = ['PROMO', 'START WK', 'WEEKS', 'UPLIFT', 'PRICE CUT', 'FUNDED (1=YOU)']
+    promoHeaders.forEach((h, i) => {
+      const c = aws.getCell(ar, i + 2)
+      c.value = h
+      mono(c, { size: 8, bold: true, color: 'FF666666' })
+      c.alignment = { horizontal: i === 0 ? 'left' : 'right' }
+    })
+    ar++
+    const promoFirstRow = ar
+    const inputBorder = {
+      top: { style: 'thin' as const, color: { argb: INK } },
+      bottom: { style: 'thin' as const, color: { argb: INK } },
+      left: { style: 'thin' as const, color: { argb: INK } },
+      right: { style: 'thin' as const, color: { argb: INK } },
+    }
+    for (let i = 0; i < 6; i++) {
+      const promo = scenario.listing.promos[i]
+      const label = aws.getCell(ar, 2)
+      label.value = promo ? `${i + 1}. ${promo.mechanic}` : `${i + 1}. (empty slot)`
+      mono(label, { color: promo ? INK : 'FF999999' })
+      const vals: [number, number, string][] = [
+        [3, promo?.startWeek ?? 0, INT],
+        [4, promo?.weeks ?? 0, INT],
+        [5, promo?.uplift ?? 0, PCT],
+        [6, promo?.discount ?? 0, PCT],
+        [7, promo ? (promo.supplierFunded ? 1 : 0) : 0, '0'],
+      ]
+      for (const [col, value, fmt] of vals) {
+        const c = aws.getCell(ar, col)
+        c.value = value
+        c.numFmt = fmt
+        c.fill = fill(WHITE)
+        c.border = inputBorder
+        mono(c, { bold: true })
+        c.alignment = { horizontal: 'right' }
+      }
+      ar++
+    }
+    const promoLastRow = ar - 1
+    wb.definedNames.add(`Assumptions!$C$${promoFirstRow}:$C$${promoLastRow}`, 'PromoStarts')
+    wb.definedNames.add(`Assumptions!$D$${promoFirstRow}:$D$${promoLastRow}`, 'PromoLens')
+    wb.definedNames.add(`Assumptions!$E$${promoFirstRow}:$E$${promoLastRow}`, 'PromoUplifts')
+    wb.definedNames.add(`Assumptions!$F$${promoFirstRow}:$F$${promoLastRow}`, 'PromoDiscs')
+    wb.definedNames.add(`Assumptions!$G$${promoFirstRow}:$G$${promoLastRow}`, 'PromoFunded')
+    const promoNote = aws.getCell(ar, 2)
+    promoNote.value = 'A week of zero start/weeks is an empty slot. FUNDED 1 = you pay the price cut off invoice; 0 = the retailer eats it.'
+    mono(promoNote, { size: 8, color: 'FF666666' })
+    aws.mergeCells(ar, 2, ar, 8)
+    ar++
+  }
   ar++
 
   heading('THE SUPPLY')
@@ -295,6 +353,7 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
   assumption('Fuel surcharge', amazonFees.fuelLogisticsSurcharge, 'AmzFuel', PCT)
   assumption('Selling plan / mo', scenario.amazon.planMonthly, 'AmzPlan', GBP)
   assumption('Units sold / mo', scenario.amazon.monthlyUnits, 'AmzUnits', INT)
+  assumption('Cases sold / year', scenario.amazon.casesPerYear, 'AmzCasesYear', INT, 'Feeds the full-year P&L on The Cuts')
   ar++
 
   heading('THE TIKTOK CUT')
@@ -302,6 +361,7 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
   assumption('Affiliate commission', tiktokFees.affiliateCommission, 'TtkAffiliate', PCT)
   assumption('Per-order fee', tiktokFees.perOrderFee, 'TtkOrderFee', GBP)
   assumption('Refund admin', tiktokFees.refundAdminPercent, 'TtkRefund', PCT)
+  assumption('Cases sold / year', scenario.tiktok.casesPerYear, 'TtkCasesYear', INT, 'Feeds the full-year P&L on The Cuts')
 
   // ── THE P&L ────────────────────────────────────────────────────────────────
   const pnl = wb.addWorksheet('The P&L', { properties: { tabColor: { argb: BILE } } })
@@ -317,12 +377,13 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
   r = line(pnl, r, 'less wholesaler margin', { formula: '-RSPexVAT*(1-RetailerMargin)*WholesalerMargin', result: -grocery.wholesalerMarginPerUnit, dim: true })
   r = line(pnl, r, 'You bank / unit', { formula: 'RSPexVAT*(1-RetailerMargin)*(1-WholesalerMargin)', result: grocery.brandNetRevenue, bold: true })
   wb.definedNames.add(`'The P&L'!$E$${r - 1}`, 'NetRevPerUnit')
+  r = line(pnl, r, 'Net as % of shelf (gross)', { formula: 'IF(RSPexVAT=0,0,NetRevPerUnit/RSPexVAT)', result: rsp > 0 ? grocery.brandNetRevenue / rsp : 0, fmt: PCT, dim: true })
   r = line(pnl, r, 'less cost price', { formula: '-COGS', result: -product.cogsPerUnit, dim: true })
   r++
   r = sectionEyebrow(pnl, r, 'YOUR MARGIN')
   r = answerBlock(pnl, r, [
     { label: 'Gross margin / unit', formula: 'NetRevPerUnit-COGS', result: grocery.brandGrossMarginPerUnit, fmt: GBP, red: grocery.brandGrossMarginPerUnit <= 0 },
-    { label: 'Margin %', formula: 'IF(NetRevPerUnit=0,0,(NetRevPerUnit-COGS)/NetRevPerUnit)', result: grocery.brandGrossMarginPercent, fmt: PCT, red: grocery.brandGrossMarginPerUnit <= 0 },
+    { label: 'Margin % (of net revenue)', formula: 'IF(NetRevPerUnit=0,0,(NetRevPerUnit-COGS)/NetRevPerUnit)', result: grocery.brandGrossMarginPercent, fmt: PCT, red: grocery.brandGrossMarginPerUnit <= 0 },
   ])
   wb.definedNames.add(`'The P&L'!$E$${r - 2}`, 'MarginPerUnit')
   r = line(pnl, r, 'Margin / case', { formula: 'MarginPerUnit*UnitsPerCase', result: grocery.marginPerCase })
@@ -359,6 +420,7 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
   rule(wf, r, true); r++
   r = line(wf, r, 'Net net revenue', { formula: `$E$${listRow}*(1-PromoFunding-BackMargin-OtherTrade)`, result: netnet, bold: true })
   const netnetRow = r - 1
+  r = line(wf, r, 'Net as % of list (gross)', { formula: `IF($E$${listRow}=0,0,$E$${netnetRow}/$E$${listRow})`, result: list > 0 ? netnet / list : 0, fmt: PCT, dim: true })
   r = line(wf, r, 'less cost price', { formula: '-COGS', result: -product.cogsPerUnit, dim: true })
   r++
   r = sectionEyebrow(wf, r, 'WHAT IS LEFT')
@@ -366,38 +428,44 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
     { label: 'Net net margin / unit', formula: `$E$${netnetRow}-COGS`, result: wfGm, fmt: GBP, red: wfGm <= 0 },
     { label: 'Margin on list', formula: `IF($E$${listRow}=0,0,($E$${netnetRow}-COGS)/$E$${listRow})`, result: list > 0 ? wfGm / list : 0, fmt: PCT, red: wfGm <= 0 },
   ])
+  r = line(wf, r, 'Margin as % of net revenue', { formula: `IF($E$${netnetRow}=0,0,($E$${netnetRow}-COGS)/$E$${netnetRow})`, result: netnet > 0 ? wfGm / netnet : 0, fmt: PCT })
   const wfVerdict = wfGm <= 0
     ? `Trade spend and cost eat the whole list price. You net ${fmtGBP(wfGm)} a unit. The promo plan does not work.`
     : `Trade spend takes ${fmtGBP(tradeTotal)} of your ${fmtGBP(list)} list price. You keep ${fmtGBP(wfGm)}. Back margin is still margin.`
   verdictAndFooter(wf, r + 1, wfVerdict, wfGm <= 0)
 
   // ── WEEKLY PROJECTION ─────────────────────────────────────────────────────
+  // The promo calendar drives everything: SUMPRODUCT over the six promo slots
+  // gives each week its uplift and its supplier-funded deduction rate.
   const wp = wb.addWorksheet('Weekly Projection', { properties: { tabColor: { argb: INK } } })
   wp.views = [{ showGridLines: false, state: 'frozen', ySplit: 2 }]
-  for (let i = 1; i <= 8; i++) wp.getColumn(i).fill = fill(RECEIPT)
+  for (let i = 1; i <= 10; i++) wp.getColumn(i).fill = fill(RECEIPT)
   wp.getColumn(1).width = 2
-  ;[8, 14, 12, 14, 14, 16, 16].forEach((wdt, i) => { wp.getColumn(i + 2).width = wdt })
-  const wpHeaders = ['WK', 'ON PROMO (1=YES)', 'VOLUME', 'REVENUE', 'MARGIN', 'CUM. REVENUE', 'CUM. MARGIN']
+  ;[8, 14, 12, 14, 14, 14, 14, 16, 16].forEach((wdt, i) => { wp.getColumn(i + 2).width = wdt })
+  const wpHeaders = ['WK', 'ON PROMO (1=YES)', 'VOLUME', 'GSV', 'FUNDING', 'NSV', 'MARGIN', 'CUM. NSV', 'CUM. MARGIN']
   wpHeaders.forEach((h, i) => {
     const c = wp.getCell(2, i + 2)
     c.value = h
     c.fill = fill(INK)
     c.font = { name: MONO, size: 9, bold: true, color: { argb: BILE } }
   })
+  const inPromo = (rr: number) => `($B${rr}>=PromoStarts)*($B${rr}<PromoStarts+PromoLens)`
   weeks.forEach((wk, i) => {
     const rr = i + 3
     const a = wp.getCell(rr, 2); a.value = wk.week; mono(a)
-    setF(wp.getCell(rr, 3), `IF(AND($B${rr}>=PromoStart,$B${rr}<PromoStart+PromoWeeks),1,0)`, wk.onPromo ? 1 : 0, '0')
-    setF(wp.getCell(rr, 4), `Stores*SKUs*ROS*(1+$C${rr}*PromoUplift)`, wk.volume, INT)
-    setF(wp.getCell(rr, 5), `$D${rr}*NetRevPerUnit`, wk.revenue, GBP)
-    setF(wp.getCell(rr, 6), `$D${rr}*MarginPerUnit`, wk.grossMargin, GBP)
-    setF(wp.getCell(rr, 7), `SUM($E$3:E${rr})`, wk.cumulativeRevenue, GBP)
-    setF(wp.getCell(rr, 8), `SUM($F$3:F${rr})`, wk.cumulativeMargin, GBP)
-    for (let c = 3; c <= 8; c++) mono(wp.getCell(rr, c))
+    setF(wp.getCell(rr, 3), `IF(SUMPRODUCT(${inPromo(rr)})>0,1,0)`, wk.onPromo ? 1 : 0, '0')
+    setF(wp.getCell(rr, 4), `Stores*SKUs*ROS*(1+SUMPRODUCT(${inPromo(rr)}*PromoUplifts))`, wk.volume, INT)
+    setF(wp.getCell(rr, 5), `$D${rr}*NetRevPerUnit`, wk.gsv, GBP)
+    setF(wp.getCell(rr, 6), `$E${rr}*SUMPRODUCT(${inPromo(rr)}*PromoDiscs*PromoFunded)`, wk.funding, GBP)
+    setF(wp.getCell(rr, 7), `$E${rr}-$F${rr}`, wk.nsv, GBP)
+    setF(wp.getCell(rr, 8), `$G${rr}-$D${rr}*COGS`, wk.grossMargin, GBP)
+    setF(wp.getCell(rr, 9), `SUM($G$3:G${rr})`, wk.cumulativeNsv, GBP)
+    setF(wp.getCell(rr, 10), `SUM($H$3:H${rr})`, wk.cumulativeMargin, GBP)
+    for (let c = 3; c <= 10; c++) mono(wp.getCell(rr, c))
   })
-  // Promo weeks turn bile — live with the promo assumptions
+  // Promo weeks turn bile — live with the promo calendar
   wp.addConditionalFormatting({
-    ref: `B3:H${weeks.length + 2}`,
+    ref: `B3:J${weeks.length + 2}`,
     rules: [{ type: 'expression', formulae: ['$C3=1'], priority: 1, style: { fill: fill(BILE) } }],
   })
   const wpTot = weeks.length + 3
@@ -406,13 +474,38 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
   mono(totLabel, { bold: true })
   const lastWeek = weeks[weeks.length - 1]
   setF(wp.getCell(wpTot, 4), `SUM(D3:D${wpTot - 1})`, lastWeek.cumulativeVolume, INT)
-  setF(wp.getCell(wpTot, 5), `SUM(E3:E${wpTot - 1})`, lastWeek.cumulativeRevenue, GBP)
-  setF(wp.getCell(wpTot, 6), `SUM(F3:F${wpTot - 1})`, lastWeek.cumulativeMargin, GBP)
-  for (let c = 2; c <= 8; c++) {
+  setF(wp.getCell(wpTot, 5), `SUM(E3:E${wpTot - 1})`, lastWeek.cumulativeGsv, GBP)
+  setF(wp.getCell(wpTot, 6), `SUM(F3:F${wpTot - 1})`, lastWeek.cumulativeFunding, GBP)
+  setF(wp.getCell(wpTot, 7), `SUM(G3:G${wpTot - 1})`, lastWeek.cumulativeNsv, GBP)
+  setF(wp.getCell(wpTot, 8), `SUM(H3:H${wpTot - 1})`, lastWeek.cumulativeMargin, GBP)
+  for (let c = 2; c <= 10; c++) {
     const cc = wp.getCell(wpTot, c)
     cc.border = { top: { style: 'medium', color: { argb: INK } } }
     mono(cc, { bold: true })
   }
+  // THE ANNUAL PLAN — gross to net, off the table above
+  let apr = wpTot + 2
+  const apLabel = wp.getCell(apr, 2)
+  apLabel.value = 'THE ANNUAL PLAN — GROSS TO NET'
+  mono(apLabel, { size: 8, color: 'FF666666' })
+  apr++
+  const apLine = (label: string, formula: string, result: number, fmt: string, bold = false) => {
+    const l = wp.getCell(apr, 2)
+    l.value = label
+    mono(l, { bold })
+    wp.mergeCells(apr, 2, apr, 4)
+    const v = wp.getCell(apr, 5)
+    setF(v, formula, result, fmt)
+    mono(v, { bold })
+    v.alignment = { horizontal: 'right' }
+    apr++
+  }
+  apLine('GSV (invoice, full list)', `$E$${wpTot}`, listing.totalGsv, GBP, true)
+  apLine('less promo funding', `-$F$${wpTot}`, -listing.totalFunding, GBP)
+  apLine('NSV', `$G$${wpTot}`, listing.totalNsv, GBP, true)
+  apLine('NSV as % of GSV', `IF($E$${wpTot}=0,0,$G$${wpTot}/$E$${wpTot})`, listing.nsvPctOfGsv, PCT)
+  apLine('Gross margin (NSV less COGS)', `$H$${wpTot}`, listing.totalGrossMargin, GBP, true)
+  apLine('GM as % of NSV', `IF($G$${wpTot}=0,0,$H$${wpTot}/$G$${wpTot})`, listing.gmPctOfNsv, PCT)
 
   // ── STOCK PLAN ─────────────────────────────────────────────────────────────
   const sp = wb.addWorksheet('Stock Plan', { properties: { tabColor: { argb: INK } } })
@@ -431,7 +524,7 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
   plan.rows.forEach((row, i) => {
     const rr = i + 3
     const a = sp.getCell(rr, 2); a.value = row.week; mono(a)
-    setF(sp.getCell(rr, 3), `IF(AND($B${rr}>=PromoStart,$B${rr}<PromoStart+PromoWeeks),Stores*ROS*(1+PromoUplift),Stores*ROS)`, row.demand, INT)
+    setF(sp.getCell(rr, 3), `Stores*ROS*(1+SUMPRODUCT(($B${rr}>=PromoStarts)*($B${rr}<PromoStarts+PromoLens)*PromoUplifts))`, row.demand, INT)
     if (i === 0) setF(sp.getCell(rr, 4), 'StartStock', row.opening, INT)
     else setF(sp.getCell(rr, 4), `$H${rr - 1}`, row.opening, INT)
     setF(sp.getCell(rr, 5), `IF($B${rr}>LeadWeeks,INDEX($F$3:$F$${nStock + 2},$B${rr}-LeadWeeks),0)`, row.arrivals, INT)
@@ -469,9 +562,14 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
   r = line(cuts, r, 'Storage / unit', { formula: '-AmzStorage', result: -amazon.storageFee, dim: true })
   r = line(cuts, r, 'Selling plan / unit', { formula: '-AmzPlan/MAX(AmzUnits,1)', result: -planCut, dim: true })
   const amzGp = amazon.grossProfit - planCut
+  const amzNetUnit = amazon.netRevenue - planCut
+  r = line(cuts, r, 'Net revenue / unit', { formula: `$E$${amzSp}*(1-AmzReferral)-AmzFulfil*(1+AmzFuel)-AmzStorage-AmzPlan/MAX(AmzUnits,1)`, result: amzNetUnit, bold: true })
+  const amzNetRow = r - 1
+  r = line(cuts, r, 'Net as % of gross (ex-VAT)', { formula: `IF($E$${amzSp}=0,0,$E$${amzNetRow}/$E$${amzSp})`, result: rsp > 0 ? amzNetUnit / rsp : 0, fmt: PCT, dim: true })
   r = answerBlock(cuts, r, [
-    { label: 'Amazon gross profit / unit', formula: `$E$${amzSp}*(1-AmzReferral)-AmzFulfil*(1+AmzFuel)-AmzStorage-AmzPlan/MAX(AmzUnits,1)-COGS`, result: amzGp, fmt: GBP, red: amzGp <= 0 },
+    { label: 'Amazon gross profit / unit', formula: `$E$${amzNetRow}-COGS`, result: amzGp, fmt: GBP, red: amzGp <= 0 },
   ])
+  r = line(cuts, r, 'Margin as % of net revenue', { formula: `IF($E$${amzNetRow}=0,0,($E$${amzNetRow}-COGS)/$E$${amzNetRow})`, result: amzNetUnit > 0 ? amzGp / amzNetUnit : 0, fmt: PCT })
   r = line(cuts, r, 'Break-even sale price (inc VAT)', {
     formula: '(COGS+AmzFulfil*(1+AmzFuel)+AmzStorage+AmzPlan/MAX(AmzUnits,1))/(1-AmzReferral)*(1+VAT)',
     result: ((product.cogsPerUnit + amazonFees.fulfilmentFeePerUnit * (1 + amazonFees.fuelLogisticsSurcharge) + amazonFees.monthlyStoragePerUnit + planCut) / (1 - amazonFees.referralFeePercent)) * (1 + product.vatRate),
@@ -485,14 +583,60 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
   r = line(cuts, r, 'Affiliate commission', { formula: `-$E$${ttkSp}*TtkAffiliate`, result: -tiktok.affiliateFee, dim: true })
   r = line(cuts, r, 'Per-order fee', { formula: '-TtkOrderFee', result: -tiktok.perOrderFee, dim: true })
   r = line(cuts, r, 'Refund admin', { formula: `-$E$${ttkSp}*TtkRefund`, result: -tiktok.refundCost, dim: true })
+  r = line(cuts, r, 'Net revenue / unit', { formula: `$E$${ttkSp}*(1-TtkCommission-TtkAffiliate-TtkRefund)-TtkOrderFee`, result: tiktok.netRevenue, bold: true })
+  const ttkNetRow = r - 1
+  r = line(cuts, r, 'Net as % of gross (ex-VAT)', { formula: `IF($E$${ttkSp}=0,0,$E$${ttkNetRow}/$E$${ttkSp})`, result: tiktok.netPctOfGross, fmt: PCT, dim: true })
   r = answerBlock(cuts, r, [
-    { label: 'TikTok gross profit / unit', formula: `$E$${ttkSp}*(1-TtkCommission-TtkAffiliate-TtkRefund)-TtkOrderFee-COGS`, result: tiktok.grossProfit, fmt: GBP, red: tiktok.grossProfit <= 0 },
+    { label: 'TikTok gross profit / unit', formula: `$E$${ttkNetRow}-COGS`, result: tiktok.grossProfit, fmt: GBP, red: tiktok.grossProfit <= 0 },
   ])
+  r = line(cuts, r, 'Margin as % of net revenue', { formula: `IF($E$${ttkNetRow}=0,0,($E$${ttkNetRow}-COGS)/$E$${ttkNetRow})`, result: tiktok.grossMarginPctOfNet, fmt: PCT })
   r = line(cuts, r, 'Break-even sale price (inc VAT)', {
     formula: '(TtkOrderFee+COGS)/(1-TtkCommission-TtkAffiliate-TtkRefund)*(1+VAT)',
     result: ((tiktokFees.perOrderFee + product.cogsPerUnit) / (1 - tiktokFees.platformCommission - tiktokFees.affiliateCommission - tiktokFees.refundAdminPercent)) * (1 + product.vatRate),
     bold: true,
   })
+
+  // FULL YEAR — x cases a year through each marketplace
+  r += 2
+  r = sectionEyebrow(cuts, r, `THE FULL YEAR — AMAZON (${scenario.amazon.casesPerYear} CASES)`)
+  r = line(cuts, r, 'Units (cases × units per case)', { formula: 'AmzCasesYear*UnitsPerCase', result: amazonYear.units, fmt: INT, dim: true })
+  r = line(cuts, r, 'GSV (ex-VAT)', { formula: 'AmzCasesYear*UnitsPerCase*RSPexVAT', result: amazonYear.gsv, bold: true })
+  const amzYearGsv = r - 1
+  r = line(cuts, r, 'less referral', { formula: `-$E$${amzYearGsv}*AmzReferral`, result: -amazonYear.referral, dim: true })
+  r = line(cuts, r, 'less fulfilment (incl. fuel)', { formula: '-AmzCasesYear*UnitsPerCase*AmzFulfil*(1+AmzFuel)', result: -amazonYear.fulfilment, dim: true })
+  r = line(cuts, r, 'less storage', { formula: '-AmzCasesYear*UnitsPerCase*AmzStorage', result: -amazonYear.storage, dim: true })
+  r = line(cuts, r, 'less selling plan (12 months)', { formula: '-AmzPlan*12', result: -amazonYear.plan, dim: true })
+  r = line(cuts, r, 'NSV', { formula: `$E$${amzYearGsv}*(1-AmzReferral)-AmzCasesYear*UnitsPerCase*(AmzFulfil*(1+AmzFuel)+AmzStorage)-AmzPlan*12`, result: amazonYear.nsv, bold: true })
+  const amzYearNsv = r - 1
+  r = line(cuts, r, 'NSV as % of GSV', { formula: `IF($E$${amzYearGsv}=0,0,$E$${amzYearNsv}/$E$${amzYearGsv})`, result: amazonYear.nsvPctOfGsv, fmt: PCT, dim: true })
+  r = line(cuts, r, 'less COGS', { formula: '-AmzCasesYear*UnitsPerCase*COGS', result: -amazonYear.cogs, dim: true })
+  r = answerBlock(cuts, r, [
+    { label: 'Amazon gross margin, year', formula: `$E$${amzYearNsv}-AmzCasesYear*UnitsPerCase*COGS`, result: amazonYear.gm, fmt: GBP, red: amazonYear.gm <= 0 },
+  ])
+  const amzYearGmRow = r - 1
+  r = line(cuts, r, 'GM as % of NSV', { formula: `IF($E$${amzYearNsv}=0,0,$E$${amzYearGmRow}/$E$${amzYearNsv})`, result: amazonYear.gmPctOfNsv, fmt: PCT })
+  r = line(cuts, r, 'GM as % of GSV', { formula: `IF($E$${amzYearGsv}=0,0,$E$${amzYearGmRow}/$E$${amzYearGsv})`, result: amazonYear.gmPctOfGsv, fmt: PCT, dim: true })
+
+  r += 2
+  r = sectionEyebrow(cuts, r, `THE FULL YEAR — TIKTOK (${scenario.tiktok.casesPerYear} CASES)`)
+  r = line(cuts, r, 'Units (cases × units per case)', { formula: 'TtkCasesYear*UnitsPerCase', result: tiktokYear.units, fmt: INT, dim: true })
+  r = line(cuts, r, 'GSV (ex-VAT)', { formula: 'TtkCasesYear*UnitsPerCase*RSPexVAT', result: tiktokYear.gsv, bold: true })
+  const ttkYearGsv = r - 1
+  r = line(cuts, r, 'less platform commission', { formula: `-$E$${ttkYearGsv}*TtkCommission`, result: -tiktokYear.platform, dim: true })
+  r = line(cuts, r, 'less affiliate commission', { formula: `-$E$${ttkYearGsv}*TtkAffiliate`, result: -tiktokYear.affiliate, dim: true })
+  r = line(cuts, r, 'less per-order fees', { formula: '-TtkCasesYear*UnitsPerCase*TtkOrderFee', result: -tiktokYear.orderFees, dim: true })
+  r = line(cuts, r, 'less refund admin', { formula: `-$E$${ttkYearGsv}*TtkRefund`, result: -tiktokYear.refunds, dim: true })
+  r = line(cuts, r, 'NSV', { formula: `$E$${ttkYearGsv}*(1-TtkCommission-TtkAffiliate-TtkRefund)-TtkCasesYear*UnitsPerCase*TtkOrderFee`, result: tiktokYear.nsv, bold: true })
+  const ttkYearNsv = r - 1
+  r = line(cuts, r, 'NSV as % of GSV', { formula: `IF($E$${ttkYearGsv}=0,0,$E$${ttkYearNsv}/$E$${ttkYearGsv})`, result: tiktokYear.nsvPctOfGsv, fmt: PCT, dim: true })
+  r = line(cuts, r, 'less COGS', { formula: '-TtkCasesYear*UnitsPerCase*COGS', result: -tiktokYear.cogs, dim: true })
+  r = answerBlock(cuts, r, [
+    { label: 'TikTok gross margin, year', formula: `$E$${ttkYearNsv}-TtkCasesYear*UnitsPerCase*COGS`, result: tiktokYear.gm, fmt: GBP, red: tiktokYear.gm <= 0 },
+  ])
+  const ttkYearGmRow = r - 1
+  r = line(cuts, r, 'GM as % of NSV', { formula: `IF($E$${ttkYearNsv}=0,0,$E$${ttkYearGmRow}/$E$${ttkYearNsv})`, result: tiktokYear.gmPctOfNsv, fmt: PCT })
+  r = line(cuts, r, 'GM as % of GSV', { formula: `IF($E$${ttkYearGsv}=0,0,$E$${ttkYearGmRow}/$E$${ttkYearGsv})`, result: tiktokYear.gmPctOfGsv, fmt: PCT, dim: true })
+
   verdictAndFooter(cuts, r + 1, 'Same cost price across both. Fees are dated defaults — check the rate card.')
 
   // ── THE LINE-UP ────────────────────────────────────────────────────────────

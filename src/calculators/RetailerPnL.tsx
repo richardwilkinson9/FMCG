@@ -88,6 +88,7 @@ export default function RetailerPnL() {
             <RLine label={`less wholesaler margin (${Math.round(grocery.wholesalerMargin * 100)}%)`} value={neg(result.wholesalerMarginPerUnit)} dim />
           )}
           <RLine label="You bank / unit" value={gbp(result.brandNetRevenue)} bold />
+          <RLine label="Net as % of shelf (gross)" value={pct(rsp > 0 ? result.brandNetRevenue / rsp : 0)} dim />
           <RLine label="less cost price" value={neg(product.cogsPerUnit)} dim />
 
           <Rule className="mt-3.5 mb-2.5" />
@@ -95,7 +96,7 @@ export default function RetailerPnL() {
           <AnswerBlock
             rows={[
               { label: 'Gross margin / unit', value: gbp(gmUnit), color: noMargin ? REDPEN : BILE },
-              { label: 'Margin %', value: pct(gmPct), big: false, color: noMargin ? REDPEN : BILE },
+              { label: 'Margin % (of net revenue)', value: pct(gmPct), big: false, color: noMargin ? REDPEN : BILE },
             ]}
           />
           <RLine label="Margin / case" value={gbp(result.marginPerCase)} color={noMargin ? REDPEN : INK} />

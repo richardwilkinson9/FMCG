@@ -39,9 +39,7 @@ export default function Portfolio() {
     stores: scenario.listing.stores,
     skus: scenario.listing.skus,
     weeksInPeriod: scenario.listing.weeksInPeriod,
-    promoWeeks: scenario.listing.promoWeeks,
-    promoStartWeek: scenario.listing.promoStartWeek,
-    promoUpliftPercent: scenario.listing.promoUplift,
+    promos: scenario.listing.promos,
   }
 
   const rows = products.map((p) => {

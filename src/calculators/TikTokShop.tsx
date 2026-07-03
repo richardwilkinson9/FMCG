@@ -1,10 +1,10 @@
 import { useStore } from '../store/useStore'
 import { effectiveTikTokFees } from '../store/scenario'
-import { tiktokShopMargin, rspExVat } from '../utils/calculations'
+import { tiktokShopMargin, tiktokAnnualPnL, rspExVat } from '../utils/calculations'
 import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
 import Field, { TextField, InputSection } from '../components/gross/Field'
 import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
-import { gbp, neg, pct, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components/gross/format'
+import { gbp, neg, pct, n0, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components/gross/format'
 
 /** The TikTok Cut — commission, affiliate, and the per-order nibble. */
 export default function TikTokShop() {
@@ -42,6 +42,15 @@ export default function TikTokShop() {
             onCommit={(v) => updateScenario('tiktok', { perOrderFee: v })} />
           <Field label="Refund admin" suffix="%" scale={100} value={tiktok.refundAdmin}
             onCommit={(v) => updateScenario('tiktok', { refundAdmin: v })} />
+        </div>
+
+        <InputSection>THE FULL YEAR</InputSection>
+        <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
+          <Field label="Cases sold / year" inputMode="numeric" value={tiktok.casesPerYear} onCommit={(v) => updateScenario('tiktok', { casesPerYear: Math.max(0, Math.round(v)) })} />
+          <Field label="Units per case" inputMode="numeric" value={product.unitsPerCase} onCommit={(v) => updateProduct(product.id, { unitsPerCase: Math.round(v) })} />
+        </div>
+        <div className="font-mono text-[11px] mt-1.5 opacity-65">
+          Feeds the annual P&L on the receipt. Per-order fee assumes one unit per order — the cautious read.
         </div>
       </div>
     )
@@ -89,6 +98,7 @@ export default function TikTokShop() {
           <Rule dotted className="my-2" />
           <RLine label="Total TikTok fees" value={neg(result.totalFees)} bold color={REDPEN} />
           <RLine label="Net revenue / unit" value={gbp(result.netRevenue)} bold color={result.netRevenue < 0 ? REDPEN : INK} />
+          <RLine label="Net as % of gross (ex-VAT)" value={pct(result.netPctOfGross)} dim />
           <RLine label="less cost price" value={neg(product.cogsPerUnit)} dim />
 
           <Rule className="mt-3.5 mb-2.5" />
@@ -96,9 +106,10 @@ export default function TikTokShop() {
           <AnswerBlock
             rows={[
               { label: 'Gross profit / unit', value: gbp(gp), color: noMargin ? REDPEN : BILE },
-              { label: 'Margin %', value: pct(pctVal), big: false, color: noMargin ? REDPEN : BILE },
+              { label: 'Margin % (of gross)', value: pct(pctVal), big: false, color: noMargin ? REDPEN : BILE },
             ]}
           />
+          <RLine label="Margin as % of net revenue" value={result.netRevenue > 0 ? pct(result.grossMarginPctOfNet) : '—'} color={noMargin ? REDPEN : INK} />
           {(() => {
             // The lowest sale price (inc VAT) at which the unit stops losing money
             const pctFees = fees.platformCommission + fees.affiliateCommission + fees.refundAdminPercent
@@ -112,6 +123,30 @@ export default function TikTokShop() {
                 bold
                 color={product.rrpIncVat < breakEven ? REDPEN : INK}
               />
+            )
+          })()}
+
+          {(() => {
+            const year = tiktokAnnualPnL(product, fees, tiktok.casesPerYear)
+            const yearLoss = year.gm <= 0
+            return (
+              <>
+                <Rule className="mt-3.5 mb-2.5" />
+                <RSection label={`THE FULL YEAR — ${n0(tiktok.casesPerYear)} CASES`} />
+                <RLine label={`Units (${n0(tiktok.casesPerYear)} × ${product.unitsPerCase})`} value={`${n0(year.units)} units`} dim />
+                <RLine label="GSV (ex-VAT)" value={gbp(year.gsv)} bold />
+                <RLine label="less platform commission" value={neg(year.platform)} dim />
+                <RLine label="less affiliate commission" value={neg(year.affiliate)} dim />
+                <RLine label="less per-order fees" value={neg(year.orderFees)} dim />
+                <RLine label="less refund admin" value={neg(year.refunds)} dim />
+                <Rule dotted className="my-2" />
+                <RLine label="NSV" value={gbp(year.nsv)} bold color={year.nsv < 0 ? REDPEN : INK} />
+                <RLine label="NSV as % of GSV" value={pct(year.nsvPctOfGsv)} dim />
+                <RLine label="less COGS" value={neg(year.cogs)} dim />
+                <RLine label="Gross margin, year" value={gbp(year.gm)} bold color={yearLoss ? REDPEN : INK} />
+                <RLine label="GM as % of NSV" value={pct(year.gmPctOfNsv)} color={yearLoss ? REDPEN : INK} />
+                <RLine label="GM as % of GSV" value={pct(year.gmPctOfGsv)} dim />
+              </>
             )
           })()}
         </Receipt>

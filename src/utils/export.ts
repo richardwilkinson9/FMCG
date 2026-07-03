@@ -37,9 +37,7 @@ export function buildScenarioCsv(product: Product, scenario: Scenario): string {
     stores: scenario.listing.stores,
     skus: scenario.listing.skus,
     weeksInPeriod: scenario.listing.weeksInPeriod,
-    promoWeeks: scenario.listing.promoWeeks,
-    promoStartWeek: scenario.listing.promoStartWeek,
-    promoUpliftPercent: scenario.listing.promoUplift,
+    promos: scenario.listing.promos,
   }
   const listing = listingModel(product, scenario.grocery.retailerMargin, listingInputs, ws)
   const trade = tradeSpendROI(
@@ -82,13 +80,19 @@ export function buildScenarioCsv(product: Product, scenario: Scenario): string {
     ['Listing model', 'Stores', num(scenario.listing.stores)],
     ['Listing model', 'SKUs', num(scenario.listing.skus)],
     ['Listing model', 'Weeks in period', num(scenario.listing.weeksInPeriod)],
-    ['Listing model', 'Promo start week', num(scenario.listing.promoStartWeek)],
-    ['Listing model', 'Promo weeks', num(scenario.listing.promoWeeks)],
-    ['Listing model', 'Promo volume uplift', pct(scenario.listing.promoUplift)],
+    ...scenario.listing.promos.map((p, i): Row => [
+      'Listing model',
+      `Promo ${i + 1}`,
+      `${p.mechanic} · wk ${p.startWeek} · ${p.weeks} wks · +${(p.uplift * 100).toFixed(0)}% volume · ${p.supplierFunded ? 'supplier funded' : 'retailer funded'}`,
+    ]),
     ['Listing model', 'Total volume (units)', num(listing.totalVolume)],
     ['Listing model', 'Total cases', num(listing.totalCases)],
-    ['Listing model', 'Total revenue (£)', money(listing.totalRevenue)],
+    ['Listing model', 'GSV (£)', money(listing.totalGsv)],
+    ['Listing model', 'Promo funding (£)', money(listing.totalFunding)],
+    ['Listing model', 'NSV (£)', money(listing.totalNsv)],
+    ['Listing model', 'NSV as % of GSV', pct(listing.nsvPctOfGsv)],
     ['Listing model', 'Total gross margin (£)', money(listing.totalGrossMargin)],
+    ['Listing model', 'GM as % of NSV', pct(listing.gmPctOfNsv)],
 
     ['Trade spend', 'Investment (£)', money(scenario.tradeSpend.investment)],
     ['Trade spend', 'Target ROI', pct(scenario.tradeSpend.targetROI)],
@@ -127,12 +131,14 @@ export function buildScenarioCsv(product: Product, scenario: Scenario): string {
 
     // Week-by-week phasing for pasting into planning docs
     [],
-    ['Week', 'On promo', 'Volume (units)', 'Revenue (£)', 'Margin (£)', 'Order placed (units)', 'Closing stock (units)'],
+    ['Week', 'On promo', 'Volume (units)', 'GSV (£)', 'Funding (£)', 'NSV (£)', 'Margin (£)', 'Order placed (units)', 'Closing stock (units)'],
     ...listing.weeks.map((w, i): Row => [
       String(w.week),
       w.onPromo ? 'Yes' : '',
       num(w.volume),
-      money(w.revenue),
+      money(w.gsv),
+      money(w.funding),
+      money(w.nsv),
       money(w.grossMargin),
       num(plan.rows[i]?.orderPlaced ?? 0),
       num(plan.rows[i]?.closing ?? 0),

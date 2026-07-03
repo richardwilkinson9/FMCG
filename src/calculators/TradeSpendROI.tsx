@@ -90,15 +90,16 @@ export default function TradeSpendROI() {
           <Rule dotted className="mt-3 mb-2" />
           <RSection label="THE REALITY CHECK" />
           {(() => {
-            // Base volume over the promo window, from the shared Listing settings
-            const promoWindowBase = product.weeklyRateOfSale * listing.stores * listing.promoWeeks
+            // Base volume across every promo week on the shared calendar
+            const totalPromoWeeks = listing.promos.reduce((a, p) => a + p.weeks, 0)
+            const promoWindowBase = product.weeklyRateOfSale * listing.stores * totalPromoWeeks
             const upliftNeeded = promoWindowBase > 0 && Number.isFinite(result.breakEvenUnits)
               ? result.breakEvenUnits / promoWindowBase
               : NaN
             return (
               <>
                 <RLine
-                  label={`Base volume over ${listing.promoWeeks} promo weeks`}
+                  label={`Base volume over ${totalPromoWeeks} promo weeks (${listing.promos.length} promos)`}
                   value={`${ceil0(promoWindowBase)} units`}
                   dim
                 />

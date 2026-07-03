@@ -25,9 +25,7 @@ function snapshot(model: SavedModel): { byProduct: Map<string, ProductSnapshot>;
     stores: scenario.listing.stores,
     skus: scenario.listing.skus,
     weeksInPeriod: scenario.listing.weeksInPeriod,
-    promoWeeks: scenario.listing.promoWeeks,
-    promoStartWeek: scenario.listing.promoStartWeek,
-    promoUpliftPercent: scenario.listing.promoUplift,
+    promos: scenario.listing.promos,
   }
   const byProduct = new Map<string, ProductSnapshot>()
   let periodMargin = 0

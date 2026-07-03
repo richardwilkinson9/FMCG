@@ -33,13 +33,57 @@ export interface MinMarginScenario {
   solveMode: 'cost' | 'rrp'
 }
 
+/**
+ * A promo on the annual calendar. Between two and six a year is normal;
+ * the model allows zero to six. `discount` is the consumer price cut as a
+ * decimal of shelf price (3 for 2 = 1/3, BOGOF = 1/2). `supplierFunded`
+ * means the brand funds the cut off invoice (the retailer keeps their
+ * margin %); unfunded means the retailer eats it and the brand banks list.
+ */
+export interface Promo {
+  id: string
+  startWeek: number
+  weeks: number
+  /** Display label, e.g. "25% off", "3 for 2", "BOGOF", "Custom" */
+  mechanic: string
+  discount: number
+  uplift: number
+  supplierFunded: boolean
+}
+
+/** The standard mechanics, with typical uplifts. Both stay editable. */
+export const PROMO_MECHANICS: { label: string; discount: number; uplift: number }[] = [
+  { label: '20% off', discount: 0.20, uplift: 0.5 },
+  { label: '25% off', discount: 0.25, uplift: 0.65 },
+  { label: '33% off', discount: 0.33, uplift: 0.9 },
+  { label: '50% off', discount: 0.50, uplift: 1.5 },
+  { label: '3 for 2', discount: 1 / 3, uplift: 0.8 },
+  { label: 'BOGOF', discount: 0.5, uplift: 1.2 },
+  { label: 'Custom', discount: 0.15, uplift: 0.5 },
+]
+
+export const MAX_PROMOS = 6
+
 export interface ListingScenario {
   stores: number
   skus: number
   weeksInPeriod: number
-  promoWeeks: number
-  promoStartWeek: number
-  promoUplift: number
+  promos: Promo[]
+}
+
+/**
+ * Spread N promos evenly across the period — each window centred in its own
+ * 1/N slice of the year, clamped so nothing hangs off the calendar.
+ */
+export function suggestPromoTiming(promos: Promo[], weeksInPeriod: number): Promo[] {
+  const n = promos.length
+  if (n === 0) return promos
+  return promos.map((p, i) => {
+    const centre = ((i + 0.5) / n) * weeksInPeriod
+    const start = Math.round(centre - p.weeks / 2) + 1
+    const clamped = Math.max(1, Math.min(start, Math.max(1, weeksInPeriod - p.weeks + 1)))
+    return { ...p, startWeek: clamped }
+  })
 }
 
 export interface TradeSpendScenario {
@@ -85,6 +129,8 @@ export interface AmazonScenario {
   planMonthly: number
   /** Expected units sold per month — amortises the plan fee per unit */
   monthlyUnits: number
+  /** Full-year view: cases sold through Amazon per year */
+  casesPerYear: number
 }
 
 export interface TikTokScenario {
@@ -95,6 +141,8 @@ export interface TikTokScenario {
   affiliateCommission: number
   perOrderFee: number
   refundAdmin: number
+  /** Full-year view: cases sold through TikTok Shop per year */
+  casesPerYear: number
 }
 
 /**
@@ -140,9 +188,10 @@ export function defaultScenario(): Scenario {
       stores: 500,
       skus: 1,
       weeksInPeriod: 52,
-      promoWeeks: 8,
-      promoStartWeek: 9,
-      promoUplift: 0.5,
+      promos: [
+        { id: 'p1', startWeek: 9, weeks: 6, mechanic: '25% off', discount: 0.25, uplift: 0.65, supplierFunded: true },
+        { id: 'p2', startWeek: 35, weeks: 6, mechanic: '20% off', discount: 0.20, uplift: 0.5, supplierFunded: true },
+      ],
     },
     tradeSpend: {
       investment: 10000,
@@ -172,6 +221,7 @@ export function defaultScenario(): Scenario {
       fuelSurcharge: AMAZON_FBA_DEFAULTS.fuelLogisticsSurcharge.value,
       planMonthly: AMAZON_FBA_DEFAULTS.professionalPlanMonthly.value,
       monthlyUnits: 500,
+      casesPerYear: 250,
     },
     tiktok: {
       estimatorOn: true,
@@ -180,6 +230,7 @@ export function defaultScenario(): Scenario {
       affiliateCommission: TIKTOK_SHOP_DEFAULTS.affiliateCommission.value,
       perOrderFee: TIKTOK_SHOP_DEFAULTS.perOrderFee.value,
       refundAdmin: TIKTOK_SHOP_DEFAULTS.refundAdminPercent.value,
+      casesPerYear: 250,
     },
     buyers: [],
   }
@@ -200,6 +251,35 @@ export function mergeScenario(partial: unknown): Scenario {
       base[key] = { ...base[key], ...(section as object) } as never
     }
   }
+
+  // Back-compat: old links/saves carried a single promo as three flat fields.
+  // Synthesise it as one calendar entry (no price cut — old model had none).
+  const oldListing = source.listing as Record<string, unknown> | undefined
+  if (oldListing && typeof oldListing === 'object' && !Array.isArray(oldListing.promos)) {
+    const startWeek = typeof oldListing.promoStartWeek === 'number' ? oldListing.promoStartWeek : 9
+    const weeks = typeof oldListing.promoWeeks === 'number' ? oldListing.promoWeeks : 0
+    const uplift = typeof oldListing.promoUplift === 'number' ? oldListing.promoUplift : 0.5
+    if (typeof oldListing.promoWeeks === 'number' || typeof oldListing.promoStartWeek === 'number' || typeof oldListing.promoUplift === 'number') {
+      base.listing.promos = weeks > 0
+        ? [{ id: 'legacy', startWeek, weeks, mechanic: 'Custom', discount: 0, uplift, supplierFunded: false }]
+        : []
+    }
+  }
+  // Strip any stray legacy fields carried across by the spread above
+  delete (base.listing as unknown as Record<string, unknown>).promoWeeks
+  delete (base.listing as unknown as Record<string, unknown>).promoStartWeek
+  delete (base.listing as unknown as Record<string, unknown>).promoUplift
+
+  // Promos need every field present even if a stale save carried partial ones
+  base.listing.promos = (base.listing.promos ?? []).slice(0, MAX_PROMOS).map((p, i) => ({
+    id: typeof p?.id === 'string' ? p.id : `p${i + 1}`,
+    startWeek: typeof p?.startWeek === 'number' ? p.startWeek : 1,
+    weeks: typeof p?.weeks === 'number' ? p.weeks : 4,
+    mechanic: typeof p?.mechanic === 'string' ? p.mechanic : 'Custom',
+    discount: typeof p?.discount === 'number' ? p.discount : 0,
+    uplift: typeof p?.uplift === 'number' ? p.uplift : 0.5,
+    supplierFunded: typeof p?.supplierFunded === 'boolean' ? p.supplierFunded : false,
+  }))
   return base
 }
 

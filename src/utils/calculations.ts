@@ -94,26 +94,72 @@ export function solveForRrp(
 }
 
 /**
- * Retailer listing model — project revenue, volume and margin over a period,
- * week by week, with the promotion placed as a block at a chosen start week.
+ * Retailer listing model — project GSV, funding, NSV, volume and margin over
+ * a period, week by week, with up to six promo windows on the calendar.
+ *
+ * The gross-to-net convention for a promo week:
+ *  - GSV (invoice) = volume × list price. The list price never moves.
+ *  - If the promo is supplier funded, the brand funds the price cut off
+ *    invoice so the retailer keeps their margin %: funding = GSV × discount.
+ *  - NSV = GSV − funding. Gross margin = NSV − COGS. If the retailer funds
+ *    the promo, funding is zero and the brand banks full list.
  */
+export interface PromoWindow {
+  startWeek: number
+  weeks: number
+  /** Volume uplift during the promo, as a decimal (0.5 = +50%) */
+  uplift: number
+  /** Consumer price cut, as a decimal of the shelf price (0.25 = 25% off; 3 for 2 = 1/3) */
+  discount: number
+  /** True = the brand funds the cut off invoice; false = the retailer eats it */
+  supplierFunded: boolean
+}
+
 export interface ListingModelInputs {
   stores: number
   skus: number
   weeksInPeriod: number
-  promoWeeks: number
-  promoStartWeek: number
-  promoUpliftPercent: number
+  promos: PromoWindow[]
+}
+
+/** Does any promo cover this week? */
+export function promosCoveringWeek(promos: PromoWindow[], week: number): PromoWindow[] {
+  return promos.filter((p) => week >= p.startWeek && week < p.startWeek + p.weeks)
+}
+
+/** Total volume uplift in force this week (overlapping promos stack). */
+export function promoUpliftForWeek(promos: PromoWindow[], week: number): number {
+  return promosCoveringWeek(promos, week).reduce((a, p) => a + p.uplift, 0)
+}
+
+/** Total supplier-funded deduction rate (% of list) in force this week. */
+export function promoFundingRateForWeek(promos: PromoWindow[], week: number): number {
+  return promosCoveringWeek(promos, week).reduce((a, p) => a + (p.supplierFunded ? p.discount : 0), 0)
+}
+
+/** Total consumer price cut this week (funded or not — the shopper pays less either way). */
+export function promoDiscountForWeek(promos: PromoWindow[], week: number): number {
+  return promosCoveringWeek(promos, week).reduce((a, p) => a + p.discount, 0)
 }
 
 export interface WeeklyProjectionRow {
   week: number
   onPromo: boolean
   volume: number
-  revenue: number
+  /** Invoice value at full list price */
+  gsv: number
+  /** Supplier-funded promo deduction off invoice */
+  funding: number
+  /** GSV less funding */
+  nsv: number
+  /** NSV less COGS */
   grossMargin: number
+  /** Consumer £ through the till (promo weeks at the cut shelf price) */
+  retailSalesValue: number
   cumulativeVolume: number
-  cumulativeRevenue: number
+  cumulativeGsv: number
+  cumulativeFunding: number
+  cumulativeNsv: number
   cumulativeMargin: number
 }
 
@@ -124,27 +170,52 @@ export function weeklyProjection(
   wholesalerMarginPercent = 0,
 ): WeeklyProjectionRow[] {
   const pnl = retailerPnL(product, retailerMarginPercent, wholesalerMarginPercent)
+  const list = pnl.brandNetRevenue
   const baseWeeklyVolume = product.weeklyRateOfSale * inputs.stores * inputs.skus
 
   const rows: WeeklyProjectionRow[] = []
   let cumulativeVolume = 0
-  let cumulativeRevenue = 0
+  let cumulativeGsv = 0
+  let cumulativeFunding = 0
+  let cumulativeNsv = 0
   let cumulativeMargin = 0
 
   for (let week = 1; week <= inputs.weeksInPeriod; week++) {
-    const onPromo =
-      week >= inputs.promoStartWeek && week < inputs.promoStartWeek + inputs.promoWeeks
-    const volume = baseWeeklyVolume * (onPromo ? 1 + inputs.promoUpliftPercent : 1)
-    const revenue = volume * pnl.brandNetRevenue
-    const grossMargin = volume * pnl.brandGrossMarginPerUnit
+    const uplift = promoUpliftForWeek(inputs.promos, week)
+    const fundingRate = promoFundingRateForWeek(inputs.promos, week)
+    const discount = promoDiscountForWeek(inputs.promos, week)
+    const onPromo = promosCoveringWeek(inputs.promos, week).length > 0
+
+    const volume = baseWeeklyVolume * (1 + uplift)
+    const gsv = volume * list
+    const funding = gsv * fundingRate
+    const nsv = gsv - funding
+    const grossMargin = nsv - volume * product.cogsPerUnit
+    const retailSalesValue = volume * product.rrpIncVat * Math.max(0, 1 - discount)
 
     cumulativeVolume += volume
-    cumulativeRevenue += revenue
+    cumulativeGsv += gsv
+    cumulativeFunding += funding
+    cumulativeNsv += nsv
     cumulativeMargin += grossMargin
 
-    rows.push({ week, onPromo, volume, revenue, grossMargin, cumulativeVolume, cumulativeRevenue, cumulativeMargin })
+    rows.push({
+      week, onPromo, volume, gsv, funding, nsv, grossMargin, retailSalesValue,
+      cumulativeVolume, cumulativeGsv, cumulativeFunding, cumulativeNsv, cumulativeMargin,
+    })
   }
   return rows
+}
+
+/** One promo's contribution to the annual plan, over its clamped window. */
+export interface PromoSummary {
+  index: number
+  startWeek: number
+  /** Weeks actually inside the period */
+  weeksInPeriod: number
+  incrementalUnits: number
+  fundingCost: number
+  clamped: boolean
 }
 
 /** Period totals, derived from the weekly projection so the two always agree. */
@@ -152,14 +223,51 @@ export function listingModel(product: Product, retailerMarginPercent: number, in
   const weeks = weeklyProjection(product, retailerMarginPercent, inputs, wholesalerMarginPercent)
   const last = weeks[weeks.length - 1]
   const baseWeeklyVolume = product.weeklyRateOfSale * inputs.stores * inputs.skus
+  const pnl = retailerPnL(product, retailerMarginPercent, wholesalerMarginPercent)
+
+  const promoSummaries: PromoSummary[] = inputs.promos.map((p, index) => {
+    let incrementalUnits = 0
+    let fundingCost = 0
+    let weeksInside = 0
+    for (let week = p.startWeek; week < p.startWeek + p.weeks; week++) {
+      if (week < 1 || week > inputs.weeksInPeriod) continue
+      weeksInside++
+      const row = weeks[week - 1]
+      incrementalUnits += baseWeeklyVolume * p.uplift
+      if (p.supplierFunded) fundingCost += row.volume * pnl.brandNetRevenue * p.discount
+    }
+    return {
+      index,
+      startWeek: p.startWeek,
+      weeksInPeriod: weeksInside,
+      incrementalUnits,
+      fundingCost,
+      clamped: weeksInside < p.weeks,
+    }
+  })
+
+  const totalGsv = last?.cumulativeGsv ?? 0
+  const totalFunding = last?.cumulativeFunding ?? 0
+  const totalNsv = last?.cumulativeNsv ?? 0
+  const totalGrossMargin = last?.cumulativeMargin ?? 0
 
   return {
     totalVolume: last?.cumulativeVolume ?? 0,
-    totalRevenue: last?.cumulativeRevenue ?? 0,
-    totalGrossMargin: last?.cumulativeMargin ?? 0,
+    totalGsv,
+    totalFunding,
+    totalNsv,
+    /** NSV as a share of GSV — how much of the invoice survives the promo plan */
+    nsvPctOfGsv: totalGsv > 0 ? totalNsv / totalGsv : 0,
+    totalGrossMargin,
+    /** Margin as a share of NSV */
+    gmPctOfNsv: totalNsv > 0 ? totalGrossMargin / totalNsv : 0,
+    /** Kept for callers that treat "revenue" as what the brand banks (= NSV) */
+    totalRevenue: totalNsv,
+    totalRetailSalesValue: weeks.reduce((a, w) => a + w.retailSalesValue, 0),
     totalCases: (last?.cumulativeVolume ?? 0) / product.unitsPerCase,
     weeklyVolume: baseWeeklyVolume,
-    promoWeeklyVolume: baseWeeklyVolume * (1 + inputs.promoUpliftPercent),
+    peakWeeklyVolume: weeks.reduce((a, w) => Math.max(a, w.volume), 0),
+    promoSummaries,
     weeks,
   }
 }
@@ -290,6 +398,7 @@ export function amazonFBAMargin(product: Product, fees: AmazonFBAFees) {
   const netRevenue = sellingPriceExVat - totalFees
   const grossProfit = netRevenue - product.cogsPerUnit
   const grossMarginPercent = sellingPriceExVat > 0 ? grossProfit / sellingPriceExVat : 0
+  const grossMarginPctOfNet = netRevenue > 0 ? grossProfit / netRevenue : 0
 
   return {
     sellingPriceExVat,
@@ -298,8 +407,51 @@ export function amazonFBAMargin(product: Product, fees: AmazonFBAFees) {
     storageFee,
     totalFees,
     netRevenue,
+    /** Net revenue as a share of the gross (ex-VAT) sale price */
+    netPctOfGross: sellingPriceExVat > 0 ? netRevenue / sellingPriceExVat : 0,
     grossProfit,
     grossMarginPercent,
+    grossMarginPctOfNet,
+  }
+}
+
+/**
+ * Full-year marketplace P&L — x cases a year in, GSV / NSV / GM out.
+ * GSV = units × sale price ex-VAT. NSV = GSV less every marketplace fee
+ * (the selling plan charged as £/month × 12, not amortised per unit).
+ * GM = NSV less COGS. Percentages: NSV as % of GSV, GM as % of NSV.
+ */
+export function amazonAnnualPnL(
+  product: Product,
+  fees: AmazonFBAFees,
+  planMonthly: number,
+  casesPerYear: number,
+) {
+  const units = casesPerYear * product.unitsPerCase
+  const sp = exVat(product.rrpIncVat, product.vatRate)
+  const gsv = units * sp
+  const referral = gsv * fees.referralFeePercent
+  const fulfilment = units * fees.fulfilmentFeePerUnit * (1 + fees.fuelLogisticsSurcharge)
+  const storage = units * fees.monthlyStoragePerUnit
+  const plan = planMonthly * 12
+  const totalFees = referral + fulfilment + storage + plan
+  const nsv = gsv - totalFees
+  const cogs = units * product.cogsPerUnit
+  const gm = nsv - cogs
+  return {
+    units,
+    gsv,
+    referral,
+    fulfilment,
+    storage,
+    plan,
+    totalFees,
+    nsv,
+    nsvPctOfGsv: gsv > 0 ? nsv / gsv : 0,
+    cogs,
+    gm,
+    gmPctOfNsv: nsv > 0 ? gm / nsv : 0,
+    gmPctOfGsv: gsv > 0 ? gm / gsv : 0,
   }
 }
 
@@ -325,6 +477,7 @@ export function tiktokShopMargin(product: Product, fees: TikTokFees) {
   const netRevenue = sellingPriceExVat - totalFees
   const grossProfit = netRevenue - product.cogsPerUnit
   const grossMarginPercent = sellingPriceExVat > 0 ? grossProfit / sellingPriceExVat : 0
+  const grossMarginPctOfNet = netRevenue > 0 ? grossProfit / netRevenue : 0
 
   return {
     sellingPriceExVat,
@@ -334,8 +487,44 @@ export function tiktokShopMargin(product: Product, fees: TikTokFees) {
     refundCost,
     totalFees,
     netRevenue,
+    /** Net revenue as a share of the gross (ex-VAT) sale price */
+    netPctOfGross: sellingPriceExVat > 0 ? netRevenue / sellingPriceExVat : 0,
     grossProfit,
     grossMarginPercent,
+    grossMarginPctOfNet,
+  }
+}
+
+/**
+ * Full-year TikTok Shop P&L. Same shape as the Amazon one; the per-order fee
+ * assumes one unit per order (the cautious read).
+ */
+export function tiktokAnnualPnL(product: Product, fees: TikTokFees, casesPerYear: number) {
+  const units = casesPerYear * product.unitsPerCase
+  const sp = exVat(product.rrpIncVat, product.vatRate)
+  const gsv = units * sp
+  const platform = gsv * fees.platformCommission
+  const affiliate = gsv * fees.affiliateCommission
+  const orderFees = units * fees.perOrderFee
+  const refunds = gsv * fees.refundAdminPercent
+  const totalFees = platform + affiliate + orderFees + refunds
+  const nsv = gsv - totalFees
+  const cogs = units * product.cogsPerUnit
+  const gm = nsv - cogs
+  return {
+    units,
+    gsv,
+    platform,
+    affiliate,
+    orderFees,
+    refunds,
+    totalFees,
+    nsv,
+    nsvPctOfGsv: gsv > 0 ? nsv / gsv : 0,
+    cogs,
+    gm,
+    gmPctOfNsv: nsv > 0 ? gm / nsv : 0,
+    gmPctOfGsv: gsv > 0 ? gm / gsv : 0,
   }
 }
 

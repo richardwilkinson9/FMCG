@@ -1,11 +1,11 @@
 import { useStore } from '../store/useStore'
 import { effectiveAmazonFees } from '../store/scenario'
-import { amazonFBAMargin, estimateAmazonFBAFee, rspExVat } from '../utils/calculations'
+import { amazonFBAMargin, amazonAnnualPnL, estimateAmazonFBAFee, rspExVat } from '../utils/calculations'
 import { AMAZON_CATEGORY_FEES } from '../config/fees'
 import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
 import Field, { TextField, InputSection, MonoToggle } from '../components/gross/Field'
 import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
-import { gbp, neg, pct, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components/gross/format'
+import { gbp, neg, pct, n0, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components/gross/format'
 
 /** The Amazon Cut — what FBA takes before you see a penny. */
 export default function AmazonFBA() {
@@ -88,6 +88,15 @@ export default function AmazonFBA() {
         <div className="font-mono text-[11px] mt-1.5 opacity-65">
           Fixed costs spread across monthly volume. Fewer units, heavier per-unit fees.
         </div>
+
+        <InputSection>THE FULL YEAR</InputSection>
+        <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
+          <Field label="Cases sold / year" inputMode="numeric" value={amazon.casesPerYear} onCommit={(v) => updateScenario('amazon', { casesPerYear: Math.max(0, Math.round(v)) })} />
+          <Field label="Units per case" inputMode="numeric" value={product.unitsPerCase} onCommit={(v) => updateProduct(product.id, { unitsPerCase: Math.round(v) })} />
+        </div>
+        <div className="font-mono text-[11px] mt-1.5 opacity-65">
+          Feeds the annual P&L on the receipt. The selling plan is charged for real: £/month × 12.
+        </div>
       </div>
     )
   }
@@ -132,6 +141,7 @@ export default function AmazonFBA() {
           <Rule dotted className="my-2" />
           <RLine label="Total Amazon fees" value={neg(totalFees)} bold color={REDPEN} />
           <RLine label="Net revenue / unit" value={gbp(net)} bold color={net < 0 ? REDPEN : INK} />
+          <RLine label="Net as % of gross (ex-VAT)" value={pct(sp > 0 ? net / sp : 0)} dim />
           <RLine label="less cost price" value={neg(product.cogsPerUnit)} dim />
 
           <Rule className="mt-3.5 mb-2.5" />
@@ -139,9 +149,10 @@ export default function AmazonFBA() {
           <AnswerBlock
             rows={[
               { label: 'Gross profit / unit', value: gbp(gp), color: noMargin ? REDPEN : BILE },
-              { label: 'Margin %', value: pct(pctVal), big: false, color: noMargin ? REDPEN : BILE },
+              { label: 'Margin % (of gross)', value: pct(pctVal), big: false, color: noMargin ? REDPEN : BILE },
             ]}
           />
+          <RLine label="Margin as % of net revenue" value={net > 0 ? pct(gp / net) : '—'} color={noMargin ? REDPEN : INK} />
           {(() => {
             // The lowest sale price (inc VAT) at which the unit stops losing money
             const perUnitCosts =
@@ -159,6 +170,30 @@ export default function AmazonFBA() {
                 bold
                 color={product.rrpIncVat < breakEven ? REDPEN : INK}
               />
+            )
+          })()}
+
+          {(() => {
+            const year = amazonAnnualPnL(product, fees, amazon.planMonthly, amazon.casesPerYear)
+            const yearLoss = year.gm <= 0
+            return (
+              <>
+                <Rule className="mt-3.5 mb-2.5" />
+                <RSection label={`THE FULL YEAR — ${n0(amazon.casesPerYear)} CASES`} />
+                <RLine label={`Units (${n0(amazon.casesPerYear)} × ${product.unitsPerCase})`} value={`${n0(year.units)} units`} dim />
+                <RLine label="GSV (ex-VAT)" value={gbp(year.gsv)} bold />
+                <RLine label="less referral" value={neg(year.referral)} dim />
+                <RLine label="less fulfilment (incl. fuel)" value={neg(year.fulfilment)} dim />
+                <RLine label="less storage" value={neg(year.storage)} dim />
+                <RLine label="less selling plan (12 months)" value={neg(year.plan)} dim />
+                <Rule dotted className="my-2" />
+                <RLine label="NSV" value={gbp(year.nsv)} bold color={year.nsv < 0 ? REDPEN : INK} />
+                <RLine label="NSV as % of GSV" value={pct(year.nsvPctOfGsv)} dim />
+                <RLine label="less COGS" value={neg(year.cogs)} dim />
+                <RLine label="Gross margin, year" value={gbp(year.gm)} bold color={yearLoss ? REDPEN : INK} />
+                <RLine label="GM as % of NSV" value={pct(year.gmPctOfNsv)} color={yearLoss ? REDPEN : INK} />
+                <RLine label="GM as % of GSV" value={pct(year.gmPctOfGsv)} dim />
+              </>
             )
           })()}
         </Receipt>

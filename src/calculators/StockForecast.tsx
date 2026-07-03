@@ -1,5 +1,5 @@
 import { useStore } from '../store/useStore'
-import { stockLedger } from '../utils/calculations'
+import { stockLedger, promoUpliftForWeek } from '../utils/calculations'
 import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
 import Field, { TextField, InputSection } from '../components/gross/Field'
 import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
@@ -32,9 +32,9 @@ export default function StockForecast() {
           <Field label="Stores" inputMode="numeric" value={listing.stores} onCommit={(v) => updateScenario('listing', { stores: Math.round(v) })} />
           <Field label="Rate of sale / store / wk" value={product.weeklyRateOfSale} onCommit={(v) => updateProduct(product.id, { weeklyRateOfSale: v })} />
           <Field label="Weeks to plan" inputMode="numeric" value={stock.planWeeks} onCommit={(v) => updateScenario('stock', { planWeeks: Math.max(1, Math.min(104, Math.round(v))) })} />
-          <Field label="Promo uplift" suffix="%" scale={100} value={listing.promoUplift} onCommit={(v) => updateScenario('listing', { promoUplift: v })} />
-          <Field label="Promo start week" inputMode="numeric" value={listing.promoStartWeek} onCommit={(v) => updateScenario('listing', { promoStartWeek: Math.round(v) })} />
-          <Field label="Promo weeks" inputMode="numeric" value={listing.promoWeeks} onCommit={(v) => updateScenario('listing', { promoWeeks: Math.round(v) })} />
+        </div>
+        <div className="font-mono text-[11px] mt-2 opacity-65">
+          Demand spikes come from the promo calendar on The Listing — {listing.promos.length} promo{listing.promos.length === 1 ? '' : 's'} planned. Edit them there; the supply plan follows.
         </div>
 
         <InputSection>THE SUPPLY</InputSection>
@@ -52,12 +52,11 @@ export default function StockForecast() {
 
   const receipt = () => {
     if (!product) return null
-    // Weekly demand with the shared promo shape over this plan's horizon
+    // Weekly demand with the shared promo calendar over this plan's horizon
     const base = product.weeklyRateOfSale * listing.stores
     const demand: number[] = []
     for (let w = 1; w <= stock.planWeeks; w++) {
-      const onPromo = w >= listing.promoStartWeek && w < listing.promoStartWeek + listing.promoWeeks
-      demand.push(onPromo ? base * (1 + listing.promoUplift) : base)
+      demand.push(base * (1 + promoUpliftForWeek(listing.promos, w)))
     }
     const plan = stockLedger(demand, stock.startingStockUnits, stock.leadWeeks, stock.weeksOfCover, product.unitsPerCase)
     const totalDemand = demand.reduce((a, b) => a + b, 0)

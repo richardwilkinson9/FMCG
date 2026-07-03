@@ -142,11 +142,39 @@ The maths was not touched — every formula still comes from calculations.ts.
 - [ ] USER TO DO: run the SQL in SETUP_SUPABASE.md + set the auth redirect
       URLs — then sign-in and The Union go live.
 
+## Promo calendar + full-year sprint (July 2026)
+- [x] **Multi-promo model** — up to six promos a year on The Listing, each with
+      start week, length, mechanic (20/25/33/50% off, 3 for 2, BOGOF, custom),
+      volume uplift and a FULLY SUPPLIER FUNDED toggle. SUGGEST TIMING spreads
+      them evenly across the period. Overlaps stack; clipped promos flagged.
+- [x] **Gross-to-net everywhere** — weekly engine now produces GSV (invoice),
+      promo funding, NSV and GM per week; The Listing receipt shows the annual
+      plan (GSV → funding → NSV as % of GSV → GM as % of NSV) plus a
+      promo-by-promo breakdown (incremental units + funding cost each).
+- [x] **The Stock Answer + The Payback follow the calendar** — supply demand
+      spikes on every promo window; break-even uplift is judged against base
+      volume over ALL promo weeks.
+- [x] **Full-year marketplace P&L** — cases/year input on The Amazon Cut and
+      The TikTok Cut → annual GSV, fee lines, NSV (% of GSV), COGS, GM (£, %
+      of NSV and % of GSV). Amazon charges the selling plan for real (×12).
+- [x] **Net-vs-gross discipline** — net revenue shown as % of gross on The
+      P&L, The Waterfall and both marketplace cuts; margin always also shown
+      as % of net revenue.
+- [x] **Excel deck upgraded to match** — six-slot promo table on Assumptions
+      (named ranges PromoStarts/Lens/Uplifts/Discs/Funded), Weekly Projection
+      rebuilt with GSV/FUNDING/NSV columns driven by SUMPRODUCT over the promo
+      slots (edit the calendar in Excel and the year reprices), annual-plan
+      block, Stock Plan demand follows the calendar, The Cuts gains both
+      full-year P&Ls with AmzCasesYear/TtkCasesYear named cells.
+- [x] Old share links/saves with the single-promo fields migrate automatically
+      (mergeScenario synthesises one calendar entry).
+- [x] Verified: hand-checked GSV/funding/NSV/GM against the engine, xlsx read
+      back (named ranges, formulas, cached results), Playwright pass over the
+      new UI, legacy-link migration in the browser.
+
 ## Next
 - [ ] Verify all calculation logic with real-world examples
 - [ ] Consider a proper branded PDF (jsPDF) if print proves insufficient
-- [ ] Possible future: multiple promo windows per period (workaround: edit the
-      promo flag column in the Excel export)
 
 ## Open decisions
 - **The Portfolio** (multi-product table) was not in the GROSS card set. The
