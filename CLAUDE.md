@@ -61,13 +61,18 @@ as formulas. If you change phasing logic, change it there only.
 
 ## Excel model export
 `utils/excelExport.ts` builds a real .xlsx via exceljs (dynamic import — never in the
-main bundle). Every input is a NAMED cell on the Assumptions sheet; every derived cell is
-a formula with a cached result. The Stock Plan order column is plain editable values.
+main bundle). Branded as "the GROSS deck": Ink/Bile cover, receipt-styled sheets, answer
+blocks as inverted Ink rows, conditional formatting for promo weeks and stockouts. Every
+input is a NAMED cell on the Assumptions sheet; every derived cell is a formula with a
+cached result. The Stock Plan order column is plain editable values. Verdict sentences are
+printed at export (numbers recalculate; sentences do not).
 exceljs pins `uuid` via package.json `overrides` to clear an npm audit advisory.
 `utils/export.ts` (flat CSV) is retained but currently unwired.
 
 ## State management
 - **Zustand** — selective subscriptions, simple API. State is in-memory; no localStorage.
+- The full model is debounce-synced into the address bar (replaceState in App.tsx), so a
+  refresh restores everything and the URL is always the share link.
 - Share URLs (`?s=<base64>`) encode products + full scenario + active page; old links
   decode against defaults (`mergeScenario`), unknown page ids fall back to home.
 

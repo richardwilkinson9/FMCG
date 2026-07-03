@@ -167,6 +167,11 @@ export default function Portfolio() {
               </div>
 
               <Rule className="mt-3.5 mb-2.5" />
+              <RLine
+                label="Period volume, range"
+                value={`${n0(rows.reduce((a, r) => a + r.listing.totalVolume, 0))} units · ${n0(rows.reduce((a, r) => a + r.listing.totalCases, 0))} cases`}
+                dim
+              />
               <RLine label="Period net revenue, range" value={gbp(totalRevenue)} />
               <RLine label="Period gross margin, range" value={gbp(totalMargin)} bold color={totalMargin < 0 ? REDPEN : INK} />
             </Receipt>

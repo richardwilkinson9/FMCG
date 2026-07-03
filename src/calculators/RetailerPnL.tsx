@@ -98,6 +98,21 @@ export default function RetailerPnL() {
           />
           <RLine label="Margin / case" value={gbp(result.marginPerCase)} color={noMargin ? REDPEN : INK} />
           <RLine label="Net revenue / case" value={gbp(result.revenuePerCase)} />
+
+          <Rule dotted className="mt-3 mb-2" />
+          <RSection label="IF THE BUYER PUSHES" />
+          {[0.025, 0.05].map((extra) => {
+            const pushed = retailerPnL(product, grocery.retailerMargin + extra, activeWholesalerMargin(grocery))
+            return (
+              <RLine
+                key={extra}
+                label={`At ${Math.round((grocery.retailerMargin + extra) * 100 * 10) / 10}% retailer margin`}
+                value={`${gbp(pushed.brandGrossMarginPerUnit)} / unit`}
+                dim
+                color={pushed.brandGrossMarginPerUnit <= 0 ? REDPEN : undefined}
+              />
+            )
+          })}
         </Receipt>
         <CalcActions />
       </div>

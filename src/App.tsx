@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useStore } from './store/useStore'
-import { decodeStateFromUrl } from './utils/urlState'
+import { decodeStateFromUrl, encodeStateToUrl } from './utils/urlState'
 import Ticker from './components/gross/Ticker'
 import GrossNav from './components/gross/GrossNav'
 import Home from './pages/Home'
@@ -48,6 +48,29 @@ function App() {
         activeCalculator: decoded.activeCalculator in PAGES ? decoded.activeCalculator : 'home',
         scenario: decoded.scenario,
       })
+    }
+  }, [])
+
+  // Keep the address bar in sync with the full model (debounced replaceState):
+  // a refresh never loses work, and the URL is always the share link.
+  // State stays in memory + URL only — no localStorage, by design.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const unsubscribe = useStore.subscribe((state) => {
+      clearTimeout(timer)
+      timer = setTimeout(() => {
+        const url = encodeStateToUrl(
+          state.products,
+          state.activeProductId,
+          state.activeCalculator,
+          state.scenario,
+        )
+        window.history.replaceState(null, '', url)
+      }, 400)
+    })
+    return () => {
+      clearTimeout(timer)
+      unsubscribe()
     }
   }, [])
 

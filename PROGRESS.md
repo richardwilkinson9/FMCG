@@ -93,6 +93,26 @@ The maths was not touched — every formula still comes from calculations.ts.
 - [x] Verified in-browser: all pages vs handover screenshots, share-link round
       trip, empty-state recovery, Export download, fonts, reduced-motion CSS
 
+## Export + depth sprint (July 2026)
+- [x] **Export rebuilt as the GROSS Excel deck** — branded cover (Ink/Bile,
+      wordmark), styled Assumptions with named cells, receipt-styled sheets
+      (The P&L, The Waterfall, Weekly Projection with live promo-week
+      highlighting, Stock Plan with editable orders + red stockout rows,
+      The Cuts, The Line-Up). All formulas live; verdict sentences printed
+      at export. Fonts fall back to Arial Black / Courier New.
+- [x] **URL auto-sync** — full model debounced into the address bar via
+      replaceState: refresh never loses work, the URL is always the share
+      link. Still no localStorage, by design.
+- [x] Depth pass on every tool:
+      P&L "IF THE BUYER PUSHES" sensitivity (+2.5/+5pts); Waterfall total
+      trade-spend line; Floor margin/case at target; Listing retail sales
+      value + cases/store/week (red under 0.5); Payback break-even as %
+      uplift on the base over the promo window; Stock Answer "THE DIARY"
+      (first + largest order, week and cases); Amazon & TikTok break-even
+      sale prices; Line-Up per-channel break-even prices; Range period
+      volume line; £ formatting fixed in the Listing loss verdict.
+- [x] Homepage step-2 copy now says 11 tools.
+
 ## Next
 - [ ] Verify all calculation logic with real-world examples
 - [ ] Consider a proper branded PDF (jsPDF) if print proves insufficient

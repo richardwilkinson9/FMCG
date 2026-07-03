@@ -68,9 +68,11 @@ export default function MinimumMargin() {
     let answerLabel: string, answerStr: string, currentLabel: string, currentStr: string
     let headVal: number, ok: boolean, subline: string, knownReceiptLabel: string, knownStr: string
     let verdict: string
+    let marginCaseAtTarget: number
 
     if (costMode) {
       const solved = solveForCostPrice(product.rrpIncVat, product.vatRate, ret, target, ws)
+      marginCaseAtTarget = (solved.costToWholesaler - solved.requiredCogs) * product.unitsPerCase
       headVal = solved.requiredCogs - product.cogsPerUnit
       ok = product.cogsPerUnit <= solved.requiredCogs
       answerLabel = 'Highest cost price you can pay'
@@ -85,6 +87,7 @@ export default function MinimumMargin() {
         : `Your cost price is ${gbp(-headVal)} over the ceiling. You cannot hit ${Math.round(target * 100)}% at this RRP. Lift the RRP or cut the cost.`
     } else {
       const solved = solveForRrp(product.cogsPerUnit, product.vatRate, ret, target, ws)
+      marginCaseAtTarget = (solved.costToWholesaler - product.cogsPerUnit) * product.unitsPerCase
       headVal = product.rrpIncVat - solved.rrpIncVat
       ok = product.rrpIncVat >= solved.rrpIncVat
       answerLabel = 'Lowest RRP you can list at'
@@ -114,6 +117,7 @@ export default function MinimumMargin() {
           <RLine label={`Your ${currentLabel}`} value={currentStr} />
           <RLine label="Headroom" value={gbp(headVal)} color={ok ? INK : REDPEN} />
           <RLine label="Brand margin at your price" value={pct(curMarginPct)} color={ok ? INK : REDPEN} />
+          <RLine label="Margin / case at target" value={gbp(marginCaseAtTarget)} dim />
         </Receipt>
         <CalcActions />
       </div>

@@ -111,6 +111,31 @@ export default function StockForecast() {
           />
           <RLine label="Stockout weeks" value={n0(plan.stockoutWeeks)} color={ok ? INK : REDPEN} />
           <RLine label="Lost sales" value={`${n0(plan.lostUnits)} units`} color={ok ? INK : REDPEN} />
+
+          <Rule dotted className="mt-3 mb-2" />
+          <RSection label="THE DIARY" />
+          {(() => {
+            const orders = plan.rows.filter((r) => r.orderPlaced > 0)
+            if (orders.length === 0) {
+              return <RLine label="No orders needed" value="starting stock covers the period" dim />
+            }
+            const first = orders[0]
+            const largest = orders.reduce((a, b) => (b.orderPlaced > a.orderPlaced ? b : a))
+            return (
+              <>
+                <RLine
+                  label={`First order — week ${first.week}`}
+                  value={`${n0(first.orderPlaced / Math.max(product.unitsPerCase, 1))} cases`}
+                  bold
+                />
+                <RLine
+                  label={`Largest order — week ${largest.week}`}
+                  value={`${n0(largest.orderPlaced / Math.max(product.unitsPerCase, 1))} cases`}
+                  dim
+                />
+              </>
+            )
+          })()}
         </Receipt>
         <CalcActions />
       </div>

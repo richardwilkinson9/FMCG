@@ -96,7 +96,7 @@ export default function Home() {
             <div className="flex-1 border-2 border-ink bg-white p-[26px]">
               <div className="font-mono text-xs tracking-[0.1em] opacity-55">STEP 02</div>
               <div className="font-mono text-[26px] font-bold mt-2.5 tracking-[-0.01em]">CALCULATORS</div>
-              <div className="text-sm mt-2">9 tools to do your job for you.</div>
+              <div className="text-sm mt-2">11 tools to do your job for you.</div>
             </div>
             <div className="font-mono text-[34px] font-bold rotate-90 min-[821px]:rotate-0 self-center" aria-hidden="true">→</div>
             <div className="flex-1 border-2 border-ink bg-ink text-receipt p-[26px]">

@@ -10,6 +10,7 @@ import { gbp, ceil0, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components/gr
 export default function TradeSpendROI() {
   const product = useStore((s) => s.getActiveProduct())
   const grocery = useStore((s) => s.scenario.grocery)
+  const listing = useStore((s) => s.scenario.listing)
   const tradeSpend = useStore((s) => s.scenario.tradeSpend)
   const updateProduct = useStore((s) => s.updateProduct)
   const updateScenario = useStore((s) => s.updateScenario)
@@ -85,6 +86,31 @@ export default function TradeSpendROI() {
           />
           <RLine label={`Units for ${roiLabel} ROI`} value={ceil0(result.targetReturnUnits)} />
           <RLine label={`Cases for ${roiLabel} ROI`} value={ceil0(result.targetReturnCases)} />
+
+          <Rule dotted className="mt-3 mb-2" />
+          <RSection label="THE REALITY CHECK" />
+          {(() => {
+            // Base volume over the promo window, from the shared Listing settings
+            const promoWindowBase = product.weeklyRateOfSale * listing.stores * listing.promoWeeks
+            const upliftNeeded = promoWindowBase > 0 && Number.isFinite(result.breakEvenUnits)
+              ? result.breakEvenUnits / promoWindowBase
+              : NaN
+            return (
+              <>
+                <RLine
+                  label={`Base volume over ${listing.promoWeeks} promo weeks`}
+                  value={`${ceil0(promoWindowBase)} units`}
+                  dim
+                />
+                <RLine
+                  label="Break-even as uplift on base"
+                  value={Number.isFinite(upliftNeeded) ? `+${(upliftNeeded * 100).toFixed(0)}%` : '—'}
+                  bold
+                  color={Number.isFinite(upliftNeeded) && upliftNeeded > 1 ? REDPEN : INK}
+                />
+              </>
+            )
+          })()}
         </Receipt>
         <CalcActions />
       </div>

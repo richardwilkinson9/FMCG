@@ -99,6 +99,21 @@ export default function TikTokShop() {
               { label: 'Margin %', value: pct(pctVal), big: false, color: noMargin ? REDPEN : BILE },
             ]}
           />
+          {(() => {
+            // The lowest sale price (inc VAT) at which the unit stops losing money
+            const pctFees = fees.platformCommission + fees.affiliateCommission + fees.refundAdminPercent
+            const breakEven = pctFees < 1
+              ? ((fees.perOrderFee + product.cogsPerUnit) / (1 - pctFees)) * (1 + product.vatRate)
+              : Infinity
+            return (
+              <RLine
+                label="Break-even sale price (inc VAT)"
+                value={gbp(breakEven)}
+                bold
+                color={product.rrpIncVat < breakEven ? REDPEN : INK}
+              />
+            )
+          })()}
         </Receipt>
         <CalcActions />
       </div>

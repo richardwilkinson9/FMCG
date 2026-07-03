@@ -81,10 +81,32 @@ export default function CrossChannel() {
     )
     const rsp = rspExVat(product)
 
+    // The lowest price (inc VAT) at which each channel stops losing money
+    const ws = activeWholesalerMargin(grocery)
+    const vatUp = 1 + product.vatRate
+    const groceryKeep = (1 - grocery.retailerMargin) * (1 - ws)
+    const amazonPerUnit =
+      product.cogsPerUnit +
+      amazonFees.fulfilmentFeePerUnit * (1 + amazonFees.fuelLogisticsSurcharge) +
+      amazonFees.monthlyStoragePerUnit
+    const tiktokPctFees = tiktokFees.platformCommission + tiktokFees.affiliateCommission + tiktokFees.refundAdminPercent
+
     const raw = [
-      { name: 'GROCERY', disp: 'Grocery', net: comparison.grocery.netRevenuePerUnit, gp: comparison.grocery.grossProfitPerUnit },
-      { name: 'AMAZON FBA', disp: 'Amazon', net: comparison.amazon.netRevenuePerUnit, gp: comparison.amazon.grossProfitPerUnit },
-      { name: 'TIKTOK SHOP', disp: 'TikTok', net: comparison.tiktok.netRevenuePerUnit, gp: comparison.tiktok.grossProfitPerUnit },
+      {
+        name: 'GROCERY', disp: 'Grocery',
+        net: comparison.grocery.netRevenuePerUnit, gp: comparison.grocery.grossProfitPerUnit,
+        breakEven: groceryKeep > 0 ? (product.cogsPerUnit / groceryKeep) * vatUp : Infinity,
+      },
+      {
+        name: 'AMAZON FBA', disp: 'Amazon',
+        net: comparison.amazon.netRevenuePerUnit, gp: comparison.amazon.grossProfitPerUnit,
+        breakEven: amazonFees.referralFeePercent < 1 ? (amazonPerUnit / (1 - amazonFees.referralFeePercent)) * vatUp : Infinity,
+      },
+      {
+        name: 'TIKTOK SHOP', disp: 'TikTok',
+        net: comparison.tiktok.netRevenuePerUnit, gp: comparison.tiktok.grossProfitPerUnit,
+        breakEven: tiktokPctFees < 1 ? ((tiktokFees.perOrderFee + product.cogsPerUnit) / (1 - tiktokPctFees)) * vatUp : Infinity,
+      },
     ]
     const bestGP = Math.max(...raw.map((r) => r.gp))
     const winner = raw.reduce((a, b) => (b.gp > a.gp ? b : a))
@@ -136,6 +158,10 @@ export default function CrossChannel() {
                   <div className="flex justify-between text-xs mt-[5px]">
                     <span className="opacity-75">net revenue {gbp(r.net)}</span>
                     <span className="font-bold" style={{ color: negative ? REDPEN : INK }}>{pct(share)} of shelf</span>
+                  </div>
+                  <div className="flex justify-between text-xs mt-[5px]">
+                    <span className="opacity-75">break-even price (inc VAT)</span>
+                    <span style={{ color: product.rrpIncVat < r.breakEven ? REDPEN : INK }}>{gbp(r.breakEven)}</span>
                   </div>
                 </div>
               </div>

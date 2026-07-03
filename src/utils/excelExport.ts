@@ -7,6 +7,7 @@ import {
 } from '../store/scenario'
 import {
   retailerPnL,
+  rspExVat,
   amazonFBAMargin,
   tiktokShopMargin,
   weeklyProjection,
@@ -14,31 +15,57 @@ import {
 } from './calculations'
 
 /**
- * Excel MODEL export — not a data dump.
+ * The GROSS. Excel deck — a branded, formula-live workbook.
  *
- * Every input lives on the Assumptions sheet as a NAMED cell (RRP, RetailerMargin,
- * Stores…), and every other sheet is built from formulas that reference those
- * names. Change an assumption in Excel and the whole workbook recalculates:
- * the weekly phasing moves with PromoStart, the stock plan re-derives arrivals
- * from the (editable) order column, the channel P&Ls reprice.
- *
- * Formula cells also carry precomputed results so viewers that don't
- * recalculate on open (Quick Look, some mobile apps) still show numbers.
+ * Rules of the build:
+ * - Every input is a NAMED cell on the Assumptions sheet. Every derived cell
+ *   is a formula referencing those names, with a cached result so viewers
+ *   that don't recalculate still show numbers. Change an assumption in Excel
+ *   and the whole deck reprices.
+ * - Brand: Ink/Bile/Receipt palette, receipt-style sheets, answer blocks as
+ *   inverted Ink rows, negatives in Red-Pen. Fonts fall back gracefully
+ *   (Arial Black for display, Courier New for the mono receipt voice).
+ * - Verdict sentences are printed at export; the numbers recalculate.
  */
+
+// GROSS palette (ARGB)
+const INK = 'FF0A0A0A'
+const BILE = 'FFC6F215'
+const RECEIPT = 'FFF7F5EF'
+const REDUCED = 'FFFFD400'
+const REDPEN = 'FFE4002B'
+const WHITE = 'FFFFFFFF'
+
+const DISPLAY = 'Arial Black'
+const MONO = 'Courier New'
 
 const GBP = '£#,##0.00'
 const PCT = '0.0%'
 const INT = '#,##0'
 
+type Cell = import('exceljs').Cell
+type Worksheet = import('exceljs').Worksheet
+
+const fill = (color: string) => ({ type: 'pattern' as const, pattern: 'solid' as const, fgColor: { argb: color } })
+
+function receiptBase(ws: Worksheet, cols = 8) {
+  ws.views = [{ showGridLines: false }]
+  for (let i = 1; i <= cols; i++) {
+    ws.getColumn(i).fill = fill(RECEIPT)
+    ws.getColumn(i).font = { name: MONO, size: 10, color: { argb: INK } }
+  }
+}
+
 export async function downloadExcelModel(product: Product, scenario: Scenario): Promise<void> {
   const ExcelJS = await import('exceljs')
   const wb = new ExcelJS.Workbook()
-  wb.creator = 'FMCG Maths'
+  wb.creator = 'GROSS.'
 
   const ws = activeWholesalerMargin(scenario.grocery)
   const amazonFees = effectiveAmazonFees(scenario.amazon)
   const tiktokFees = effectiveTikTokFees(scenario.tiktok)
   const grocery = retailerPnL(product, scenario.grocery.retailerMargin, ws)
+  const rsp = rspExVat(product)
   const amazon = amazonFBAMargin(product, amazonFees)
   const tiktok = tiktokShopMargin(product, tiktokFees)
   const listingInputs = {
@@ -50,221 +77,456 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
     promoUpliftPercent: scenario.listing.promoUplift,
   }
   const weeks = weeklyProjection(product, scenario.grocery.retailerMargin, listingInputs, ws)
-  const plan = stockLedger(
-    weeks.map((w) => w.volume),
-    scenario.stock.startingStockUnits,
-    scenario.stock.leadWeeks,
-    scenario.stock.weeksOfCover,
-    product.unitsPerCase,
-  )
-  const nWeeks = weeks.length
+  const stockDemand: number[] = []
+  for (let w = 1; w <= scenario.stock.planWeeks; w++) {
+    const onPromo = w >= scenario.listing.promoStartWeek && w < scenario.listing.promoStartWeek + scenario.listing.promoWeeks
+    stockDemand.push(onPromo
+      ? product.weeklyRateOfSale * scenario.listing.stores * (1 + scenario.listing.promoUplift)
+      : product.weeklyRateOfSale * scenario.listing.stores)
+  }
+  const plan = stockLedger(stockDemand, scenario.stock.startingStockUnits, scenario.stock.leadWeeks, scenario.stock.weeksOfCover, product.unitsPerCase)
+  const stamp = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase().replace(/,/g, '')
+  const planCut = scenario.amazon.planMonthly / Math.max(scenario.amazon.monthlyUnits, 1)
 
-  // ── Assumptions ─────────────────────────────────────────────────────────────
-  const aws = wb.addWorksheet('Assumptions')
-  aws.columns = [{ width: 34 }, { width: 16 }, { width: 58 }]
+  // Small style helpers ------------------------------------------------------
+  const mono = (c: Cell, opts: { bold?: boolean; size?: number; color?: string } = {}) => {
+    c.font = { name: MONO, size: opts.size ?? 10, bold: opts.bold ?? false, color: { argb: opts.color ?? INK } }
+  }
+  const setF = (c: Cell, formula: string, result: number, fmt: string) => {
+    c.value = { formula, result }
+    c.numFmt = fmt
+  }
+  const line = (sheet: Worksheet, r: number, label: string, opts: {
+    formula?: string; result?: number; text?: string; fmt?: string
+    bold?: boolean; dim?: boolean; red?: boolean
+  }) => {
+    const l = sheet.getCell(r, 2)
+    l.value = label
+    mono(l, { bold: opts.bold, color: opts.dim ? 'FF666666' : INK })
+    const v = sheet.getCell(r, 5)
+    if (opts.formula !== undefined) setF(v, opts.formula, opts.result ?? 0, opts.fmt ?? GBP)
+    else if (opts.text !== undefined) v.value = opts.text
+    else if (opts.result !== undefined) { v.value = opts.result; v.numFmt = opts.fmt ?? GBP }
+    mono(v, { bold: opts.bold, color: opts.red ? REDPEN : INK })
+    v.alignment = { horizontal: 'right' }
+    return r + 1
+  }
+  const rule = (sheet: Worksheet, r: number, dotted = false) => {
+    for (let i = 2; i <= 5; i++) {
+      sheet.getCell(r, i).border = { top: { style: dotted ? 'dotted' : 'medium', color: { argb: INK } } }
+    }
+    return r
+  }
+  const sectionEyebrow = (sheet: Worksheet, r: number, text: string) => {
+    const c = sheet.getCell(r, 2)
+    c.value = text
+    mono(c, { size: 8, color: 'FF666666' })
+    return r + 1
+  }
+  const answerBlock = (sheet: Worksheet, r: number, rows: { label: string; formula?: string; result: number; fmt: string; red?: boolean }[]) => {
+    for (const row of rows) {
+      for (let i = 2; i <= 5; i++) sheet.getCell(r, i).fill = fill(INK)
+      const l = sheet.getCell(r, 2)
+      l.value = row.label
+      mono(l, { color: BILE, bold: true })
+      const v = sheet.getCell(r, 5)
+      if (row.formula) setF(v, row.formula, row.result, row.fmt)
+      else { v.value = row.result; v.numFmt = row.fmt }
+      mono(v, { color: row.red ? REDPEN : BILE, bold: true, size: 13 })
+      v.alignment = { horizontal: 'right' }
+      sheet.getRow(r).height = 22
+      r++
+    }
+    return r
+  }
+  const verdictAndFooter = (sheet: Worksheet, r: number, verdict: string, red = false) => {
+    rule(sheet, r); r++
+    const v = sheet.getCell(r, 2)
+    v.value = verdict
+    mono(v, { bold: true, color: red ? REDPEN : INK })
+    sheet.mergeCells(r, 2, r, 7)
+    v.alignment = { wrapText: true, vertical: 'top' }
+    sheet.getRow(r).height = 30
+    r += 2
+    rule(sheet, r); r++
+    const f = sheet.getCell(r, 2)
+    f.value = 'VAT number: not applicable. This is a spreadsheet of a website.'
+    mono(f, { size: 8, color: 'FF666666' })
+    return r + 1
+  }
+  const toolHeader = (sheet: Worksheet, tool: string, subline: string) => {
+    let r = 2
+    const t = sheet.getCell(r, 2)
+    t.value = `GROSS. // ${tool}`
+    mono(t, { bold: true, size: 11 })
+    const d = sheet.getCell(r, 5)
+    d.value = stamp
+    mono(d, { size: 9 })
+    d.alignment = { horizontal: 'right' }
+    r++
+    const n = sheet.getCell(r, 2)
+    n.value = product.name
+    mono(n, { bold: true, size: 12 })
+    r++
+    const s = sheet.getCell(r, 2)
+    s.value = subline
+    mono(s, { size: 9, color: 'FF666666' })
+    r += 1
+    rule(sheet, ++r)
+    return r + 1
+  }
+  const sheetCols = (sheet: Worksheet) => {
+    sheet.getColumn(1).width = 2
+    sheet.getColumn(2).width = 38
+    sheet.getColumn(3).width = 12
+    sheet.getColumn(4).width = 12
+    sheet.getColumn(5).width = 18
+    sheet.getColumn(6).width = 2
+    sheet.getColumn(7).width = 30
+    sheet.getColumn(8).width = 2
+  }
 
-  let row = 1
+  // ── COVER ──────────────────────────────────────────────────────────────────
+  const cover = wb.addWorksheet('GROSS.', { properties: { tabColor: { argb: BILE } } })
+  cover.views = [{ showGridLines: false }]
+  for (let i = 1; i <= 10; i++) cover.getColumn(i).fill = fill(INK)
+  cover.getColumn(2).width = 120
+  const big = cover.getCell('B3')
+  big.value = 'GROSS.'
+  big.font = { name: DISPLAY, size: 64, bold: true, color: { argb: BILE } }
+  cover.getRow(3).height = 84
+  const tag = cover.getCell('B5')
+  tag.value = 'Do the gross maths.'
+  tag.font = { name: DISPLAY, size: 18, color: { argb: RECEIPT } }
+  const pn = cover.getCell('B8')
+  pn.value = `${product.name} · exported ${stamp}`
+  pn.font = { name: MONO, size: 11, bold: true, color: { argb: BILE } }
+  const how = cover.getCell('B10')
+  how.value = 'Every input is a named cell on the Assumptions sheet. Change one and the deck reprices.'
+  how.font = { name: MONO, size: 10, color: { argb: RECEIPT } }
+  const how2 = cover.getCell('B11')
+  how2.value = 'Numbers recalculate. Sentences were printed at export and stay put.'
+  how2.font = { name: MONO, size: 10, color: { argb: RECEIPT } }
+  const foot1 = cover.getCell('B14')
+  foot1.value = 'GROSS. // FREE COMMERCIAL CALCULATORS FOR UK FMCG BRAND TEAMS — getgross.co.uk'
+  foot1.font = { name: MONO, size: 8, color: { argb: BILE } }
+  const foot2 = cover.getCell('B15')
+  foot2.value = 'VAT NUMBER: NOT APPLICABLE. THIS IS A SPREADSHEET.'
+  foot2.font = { name: MONO, size: 8, color: { argb: RECEIPT } }
+
+  // ── ASSUMPTIONS ────────────────────────────────────────────────────────────
+  const aws = wb.addWorksheet('Assumptions', { properties: { tabColor: { argb: INK } } })
+  aws.views = [{ showGridLines: false }]
+  for (let i = 1; i <= 6; i++) aws.getColumn(i).fill = fill(RECEIPT)
+  aws.getColumn(1).width = 2
+  aws.getColumn(2).width = 34
+  aws.getColumn(3).width = 16
+  aws.getColumn(4).width = 62
+
+  let ar = 2
   const heading = (text: string) => {
-    const cell = aws.getCell(`A${row}`)
-    cell.value = text
-    cell.font = { bold: true }
-    row++
+    for (let i = 2; i <= 4; i++) aws.getCell(ar, i).fill = fill(INK)
+    const c = aws.getCell(ar, 2)
+    c.value = text
+    c.font = { name: MONO, size: 10, bold: true, color: { argb: BILE } }
+    aws.getRow(ar).height = 18
+    ar++
   }
-  const assumption = (
-    label: string,
-    value: number | string,
-    name: string | null,
-    fmt: string | null,
-    note = '',
-  ) => {
-    aws.getCell(`A${row}`).value = label
-    const cell = aws.getCell(`B${row}`)
-    cell.value = value
-    if (fmt) cell.numFmt = fmt
-    if (note) aws.getCell(`C${row}`).value = note
-    if (name) wb.definedNames.add(`Assumptions!$B$${row}`, name)
-    row++
+  const assumption = (label: string, value: number | string, name: string | null, fmt: string | null, note = '') => {
+    const l = aws.getCell(ar, 2)
+    l.value = label
+    mono(l)
+    const v = aws.getCell(ar, 3)
+    v.value = value
+    if (fmt) v.numFmt = fmt
+    v.fill = fill(WHITE)
+    v.border = { top: { style: 'thin', color: { argb: INK } }, bottom: { style: 'thin', color: { argb: INK } }, left: { style: 'thin', color: { argb: INK } }, right: { style: 'thin', color: { argb: INK } } }
+    mono(v, { bold: true })
+    v.alignment = { horizontal: 'right' }
+    if (note) { const n = aws.getCell(ar, 4); n.value = note; mono(n, { size: 8, color: 'FF666666' }) }
+    if (name) wb.definedNames.add(`Assumptions!$C$${ar}`, name)
+    ar++
   }
 
-  heading('FMCG Maths — model assumptions')
-  aws.getCell(`C${row - 1}`).value = 'Change any value in column B; every sheet recalculates.'
-  row++
+  const title = aws.getCell(1, 2)
+  title.value = 'ASSUMPTIONS — the only cells you need to touch'
+  mono(title, { bold: true, size: 11 })
+  ar = 3
 
-  heading('Product')
+  heading('THE PRODUCT')
   assumption('Name', product.name, null, null)
-  assumption('COGS per unit', product.cogsPerUnit, 'COGS', GBP, 'Cost to make/buy one consumer unit')
+  assumption('Cost price / unit', product.cogsPerUnit, 'COGS', GBP)
   assumption('Units per case', product.unitsPerCase, 'UnitsPerCase', INT)
-  assumption('RRP inc. VAT', product.rrpIncVat, 'RRP', GBP, 'Shelf price the shopper pays')
+  assumption('RSP (inc VAT)', product.rrpIncVat, 'RRP', GBP, 'Shelf price the shopper pays')
   assumption('VAT rate', product.vatRate, 'VAT', PCT)
-  assumption('Weekly rate of sale per store', product.weeklyRateOfSale, 'ROS', '0.0')
-  row++
+  assumption('Rate of sale / store / wk', product.weeklyRateOfSale, 'ROS', '0.0')
+  ar++
 
-  heading('Grocery chain')
-  assumption('Retailer margin', scenario.grocery.retailerMargin, 'RetailerMargin', PCT, 'On RSP ex-VAT')
-  assumption('Wholesaler margin', ws, 'WholesalerMargin', PCT, '0 = selling direct to retailer')
-  row++
+  heading('THE CHAIN')
+  assumption('Retailer margin', scenario.grocery.retailerMargin, 'RetailerMargin', PCT, 'dated default — check the rate card')
+  assumption('Wholesaler margin', ws, 'WholesalerMargin', PCT, '0 = selling direct')
+  ar++
 
-  heading('Listing / distribution')
+  heading('TRADE SPEND (% of list)')
+  assumption('Promo funding', scenario.waterfall.promoFunding, 'PromoFunding', PCT)
+  assumption('Back margin / retro', scenario.waterfall.backMargin, 'BackMargin', PCT)
+  assumption('Other trade spend', scenario.waterfall.otherTrade, 'OtherTrade', PCT)
+  ar++
+
+  heading('THE LISTING')
   assumption('Stores', scenario.listing.stores, 'Stores', INT)
-  assumption('SKUs', scenario.listing.skus, 'SKUs', INT)
-  assumption('Weeks in period', scenario.listing.weeksInPeriod, null, INT, 'Changing this needs extra rows on the weekly sheets')
+  assumption('SKUs listed', scenario.listing.skus, 'SKUs', INT)
+  assumption('Weeks in period', scenario.listing.weeksInPeriod, null, INT, 'Add rows on Weekly Projection if you extend this')
   assumption('Promo start week', scenario.listing.promoStartWeek, 'PromoStart', INT)
   assumption('Promo weeks', scenario.listing.promoWeeks, 'PromoWeeks', INT)
-  assumption('Promo volume uplift', scenario.listing.promoUplift, 'PromoUplift', PCT)
-  row++
+  assumption('Promo uplift', scenario.listing.promoUplift, 'PromoUplift', PCT)
+  ar++
 
-  heading('Supply')
+  heading('THE SUPPLY')
   assumption('Starting stock (units)', scenario.stock.startingStockUnits, 'StartStock', INT)
   assumption('Lead time (weeks)', scenario.stock.leadWeeks, 'LeadWeeks', INT)
   assumption('Weeks of cover', scenario.stock.weeksOfCover, 'CoverWeeks', INT)
-  row++
+  ar++
 
-  heading('Amazon FBA')
-  assumption('Referral fee', amazonFees.referralFeePercent, 'AmzReferral', PCT)
-  assumption('Fulfilment fee per unit', amazonFees.fulfilmentFeePerUnit, 'AmzFulfil', GBP)
-  assumption('Storage per unit per month', amazonFees.monthlyStoragePerUnit, 'AmzStorage', GBP)
-  assumption('Fuel & logistics surcharge', amazonFees.fuelLogisticsSurcharge, 'AmzFuel', PCT)
-  assumption('Professional plan per month', scenario.amazon.planMonthly, 'AmzPlan', GBP)
-  assumption('Expected monthly units', scenario.amazon.monthlyUnits, 'AmzUnits', INT)
-  row++
+  heading('THE AMAZON CUT')
+  assumption('Referral fee', amazonFees.referralFeePercent, 'AmzReferral', PCT, 'dated default — check the rate card')
+  assumption('Fulfilment / unit', amazonFees.fulfilmentFeePerUnit, 'AmzFulfil', GBP)
+  assumption('Storage / unit / mo', amazonFees.monthlyStoragePerUnit, 'AmzStorage', GBP)
+  assumption('Fuel surcharge', amazonFees.fuelLogisticsSurcharge, 'AmzFuel', PCT)
+  assumption('Selling plan / mo', scenario.amazon.planMonthly, 'AmzPlan', GBP)
+  assumption('Units sold / mo', scenario.amazon.monthlyUnits, 'AmzUnits', INT)
+  ar++
 
-  heading('TikTok Shop')
-  assumption('Platform commission', tiktokFees.platformCommission, 'TtkCommission', PCT)
+  heading('THE TIKTOK CUT')
+  assumption('Platform commission', tiktokFees.platformCommission, 'TtkCommission', PCT, 'dated default — check the rate card')
   assumption('Affiliate commission', tiktokFees.affiliateCommission, 'TtkAffiliate', PCT)
   assumption('Per-order fee', tiktokFees.perOrderFee, 'TtkOrderFee', GBP)
   assumption('Refund admin', tiktokFees.refundAdminPercent, 'TtkRefund', PCT)
 
-  // ── Grocery P&L ─────────────────────────────────────────────────────────────
-  const pnl = wb.addWorksheet('Grocery P&L')
-  pnl.columns = [{ width: 30 }, { width: 16 }]
-  pnl.getCell('A1').value = 'Grocery P&L (per unit)'
-  pnl.getCell('A1').font = { bold: true }
+  // ── THE P&L ────────────────────────────────────────────────────────────────
+  const pnl = wb.addWorksheet('The P&L', { properties: { tabColor: { argb: BILE } } })
+  receiptBase(pnl)
+  sheetCols(pnl)
+  let r = toolHeader(pnl, 'THE P&L', 'who takes what · per unit')
+  r = sectionEyebrow(pnl, r, 'THE WATERFALL')
+  r = line(pnl, r, 'Consumer pays (inc VAT)', { formula: 'RRP', result: product.rrpIncVat })
+  r = line(pnl, r, 'less VAT', { formula: '-(RRP-RRP/(1+VAT))', result: -(product.rrpIncVat - rsp), dim: true })
+  r = line(pnl, r, 'Shelf price ex-VAT', { formula: 'RRP/(1+VAT)', result: rsp, bold: true })
+  wb.definedNames.add(`'The P&L'!$E$${r - 1}`, 'RSPexVAT')
+  r = line(pnl, r, 'less retailer margin', { formula: '-RSPexVAT*RetailerMargin', result: -grocery.retailerMarginPerUnit, dim: true })
+  r = line(pnl, r, 'less wholesaler margin', { formula: '-RSPexVAT*(1-RetailerMargin)*WholesalerMargin', result: -grocery.wholesalerMarginPerUnit, dim: true })
+  r = line(pnl, r, 'You bank / unit', { formula: 'RSPexVAT*(1-RetailerMargin)*(1-WholesalerMargin)', result: grocery.brandNetRevenue, bold: true })
+  wb.definedNames.add(`'The P&L'!$E$${r - 1}`, 'NetRevPerUnit')
+  r = line(pnl, r, 'less cost price', { formula: '-COGS', result: -product.cogsPerUnit, dim: true })
+  r++
+  r = sectionEyebrow(pnl, r, 'YOUR MARGIN')
+  r = answerBlock(pnl, r, [
+    { label: 'Gross margin / unit', formula: 'NetRevPerUnit-COGS', result: grocery.brandGrossMarginPerUnit, fmt: GBP, red: grocery.brandGrossMarginPerUnit <= 0 },
+    { label: 'Margin %', formula: 'IF(NetRevPerUnit=0,0,(NetRevPerUnit-COGS)/NetRevPerUnit)', result: grocery.brandGrossMarginPercent, fmt: PCT, red: grocery.brandGrossMarginPerUnit <= 0 },
+  ])
+  wb.definedNames.add(`'The P&L'!$E$${r - 2}`, 'MarginPerUnit')
+  r = line(pnl, r, 'Margin / case', { formula: 'MarginPerUnit*UnitsPerCase', result: grocery.marginPerCase })
+  r = line(pnl, r, 'Net revenue / case', { formula: 'NetRevPerUnit*UnitsPerCase', result: grocery.revenuePerCase })
+  r++
+  r = sectionEyebrow(pnl, r, 'IF THE BUYER PUSHES')
+  const pushed25 = retailerPnL(product, scenario.grocery.retailerMargin + 0.025, ws)
+  const pushed50 = retailerPnL(product, scenario.grocery.retailerMargin + 0.05, ws)
+  r = line(pnl, r, 'At +2.5pts retailer margin', { formula: 'RSPexVAT*(1-(RetailerMargin+0.025))*(1-WholesalerMargin)-COGS', result: pushed25.brandGrossMarginPerUnit, dim: true })
+  r = line(pnl, r, 'At +5pts retailer margin', { formula: 'RSPexVAT*(1-(RetailerMargin+0.05))*(1-WholesalerMargin)-COGS', result: pushed50.brandGrossMarginPerUnit, dim: true })
+  const pnlVerdict = grocery.brandGrossMarginPerUnit <= 0
+    ? `You make ${fmtGBP(grocery.brandGrossMarginPerUnit)} a unit. You are paying to be stocked. Fix the cost price or the RRP.`
+    : `You keep ${fmtGBP(grocery.brandGrossMarginPerUnit)} of every ${fmtGBP(rsp)} on the shelf. Back margin is still margin.`
+  verdictAndFooter(pnl, r + 1, pnlVerdict, grocery.brandGrossMarginPerUnit <= 0)
 
-  const pnlRow = (r: number, label: string, formula: string, result: number, fmt: string, name?: string) => {
-    pnl.getCell(`A${r}`).value = label
-    const cell = pnl.getCell(`B${r}`)
-    cell.value = { formula, result }
-    cell.numFmt = fmt
-    if (name) wb.definedNames.add(`'Grocery P&L'!$B$${r}`, name)
-  }
-  pnlRow(3, 'RSP ex-VAT', 'RRP/(1+VAT)', grocery.rspExVat, GBP, 'RSPexVAT')
-  pnlRow(4, 'Cost to retailer', 'RSPexVAT*(1-RetailerMargin)', grocery.costToRetailer, GBP, 'CostToRetailer')
-  pnlRow(5, 'Your net revenue per unit', 'CostToRetailer*(1-WholesalerMargin)', grocery.brandNetRevenue, GBP, 'NetRevPerUnit')
-  pnlRow(6, 'Gross margin per unit', 'NetRevPerUnit-COGS', grocery.brandGrossMarginPerUnit, GBP, 'MarginPerUnit')
-  pnlRow(7, 'Gross margin %', 'IF(NetRevPerUnit=0,0,MarginPerUnit/NetRevPerUnit)', grocery.brandGrossMarginPercent, PCT)
-  pnlRow(8, 'Revenue per case', 'NetRevPerUnit*UnitsPerCase', grocery.revenuePerCase, GBP)
-  pnlRow(9, 'Margin per case', 'MarginPerUnit*UnitsPerCase', grocery.marginPerCase, GBP)
+  // ── THE WATERFALL ──────────────────────────────────────────────────────────
+  const wf = wb.addWorksheet('The Waterfall', { properties: { tabColor: { argb: BILE } } })
+  receiptBase(wf)
+  sheetCols(wf)
+  const list = grocery.brandNetRevenue
+  const promoCut = list * scenario.waterfall.promoFunding
+  const retroCut = list * scenario.waterfall.backMargin
+  const otherCut = list * scenario.waterfall.otherTrade
+  const tradeTotal = promoCut + retroCut + otherCut
+  const netnet = list - tradeTotal
+  const wfGm = netnet - product.cogsPerUnit
+  r = toolHeader(wf, 'THE WATERFALL', 'gross to net · per unit')
+  r = line(wf, r, 'Your list price', { formula: 'NetRevPerUnit', result: list, bold: true })
+  const listRow = r - 1
+  r = line(wf, r, 'less promo funding', { formula: `-$E$${listRow}*PromoFunding`, result: -promoCut, dim: true })
+  r = line(wf, r, 'less back margin / retro', { formula: `-$E$${listRow}*BackMargin`, result: -retroCut, dim: true })
+  r = line(wf, r, 'less other trade', { formula: `-$E$${listRow}*OtherTrade`, result: -otherCut, dim: true })
+  r = line(wf, r, 'Total trade spend', { formula: `-$E$${listRow}*(PromoFunding+BackMargin+OtherTrade)`, result: -tradeTotal, bold: true, red: true })
+  rule(wf, r, true); r++
+  r = line(wf, r, 'Net net revenue', { formula: `$E$${listRow}*(1-PromoFunding-BackMargin-OtherTrade)`, result: netnet, bold: true })
+  const netnetRow = r - 1
+  r = line(wf, r, 'less cost price', { formula: '-COGS', result: -product.cogsPerUnit, dim: true })
+  r++
+  r = sectionEyebrow(wf, r, 'WHAT IS LEFT')
+  r = answerBlock(wf, r, [
+    { label: 'Net net margin / unit', formula: `$E$${netnetRow}-COGS`, result: wfGm, fmt: GBP, red: wfGm <= 0 },
+    { label: 'Margin on list', formula: `IF($E$${listRow}=0,0,($E$${netnetRow}-COGS)/$E$${listRow})`, result: list > 0 ? wfGm / list : 0, fmt: PCT, red: wfGm <= 0 },
+  ])
+  const wfVerdict = wfGm <= 0
+    ? `Trade spend and cost eat the whole list price. You net ${fmtGBP(wfGm)} a unit. The promo plan does not work.`
+    : `Trade spend takes ${fmtGBP(tradeTotal)} of your ${fmtGBP(list)} list price. You keep ${fmtGBP(wfGm)}. Back margin is still margin.`
+  verdictAndFooter(wf, r + 1, wfVerdict, wfGm <= 0)
 
-  // ── Weekly Projection ──────────────────────────────────────────────────────
-  const wp = wb.addWorksheet('Weekly Projection')
-  wp.columns = [
-    { width: 8 }, { width: 16 }, { width: 14 }, { width: 14 }, { width: 14 }, { width: 16 }, { width: 16 },
-  ]
-  const wpHeaders = ['Week', 'On promo (1=yes)', 'Volume', 'Revenue', 'Margin', 'Cum. revenue', 'Cum. margin']
+  // ── WEEKLY PROJECTION ─────────────────────────────────────────────────────
+  const wp = wb.addWorksheet('Weekly Projection', { properties: { tabColor: { argb: INK } } })
+  wp.views = [{ showGridLines: false, state: 'frozen', ySplit: 2 }]
+  for (let i = 1; i <= 8; i++) wp.getColumn(i).fill = fill(RECEIPT)
+  wp.getColumn(1).width = 2
+  ;[8, 14, 12, 14, 14, 16, 16].forEach((wdt, i) => { wp.getColumn(i + 2).width = wdt })
+  const wpHeaders = ['WK', 'ON PROMO (1=YES)', 'VOLUME', 'REVENUE', 'MARGIN', 'CUM. REVENUE', 'CUM. MARGIN']
   wpHeaders.forEach((h, i) => {
-    const cell = wp.getCell(1, i + 1)
-    cell.value = h
-    cell.font = { bold: true }
+    const c = wp.getCell(2, i + 2)
+    c.value = h
+    c.fill = fill(INK)
+    c.font = { name: MONO, size: 9, bold: true, color: { argb: BILE } }
   })
-  weeks.forEach((w, i) => {
-    const r = i + 2
-    wp.getCell(`A${r}`).value = w.week
-    const set = (col: string, formula: string, result: number, fmt: string) => {
-      const cell = wp.getCell(`${col}${r}`)
-      cell.value = { formula, result }
-      cell.numFmt = fmt
-    }
-    set('B', `IF(AND(A${r}>=PromoStart,A${r}<PromoStart+PromoWeeks),1,0)`, w.onPromo ? 1 : 0, '0')
-    set('C', `Stores*SKUs*ROS*(1+B${r}*PromoUplift)`, w.volume, INT)
-    set('D', `C${r}*NetRevPerUnit`, w.revenue, GBP)
-    set('E', `C${r}*MarginPerUnit`, w.grossMargin, GBP)
-    set('F', `SUM($D$2:D${r})`, w.cumulativeRevenue, GBP)
-    set('G', `SUM($E$2:E${r})`, w.cumulativeMargin, GBP)
+  weeks.forEach((wk, i) => {
+    const rr = i + 3
+    const a = wp.getCell(rr, 2); a.value = wk.week; mono(a)
+    setF(wp.getCell(rr, 3), `IF(AND($B${rr}>=PromoStart,$B${rr}<PromoStart+PromoWeeks),1,0)`, wk.onPromo ? 1 : 0, '0')
+    setF(wp.getCell(rr, 4), `Stores*SKUs*ROS*(1+$C${rr}*PromoUplift)`, wk.volume, INT)
+    setF(wp.getCell(rr, 5), `$D${rr}*NetRevPerUnit`, wk.revenue, GBP)
+    setF(wp.getCell(rr, 6), `$D${rr}*MarginPerUnit`, wk.grossMargin, GBP)
+    setF(wp.getCell(rr, 7), `SUM($E$3:E${rr})`, wk.cumulativeRevenue, GBP)
+    setF(wp.getCell(rr, 8), `SUM($F$3:F${rr})`, wk.cumulativeMargin, GBP)
+    for (let c = 3; c <= 8; c++) mono(wp.getCell(rr, c))
   })
-  const totalRow = nWeeks + 2
-  wp.getCell(`A${totalRow}`).value = 'Total'
-  wp.getCell(`A${totalRow}`).font = { bold: true }
-  const last = weeks[nWeeks - 1]
-  ;(['C', 'D', 'E'] as const).forEach((col) => {
-    const cell = wp.getCell(`${col}${totalRow}`)
-    const results = { C: last.cumulativeVolume, D: last.cumulativeRevenue, E: last.cumulativeMargin }
-    cell.value = { formula: `SUM(${col}2:${col}${nWeeks + 1})`, result: results[col] }
-    cell.numFmt = col === 'C' ? INT : GBP
-    cell.font = { bold: true }
+  // Promo weeks turn bile — live with the promo assumptions
+  wp.addConditionalFormatting({
+    ref: `B3:H${weeks.length + 2}`,
+    rules: [{ type: 'expression', formulae: ['$C3=1'], priority: 1, style: { fill: fill(BILE) } }],
   })
-
-  // ── Stock Plan ─────────────────────────────────────────────────────────────
-  const sp = wb.addWorksheet('Stock Plan')
-  sp.columns = [
-    { width: 8 }, { width: 12 }, { width: 12 }, { width: 12 }, { width: 20 }, { width: 12 }, { width: 12 }, { width: 14 },
-  ]
-  const spHeaders = ['Week', 'Demand', 'Opening', 'Arrivals', 'Order placed (edit me)', 'Available', 'Closing', 'Unmet demand']
-  spHeaders.forEach((h, i) => {
-    const cell = sp.getCell(1, i + 1)
-    cell.value = h
-    cell.font = { bold: true }
-  })
-  plan.rows.forEach((r, i) => {
-    const x = i + 2
-    sp.getCell(`A${x}`).value = r.week
-    const set = (col: string, value: number | { formula: string; result: number }, fmt = INT) => {
-      const cell = sp.getCell(`${col}${x}`)
-      cell.value = value
-      cell.numFmt = fmt
-    }
-    set('B', { formula: `'Weekly Projection'!C${x}`, result: r.demand })
-    set('C', x === 2
-      ? { formula: 'StartStock', result: r.opening }
-      : { formula: `G${x - 1}`, result: r.opening })
-    set('D', { formula: `IF(A${x}>LeadWeeks,INDEX($E$2:$E$${nWeeks + 1},A${x}-LeadWeeks),0)`, result: r.arrivals })
-    set('E', r.orderPlaced) // plain editable value — the planner's lever
-    set('F', { formula: `C${x}+D${x}`, result: r.opening + r.arrivals })
-    set('G', { formula: `MAX(0,F${x}-B${x})`, result: r.closing })
-    set('H', { formula: `MAX(0,B${x}-F${x})`, result: r.shortfall })
-  })
-  const noteCell = sp.getCell(`A${nWeeks + 3}`)
-  noteCell.value =
-    'Orders (column E) are plain numbers — edit them and arrivals, closings and unmet demand recalculate. ' +
-    'Suggested orders follow an order-up-to policy: top up to cover the next lead time + weeks of cover, in whole cases.'
-  noteCell.font = { italic: true, size: 9 }
-
-  // ── Channels ───────────────────────────────────────────────────────────────
-  const ch = wb.addWorksheet('Channels')
-  ch.columns = [{ width: 34 }, { width: 16 }]
-  ch.getCell('A1').value = 'Channel economics (per unit)'
-  ch.getCell('A1').font = { bold: true }
-
-  const chRow = (r: number, label: string, formula: string, result: number, fmt: string) => {
-    ch.getCell(`A${r}`).value = label
-    const cell = ch.getCell(`B${r}`)
-    cell.value = { formula, result }
-    cell.numFmt = fmt
+  const wpTot = weeks.length + 3
+  const totLabel = wp.getCell(wpTot, 2)
+  totLabel.value = 'TOTAL'
+  mono(totLabel, { bold: true })
+  const lastWeek = weeks[weeks.length - 1]
+  setF(wp.getCell(wpTot, 4), `SUM(D3:D${wpTot - 1})`, lastWeek.cumulativeVolume, INT)
+  setF(wp.getCell(wpTot, 5), `SUM(E3:E${wpTot - 1})`, lastWeek.cumulativeRevenue, GBP)
+  setF(wp.getCell(wpTot, 6), `SUM(F3:F${wpTot - 1})`, lastWeek.cumulativeMargin, GBP)
+  for (let c = 2; c <= 8; c++) {
+    const cc = wp.getCell(wpTot, c)
+    cc.border = { top: { style: 'medium', color: { argb: INK } } }
+    mono(cc, { bold: true })
   }
-  chRow(3, 'Grocery — net revenue', 'NetRevPerUnit', grocery.brandNetRevenue, GBP)
-  chRow(4, 'Grocery — gross profit', 'MarginPerUnit', grocery.brandGrossMarginPerUnit, GBP)
-  chRow(5, 'Grocery — gross margin %', 'IF(NetRevPerUnit=0,0,MarginPerUnit/NetRevPerUnit)', grocery.brandGrossMarginPercent, PCT)
 
-  const amzSub = scenario.amazon.monthlyUnits > 0 ? scenario.amazon.planMonthly / scenario.amazon.monthlyUnits : 0
-  chRow(7, 'Amazon — selling price ex-VAT', 'RRP/(1+VAT)', amazon.sellingPriceExVat, GBP)
-  chRow(8, 'Amazon — referral fee', 'B7*AmzReferral', amazon.referralFee, GBP)
-  chRow(9, 'Amazon — fulfilment (incl. fuel)', 'AmzFulfil*(1+AmzFuel)', amazon.fulfilmentFee, GBP)
-  chRow(10, 'Amazon — storage', 'AmzStorage', amazon.storageFee, GBP)
-  chRow(11, 'Amazon — plan cost per unit', 'IF(AmzUnits=0,0,AmzPlan/AmzUnits)', amzSub, GBP)
-  chRow(12, 'Amazon — net revenue', 'B7-B8-B9-B10-B11', amazon.netRevenue - amzSub, GBP)
-  chRow(13, 'Amazon — gross profit', 'B12-COGS', amazon.grossProfit - amzSub, GBP)
-  chRow(14, 'Amazon — gross margin %', 'IF(B7=0,0,B13/B7)',
-    amazon.sellingPriceExVat > 0 ? (amazon.grossProfit - amzSub) / amazon.sellingPriceExVat : 0, PCT)
+  // ── STOCK PLAN ─────────────────────────────────────────────────────────────
+  const sp = wb.addWorksheet('Stock Plan', { properties: { tabColor: { argb: INK } } })
+  sp.views = [{ showGridLines: false, state: 'frozen', ySplit: 2 }]
+  for (let i = 1; i <= 9; i++) sp.getColumn(i).fill = fill(RECEIPT)
+  sp.getColumn(1).width = 2
+  ;[8, 12, 12, 12, 22, 12, 12, 14].forEach((wdt, i) => { sp.getColumn(i + 2).width = wdt })
+  const spHeaders = ['WK', 'DEMAND', 'OPENING', 'ARRIVALS', 'ORDER PLACED (EDIT ME)', 'AVAILABLE', 'CLOSING', 'UNMET DEMAND']
+  spHeaders.forEach((h, i) => {
+    const c = sp.getCell(2, i + 2)
+    c.value = h
+    c.fill = fill(INK)
+    c.font = { name: MONO, size: 9, bold: true, color: { argb: i === 4 ? REDUCED : BILE } }
+  })
+  const nStock = plan.rows.length
+  plan.rows.forEach((row, i) => {
+    const rr = i + 3
+    const a = sp.getCell(rr, 2); a.value = row.week; mono(a)
+    setF(sp.getCell(rr, 3), `IF(AND($B${rr}>=PromoStart,$B${rr}<PromoStart+PromoWeeks),Stores*ROS*(1+PromoUplift),Stores*ROS)`, row.demand, INT)
+    if (i === 0) setF(sp.getCell(rr, 4), 'StartStock', row.opening, INT)
+    else setF(sp.getCell(rr, 4), `$H${rr - 1}`, row.opening, INT)
+    setF(sp.getCell(rr, 5), `IF($B${rr}>LeadWeeks,INDEX($F$3:$F$${nStock + 2},$B${rr}-LeadWeeks),0)`, row.arrivals, INT)
+    const order = sp.getCell(rr, 6)
+    order.value = row.orderPlaced
+    order.numFmt = INT
+    order.fill = fill(WHITE)
+    order.border = { top: { style: 'thin', color: { argb: INK } }, bottom: { style: 'thin', color: { argb: INK } }, left: { style: 'thin', color: { argb: INK } }, right: { style: 'thin', color: { argb: INK } } }
+    setF(sp.getCell(rr, 7), `$D${rr}+$E${rr}`, row.opening + row.arrivals, INT)
+    setF(sp.getCell(rr, 8), `MAX(0,$G${rr}-$C${rr})`, row.closing, INT)
+    setF(sp.getCell(rr, 9), `MAX(0,$C${rr}-$G${rr})`, row.shortfall, INT)
+    for (let c = 3; c <= 9; c++) if (c !== 6) mono(sp.getCell(rr, c))
+    mono(order, { bold: true })
+  })
+  // Stockout weeks turn red — live with your order edits
+  sp.addConditionalFormatting({
+    ref: `B3:I${nStock + 2}`,
+    rules: [{ type: 'expression', formulae: ['$I3>0'], priority: 1, style: { fill: fill(REDPEN), font: { color: { argb: WHITE } } } }],
+  })
+  const spNote = sp.getCell(nStock + 4, 2)
+  spNote.value = 'Orders (column F) are plain numbers — edit them and arrivals, closings and unmet demand recalculate. Red rows are stockouts.'
+  mono(spNote, { size: 8, color: 'FF666666' })
+  sp.mergeCells(nStock + 4, 2, nStock + 4, 9)
 
-  chRow(16, 'TikTok — selling price ex-VAT', 'RRP/(1+VAT)', tiktok.sellingPriceExVat, GBP)
-  chRow(17, 'TikTok — platform commission', 'B16*TtkCommission', tiktok.platformFee, GBP)
-  chRow(18, 'TikTok — affiliate commission', 'B16*TtkAffiliate', tiktok.affiliateFee, GBP)
-  chRow(19, 'TikTok — per-order fee', 'TtkOrderFee', tiktok.perOrderFee, GBP)
-  chRow(20, 'TikTok — refund admin', 'B16*TtkRefund', tiktok.refundCost, GBP)
-  chRow(21, 'TikTok — net revenue', 'B16-B17-B18-B19-B20', tiktok.netRevenue, GBP)
-  chRow(22, 'TikTok — gross profit', 'B21-COGS', tiktok.grossProfit, GBP)
-  chRow(23, 'TikTok — gross margin %', 'IF(B16=0,0,B22/B16)', tiktok.grossMarginPercent, PCT)
+  // ── THE CUTS (Amazon + TikTok) ─────────────────────────────────────────────
+  const cuts = wb.addWorksheet('The Cuts', { properties: { tabColor: { argb: BILE } } })
+  receiptBase(cuts)
+  sheetCols(cuts)
+  r = toolHeader(cuts, 'THE CUTS', 'marketplace margins · per unit')
+  r = sectionEyebrow(cuts, r, 'THE AMAZON CUT')
+  r = line(cuts, r, 'Sale price ex-VAT', { formula: 'RRP/(1+VAT)', result: rsp, bold: true })
+  const amzSp = r - 1
+  r = line(cuts, r, 'Referral fee', { formula: `-$E$${amzSp}*AmzReferral`, result: -amazon.referralFee, dim: true })
+  r = line(cuts, r, 'Fulfilment (incl. fuel)', { formula: '-AmzFulfil*(1+AmzFuel)', result: -amazon.fulfilmentFee, dim: true })
+  r = line(cuts, r, 'Storage / unit', { formula: '-AmzStorage', result: -amazon.storageFee, dim: true })
+  r = line(cuts, r, 'Selling plan / unit', { formula: '-AmzPlan/MAX(AmzUnits,1)', result: -planCut, dim: true })
+  const amzGp = amazon.grossProfit - planCut
+  r = answerBlock(cuts, r, [
+    { label: 'Amazon gross profit / unit', formula: `$E$${amzSp}*(1-AmzReferral)-AmzFulfil*(1+AmzFuel)-AmzStorage-AmzPlan/MAX(AmzUnits,1)-COGS`, result: amzGp, fmt: GBP, red: amzGp <= 0 },
+  ])
+  r = line(cuts, r, 'Break-even sale price (inc VAT)', {
+    formula: '(COGS+AmzFulfil*(1+AmzFuel)+AmzStorage+AmzPlan/MAX(AmzUnits,1))/(1-AmzReferral)*(1+VAT)',
+    result: ((product.cogsPerUnit + amazonFees.fulfilmentFeePerUnit * (1 + amazonFees.fuelLogisticsSurcharge) + amazonFees.monthlyStoragePerUnit + planCut) / (1 - amazonFees.referralFeePercent)) * (1 + product.vatRate),
+    bold: true,
+  })
+  r += 2
+  r = sectionEyebrow(cuts, r, 'THE TIKTOK CUT')
+  r = line(cuts, r, 'Sale price ex-VAT', { formula: 'RRP/(1+VAT)', result: rsp, bold: true })
+  const ttkSp = r - 1
+  r = line(cuts, r, 'Platform commission', { formula: `-$E$${ttkSp}*TtkCommission`, result: -tiktok.platformFee, dim: true })
+  r = line(cuts, r, 'Affiliate commission', { formula: `-$E$${ttkSp}*TtkAffiliate`, result: -tiktok.affiliateFee, dim: true })
+  r = line(cuts, r, 'Per-order fee', { formula: '-TtkOrderFee', result: -tiktok.perOrderFee, dim: true })
+  r = line(cuts, r, 'Refund admin', { formula: `-$E$${ttkSp}*TtkRefund`, result: -tiktok.refundCost, dim: true })
+  r = answerBlock(cuts, r, [
+    { label: 'TikTok gross profit / unit', formula: `$E$${ttkSp}*(1-TtkCommission-TtkAffiliate-TtkRefund)-TtkOrderFee-COGS`, result: tiktok.grossProfit, fmt: GBP, red: tiktok.grossProfit <= 0 },
+  ])
+  r = line(cuts, r, 'Break-even sale price (inc VAT)', {
+    formula: '(TtkOrderFee+COGS)/(1-TtkCommission-TtkAffiliate-TtkRefund)*(1+VAT)',
+    result: ((tiktokFees.perOrderFee + product.cogsPerUnit) / (1 - tiktokFees.platformCommission - tiktokFees.affiliateCommission - tiktokFees.refundAdminPercent)) * (1 + product.vatRate),
+    bold: true,
+  })
+  verdictAndFooter(cuts, r + 1, 'Same cost price across both. Fees are dated defaults — check the rate card.')
 
-  // ── Download ───────────────────────────────────────────────────────────────
+  // ── THE LINE-UP ────────────────────────────────────────────────────────────
+  const lu = wb.addWorksheet('The Line-Up', { properties: { tabColor: { argb: BILE } } })
+  receiptBase(lu)
+  sheetCols(lu)
+  r = toolHeader(lu, 'THE LINE-UP', 'gross profit / unit · same cost price')
+  const channels: { label: string; gpFormula: string; gp: number }[] = [
+    { label: 'GROCERY', gpFormula: 'NetRevPerUnit-COGS', gp: grocery.brandGrossMarginPerUnit },
+    { label: 'AMAZON FBA', gpFormula: 'RSPexVAT*(1-AmzReferral)-AmzFulfil*(1+AmzFuel)-AmzStorage-COGS', gp: amazon.grossProfit },
+    { label: 'TIKTOK SHOP', gpFormula: 'RSPexVAT*(1-TtkCommission-TtkAffiliate-TtkRefund)-TtkOrderFee-COGS', gp: tiktok.grossProfit },
+  ]
+  for (const ch of channels) {
+    const head = lu.getCell(r, 2)
+    head.value = ch.label
+    for (let i = 2; i <= 5; i++) lu.getCell(r, i).fill = fill(ch.gp === Math.max(...channels.map((c) => c.gp)) && ch.gp > 0 ? BILE : RECEIPT)
+    mono(head, { bold: true })
+    if (ch.gp === Math.max(...channels.map((c) => c.gp)) && ch.gp > 0) {
+      const best = lu.getCell(r, 5)
+      best.value = 'BEST'
+      mono(best, { bold: true })
+      best.alignment = { horizontal: 'right' }
+    }
+    r++
+    r = line(lu, r, 'Gross profit / unit', { formula: ch.gpFormula, result: ch.gp, bold: true, red: ch.gp <= 0 })
+    r = line(lu, r, '% of shelf ex-VAT', { formula: `IF(RSPexVAT=0,0,$E$${r - 1}/RSPexVAT)`, result: rsp > 0 ? ch.gp / rsp : 0, fmt: PCT, dim: true })
+    r++
+  }
+  verdictAndFooter(lu, r, 'The biggest channel is rarely the one that pays.')
+
+  // ── THE RANGE (static snapshot) ────────────────────────────────────────────
+  // (Multi-product; the live model above runs on the product on shelf.)
+
+  // ── DOWNLOAD ───────────────────────────────────────────────────────────────
   const buffer = await wb.xlsx.writeBuffer()
   const blob = new Blob([buffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -272,7 +534,13 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `${product.name.replace(/\s+/g, '_')}_fmcg_model.xlsx`
+  a.download = `GROSS_${product.name.replace(/\s+/g, '_')}.xlsx`
   a.click()
   URL.revokeObjectURL(url)
+}
+
+/** Local £ formatter for the printed verdict sentences. */
+function fmtGBP(v: number): string {
+  const m = Math.abs(v).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return `${v < 0 ? '−' : ''}£${m}`
 }

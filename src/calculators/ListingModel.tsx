@@ -72,7 +72,7 @@ export default function ListingModel() {
 
     const promoUnits = (result.promoWeeklyVolume - result.weeklyVolume) * Math.min(listing.promoWeeks, listing.weeksInPeriod)
     const verdict = noMargin
-      ? `Every unit loses money - don't be an idiot. ${n0(-result.totalGrossMargin)} lost across the period.`
+      ? `Every unit loses money - don't be an idiot. ${gbp(-result.totalGrossMargin)} lost across the period.`
       : `The listing makes ${gbp(result.totalGrossMargin)} of gross margin. The promo adds ${n0(promoUnits)} units - whether it pays is The Payback's problem.`
 
     return (
@@ -112,6 +112,13 @@ export default function ListingModel() {
           <RLine label="Total volume" value={`${n0(result.totalVolume)} units`} />
           <RLine label="Total cases" value={`${n0(result.totalCases)} cases`} />
           <RLine label="Total revenue (your net)" value={gbp(result.totalRevenue)} />
+          <RLine label="Retail sales value (consumer £)" value={gbp(result.totalVolume * product.rrpIncVat)} dim />
+          <RLine
+            label="Cases / store / week"
+            value={(product.unitsPerCase > 0 ? product.weeklyRateOfSale / product.unitsPerCase : 0).toFixed(2)}
+            dim
+            color={product.unitsPerCase > 0 && product.weeklyRateOfSale / product.unitsPerCase < 0.5 ? REDPEN : undefined}
+          />
 
           <Rule className="mt-3.5 mb-2.5" />
           <RSection label="THE PRIZE" health={{ color: healthColor, label: healthLabel }} />

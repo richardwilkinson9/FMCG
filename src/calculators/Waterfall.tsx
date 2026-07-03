@@ -101,6 +101,12 @@ export default function Waterfall() {
           <RLine label={`less promo funding (${parseFloat((waterfall.promoFunding * 100).toFixed(4))}%)`} value={neg(promoCut)} dim />
           <RLine label={`less back margin (${parseFloat((waterfall.backMargin * 100).toFixed(4))}%)`} value={neg(retroCut)} dim />
           <RLine label={`less other trade (${parseFloat((waterfall.otherTrade * 100).toFixed(4))}%)`} value={neg(otherCut)} dim />
+          <RLine
+            label={`Total trade spend (${pct(list > 0 ? tradeTotal / list : 0)} of list)`}
+            value={neg(tradeTotal)}
+            bold
+            color={REDPEN}
+          />
           <Rule dotted className="my-2" />
           <RLine label="Net net revenue" value={gbp(net)} bold color={net < 0 ? REDPEN : INK} />
           <RLine label="less cost price" value={neg(product.cogsPerUnit)} dim />

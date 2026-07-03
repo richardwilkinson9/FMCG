@@ -142,6 +142,25 @@ export default function AmazonFBA() {
               { label: 'Margin %', value: pct(pctVal), big: false, color: noMargin ? REDPEN : BILE },
             ]}
           />
+          {(() => {
+            // The lowest sale price (inc VAT) at which the unit stops losing money
+            const perUnitCosts =
+              product.cogsPerUnit +
+              fees.fulfilmentFeePerUnit * (1 + fees.fuelLogisticsSurcharge) +
+              fees.monthlyStoragePerUnit +
+              planCut
+            const breakEven = fees.referralFeePercent < 1
+              ? (perUnitCosts / (1 - fees.referralFeePercent)) * (1 + product.vatRate)
+              : Infinity
+            return (
+              <RLine
+                label="Break-even sale price (inc VAT)"
+                value={gbp(breakEven)}
+                bold
+                color={product.rrpIncVat < breakEven ? REDPEN : INK}
+              />
+            )
+          })()}
         </Receipt>
         <CalcActions />
       </div>
