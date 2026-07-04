@@ -307,6 +307,19 @@ The maths was not touched — every formula still comes from calculations.ts.
       archive (new #archive anchor). Session state via a shared lazy hook
       (store/session.ts) — Supabase stays out of the first paint.
 
+## Excel round-trip (July 2026)
+- [x] **Upload the deck back** — export, edit in Excel, upload on The Shelf
+      ("↑ UPLOAD THE DECK") and the site picks up the changes live. The export
+      now embeds the full model in a very-hidden gross-meta sheet; every sheet
+      is protected (password `gross`, printed on the cover) with only the
+      genuine input cells left editable — Assumptions values, the promo table,
+      Stock Plan orders, The Range flags/cases — so the derived formulas stay
+      honest and the importer's job is unambiguous. The importer overlays every
+      named input + The Range rows onto the embedded model. Verified with a
+      full round-trip: export → edited COGS/margin/stores/new promo/renamed +
+      delisted product in node-Excel → upload → every change live on The
+      Listing and The Shelf.
+
 ## Where we are (04 Jul 2026)
 The product is feature-complete for launch and deploys automatically. The
 remaining work is GO-TO-MARKET, not build:

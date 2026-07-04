@@ -247,6 +247,12 @@ export async function downloadExcelModel(
   const how2 = cover.getCell('B11')
   how2.value = 'Numbers recalculate. Sentences were printed at export and stay put.'
   how2.font = { name: MONO, size: 10, color: { argb: RECEIPT } }
+  const how3 = cover.getCell('B12')
+  how3.value = 'Sheets are locked so the formulas stay honest — password: gross. Edit the white cells only.'
+  how3.font = { name: MONO, size: 10, color: { argb: RECEIPT } }
+  const how4 = cover.getCell('B13')
+  how4.value = 'Made changes? Upload this file back on The Shelf and the site picks them up.'
+  how4.font = { name: MONO, size: 10, color: { argb: BILE } }
   const foot1 = cover.getCell('B14')
   foot1.value = 'GROSS. // FREE COMMERCIAL CALCULATORS FOR UK FMCG BRAND TEAMS — getgross.co.uk'
   foot1.font = { name: MONO, size: 8, color: { argb: BILE } }
@@ -287,6 +293,7 @@ export async function downloadExcelModel(
     v.border = { top: { style: 'thin', color: { argb: INK } }, bottom: { style: 'thin', color: { argb: INK } }, left: { style: 'thin', color: { argb: INK } }, right: { style: 'thin', color: { argb: INK } } }
     mono(v, { bold: true })
     v.alignment = { horizontal: 'right' }
+    v.protection = { locked: false } // input cells stay editable under sheet protection
     if (note) { const n = aws.getCell(ar, 8); n.value = note; mono(n, { size: 8, color: 'FF666666' }) }
     if (name) wb.definedNames.add(`Assumptions!$C$${ar}`, name)
     ar++
@@ -362,6 +369,7 @@ export async function downloadExcelModel(
         c.border = inputBorder
         mono(c, { bold: true })
         c.alignment = { horizontal: 'right' }
+        c.protection = { locked: false }
       }
       ar++
     }
@@ -577,6 +585,7 @@ export async function downloadExcelModel(
     order.value = row.orderPlaced
     order.numFmt = INT
     order.fill = fill(WHITE)
+    order.protection = { locked: false }
     order.border = { top: { style: 'thin', color: { argb: INK } }, bottom: { style: 'thin', color: { argb: INK } }, left: { style: 'thin', color: { argb: INK } }, right: { style: 'thin', color: { argb: INK } } }
     setF(sp.getCell(rr, 7), `$D${rr}+$E${rr}`, row.opening + row.arrivals, INT)
     setF(sp.getCell(rr, 8), `MAX(0,$G${rr}-$C${rr})`, row.closing, INT)
@@ -764,7 +773,7 @@ export async function downloadExcelModel(
       if (fmt) c.numFmt = fmt
       mono(c, { bold: col === 2 })
       c.alignment = { horizontal: col === 2 ? 'left' : 'right' }
-      if (editable) { c.fill = fill(WHITE); c.border = inputBorder }
+      if (editable) { c.fill = fill(WHITE); c.border = inputBorder; c.protection = { locked: false } }
     }
     rr++
   }
@@ -818,6 +827,29 @@ export async function downloadExcelModel(
   rngNote.value = 'Toggle a SKU in/out with the GROC/AMZ/TTK 1-0 cells; the totals follow. Per-SKU channel values are a snapshot — the primary SKU’s sheets stay fully live.'
   mono(rngNote, { size: 8, color: 'FF666666' })
   rng.mergeCells(rr + 1, 2, rr + 1, 9)
+
+  // ── ROUND-TRIP META + LOCKING ─────────────────────────────────────────────
+  // A very-hidden sheet carries the complete model, so an edited deck can be
+  // uploaded back on The Shelf and land exactly where it left (product ids,
+  // scenario, the lot). The named input cells above then overlay any edits.
+  const metaSheet = wb.addWorksheet('gross-meta')
+  metaSheet.state = 'veryHidden'
+  metaSheet.getCell('A1').value = 'GROSS-DECK-V1'
+  metaSheet.getCell('A2').value = btoa(
+    encodeURIComponent(JSON.stringify({ products, activeProductId: product.id, scenario })),
+  )
+
+  // Lock everything except the white input cells — the formulas stay honest.
+  // The password is printed on the cover (guardrail, not a padlock): gross
+  for (const sheet of [aws, pnl, wf, wp, sp, cuts, lu, rng]) {
+    await sheet.protect('gross', {
+      selectLockedCells: true,
+      selectUnlockedCells: true,
+      formatColumns: true,
+      formatRows: true,
+      spinCount: 1000,
+    })
+  }
 
   // ── DOWNLOAD ───────────────────────────────────────────────────────────────
   const buffer = await wb.xlsx.writeBuffer()

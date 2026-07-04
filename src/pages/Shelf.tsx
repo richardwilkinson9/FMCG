@@ -21,6 +21,7 @@ import {
   migrateLocalToCloud,
 } from '../store/cloud'
 import { PageHeader } from '../components/gross/CalcShell'
+import { logEvent } from '../utils/analytics'
 import GrossFooter from '../components/gross/GrossFooter'
 import LedgerRat from '../components/gross/LedgerRat'
 import Field, { TextField } from '../components/gross/Field'
@@ -63,6 +64,26 @@ export default function Shelf() {
   const [session, setSession] = useState<Session | null>(null)
   const [authEmail, setAuthEmail] = useState('')
   const [authState, setAuthState] = useState<'idle' | 'sending' | 'sent' | 'failed'>('idle')
+
+  // ── Upload the deck back ─────────────────────────────────────────────────
+  const [uploadMsg, setUploadMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const uploadDeck = async (file: File) => {
+    setUploadMsg({ ok: true, text: 'Reading the deck…' })
+    const { importExcelModel } = await import('../utils/excelImport')
+    const result = await importExcelModel(file)
+    if (!result.ok) {
+      setUploadMsg({ ok: false, text: result.error ?? 'That didn’t read. Export a fresh deck and edit that.' })
+      return
+    }
+    useStore.setState({
+      products: result.products,
+      activeProductId: result.activeProductId,
+      scenario: result.scenario,
+    })
+    logEvent('import', 'products')
+    setUploadMsg({ ok: true, text: `Deck read. ${result.summary} The calculators are already using it.` })
+    setTimeout(() => setUploadMsg(null), 6000)
+  }
 
   // ── Archive ──────────────────────────────────────────────────────────────
   const [archive, setArchive] = useState<SavedModel[]>(() => listArchive())
@@ -225,13 +246,36 @@ export default function Shelf() {
           {/* Toolbar */}
           <div className="flex items-center justify-between border-b-2 border-ink pb-2.5 mb-4 flex-wrap gap-2">
             <span className="font-mono text-[13px] tracking-[0.1em] font-bold">THE PRODUCTS</span>
-            <button
-              onClick={() => addProduct(createBlankProduct())}
-              className="border-2 border-ink bg-ink text-receipt font-mono text-[11px] py-1.5 px-2.5 cursor-pointer tracking-[0.05em] hover:bg-bile hover:text-ink"
-            >
-              + ADD PRODUCT
-            </button>
+            <span className="flex items-center gap-2 flex-wrap">
+              <label className={`${chip} inline-block`} title="Edited an exported deck? Upload it and the site picks up the changes.">
+                ↑ UPLOAD THE DECK
+                <input
+                  type="file"
+                  accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0]
+                    if (f) void uploadDeck(f)
+                    e.target.value = ''
+                  }}
+                />
+              </label>
+              <button
+                onClick={() => addProduct(createBlankProduct())}
+                className="border-2 border-ink bg-ink text-receipt font-mono text-[11px] py-1.5 px-2.5 cursor-pointer tracking-[0.05em] hover:bg-bile hover:text-ink"
+              >
+                + ADD PRODUCT
+              </button>
+            </span>
           </div>
+          {uploadMsg && (
+            <div
+              className="font-mono text-[12px] border-2 border-ink py-2 px-3 mb-4"
+              style={uploadMsg.ok ? { background: '#C6F215' } : { color: '#E4002B' }}
+            >
+              {uploadMsg.text}
+            </div>
+          )}
 
           {/* Template chips */}
           <div className="flex items-center gap-2 flex-wrap mb-7">

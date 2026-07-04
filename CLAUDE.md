@@ -86,7 +86,20 @@ input is a NAMED cell on the Assumptions sheet; every derived cell is a formula 
 cached result. The Stock Plan order column is plain editable values. Verdict sentences are
 printed at export (numbers recalculate; sentences do not).
 exceljs pins `uuid` via package.json `overrides` to clear an npm audit advisory.
-`utils/export.ts` (flat CSV) is retained but currently unwired.
+
+## Excel round-trip (upload the deck back)
+The export embeds the COMPLETE model (products + activeProductId + scenario)
+in a very-hidden `gross-meta` sheet (`A1='GROSS-DECK-V1'`, `A2=` the encoded
+blob), and protects every sheet (password `gross`, printed on the cover) with
+ONLY input cells unlocked: Assumptions values, the promo table, Stock Plan
+orders, The Range flags/cases. `utils/excelImport.ts` reads the blob for
+identity, overlays every named input cell + The Range rows (matched by row
+order), heals via mergeScenario, and returns {products, activeProductId,
+scenario}. Marketplace fees import as MANUAL per-unit values (estimatorOn and
+sellByCase false) so the maths stays identical to what the spreadsheet showed.
+UI: "↑ UPLOAD THE DECK" on The Shelf toolbar. Old decks without gross-meta get
+a deadpan error. If you add a named input cell to the export, teach the
+importer about it in the same commit.
 
 ## Session & sign-in surfacing
 `store/session.ts` — shared `useSession()` hook; loads the cloud layer lazily
