@@ -4,6 +4,7 @@ import { useStore } from '../../store/useStore'
 import { encodeStateToUrl } from '../../utils/urlState'
 import { downloadExcelModel } from '../../utils/excelExport'
 import { logEvent } from '../../utils/analytics'
+import { useSession } from '../../store/session'
 import { pageById } from '../../config/pages'
 import GrossFooter from './GrossFooter'
 import LedgerRat from './LedgerRat'
@@ -58,12 +59,17 @@ export function BestBeforeStamp({ note = 'verify the rate card' }: { note?: stri
 }
 
 export function InputsHeader() {
-  const clearProduct = useStore((s) => s.clearProduct)
+  const setActiveCalculator = useStore((s) => s.setActiveCalculator)
   return (
     <div className="flex items-center justify-between border-b-2 border-ink pb-2.5 mb-[22px]">
       <span className="font-mono text-[13px] tracking-[0.1em] font-bold">THE INPUTS</span>
       <button
-        onClick={clearProduct}
+        onClick={() => {
+          // Go to The Shelf to pick a different product — never clear the
+          // selection (that used to dead-end on the "No product yet." state)
+          setActiveCalculator('products')
+          window.scrollTo(0, 0)
+        }}
         className="border-2 border-ink bg-receipt font-mono text-[11px] py-1.5 px-2.5 cursor-pointer tracking-[0.05em] hover:bg-ink hover:text-receipt"
       >
         CHANGE PRODUCT
@@ -111,19 +117,55 @@ export function CalcActions() {
 
   const base = 'flex-1 border-2 border-ink p-[15px] text-sm font-semibold cursor-pointer hover:bg-bile hover:text-ink'
   return (
-    <div className="no-print flex gap-3 mt-4">
-      <button onClick={copyLink} className={`${base} bg-ink text-receipt`}>
-        {copied ? 'Link copied' : 'Copy share link'}
-      </button>
-      <button
-        onClick={doExport}
-        className={`${base} bg-receipt text-ink`}
-        disabled={exportState === 'building'}
-        style={exportState === 'failed' ? { color: '#E4002B' } : undefined}
-      >
-        {exportLabel}
-      </button>
+    <div className="no-print">
+      <div className="flex gap-3 mt-4">
+        <button onClick={copyLink} className={`${base} bg-ink text-receipt`}>
+          {copied ? 'Link copied' : 'Copy share link'}
+        </button>
+        <button
+          onClick={doExport}
+          className={`${base} bg-receipt text-ink`}
+          disabled={exportState === 'building'}
+          style={exportState === 'failed' ? { color: '#E4002B' } : undefined}
+        >
+          {exportLabel}
+        </button>
+      </div>
+      <SaveStrip />
     </div>
+  )
+}
+
+/**
+ * The save nudge under every receipt. Signed out it says the quiet part out
+ * loud — nothing here is saved — and offers sign-in; signed in it offers the
+ * save. Both land on The Shelf's archive.
+ */
+function SaveStrip() {
+  const session = useSession()
+  const goToArchive = () => {
+    useStore.setState({ activeCalculator: 'products' })
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => document.getElementById('archive')?.scrollIntoView({ block: 'start' })),
+    )
+  }
+  return (
+    <button
+      onClick={goToArchive}
+      className="w-full border-2 border-t-0 border-ink bg-receipt font-mono text-[12px] py-2.5 px-3.5 cursor-pointer flex justify-between items-center gap-3 hover:bg-bile text-left"
+    >
+      {session ? (
+        <>
+          <span className="opacity-75">Signed in. Saves keep every version in The Archive.</span>
+          <span className="font-bold tracking-[0.05em] shrink-0">SAVE THIS MODEL →</span>
+        </>
+      ) : (
+        <>
+          <span className="opacity-75">Nothing here is saved. Sign in and your models and buyer terms sync to The Archive.</span>
+          <span className="font-bold tracking-[0.05em] shrink-0">SIGN IN TO SAVE →</span>
+        </>
+      )}
+    </button>
   )
 }
 
@@ -208,7 +250,9 @@ export default function CalcShell({
   inputs: () => ReactNode
   receipt: () => ReactNode
 }) {
-  const hasProduct = useStore((s) => s.products.some((p) => p.id === s.activeProductId))
+  // Empty state only when the shelf is genuinely empty — a stale selection
+  // falls back to the first product (see getActiveProduct)
+  const hasProduct = useStore((s) => s.products.length > 0)
 
   return (
     <div className="bg-receipt text-ink font-body min-h-screen">

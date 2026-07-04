@@ -306,7 +306,7 @@ export default function Shelf() {
               </div>
 
               {/* THE ARCHIVE */}
-              <div className="flex items-center justify-between border-b-2 border-ink pb-2.5 mb-4 mt-10 flex-wrap gap-2">
+              <div id="archive" className="flex items-center justify-between border-b-2 border-ink pb-2.5 mb-4 mt-10 flex-wrap gap-2 scroll-mt-4">
                 <span className="font-mono text-[13px] tracking-[0.1em] font-bold">THE ARCHIVE</span>
                 {session ? (
                   <span className="flex items-center gap-2 flex-wrap">

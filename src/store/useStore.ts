@@ -13,8 +13,6 @@ interface AppState {
   duplicateProduct: (id: string) => void
   setActiveProduct: (id: string) => void
   getActiveProduct: () => Product | undefined
-  /** GROSS "CHANGE PRODUCT" — clears the selection to the empty state */
-  clearProduct: () => void
   /** GROSS "Start with a product" — reselect an existing product or seed the demo */
   startProduct: () => void
 
@@ -108,8 +106,6 @@ export const useStore = create<AppState>((set, get) => {
 
     setActiveProduct: (id) => set({ activeProductId: id }),
 
-    clearProduct: () => set({ activeProductId: null }),
-
     startProduct: () =>
       set((state) => {
         if (state.products.length > 0) return { activeProductId: state.products[0].id }
@@ -119,7 +115,10 @@ export const useStore = create<AppState>((set, get) => {
 
     getActiveProduct: () => {
       const state = get()
-      return state.products.find((p) => p.id === state.activeProductId)
+      // Fall back to the first product if the selection doesn't resolve —
+      // with products on the shelf there is always an active product, so no
+      // calculator can dead-end on the empty state.
+      return state.products.find((p) => p.id === state.activeProductId) ?? state.products[0]
     },
 
     setActiveCalculator: (id) => set({ activeCalculator: id }),

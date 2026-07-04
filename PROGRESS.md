@@ -293,6 +293,20 @@ The maths was not touched — every formula still comes from calculations.ts.
 - [x] README rewritten as the front door: live status table, tool list,
       documentation map, golden rules.
 
+## User-feedback fixes (July 2026)
+- [x] **CHANGE PRODUCT dead-end fixed** — it used to clear the selection and
+      strand you on "No product yet." with a full shelf. It now goes to The
+      Shelf to pick; and a stale/absent selection falls back to the first
+      product (getActiveProduct), so no calculator can dead-end while products
+      exist. clearProduct removed.
+- [x] **Sign-in surfaced site-wide** — persistent nav button on every page
+      (mobile included): SIGN IN when signed out (ink/bile so it reads),
+      THE ARCHIVE when signed in; plus a save strip under every calculator's
+      actions ("Nothing here is saved. Sign in and your models and buyer terms
+      sync to The Archive." / "SAVE THIS MODEL →"). Both land on The Shelf's
+      archive (new #archive anchor). Session state via a shared lazy hook
+      (store/session.ts) — Supabase stays out of the first paint.
+
 ## Where we are (04 Jul 2026)
 The product is feature-complete for launch and deploys automatically. The
 remaining work is GO-TO-MARKET, not build:

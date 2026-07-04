@@ -88,6 +88,16 @@ printed at export (numbers recalculate; sentences do not).
 exceljs pins `uuid` via package.json `overrides` to clear an npm audit advisory.
 `utils/export.ts` (flat CSV) is retained but currently unwired.
 
+## Session & sign-in surfacing
+`store/session.ts` — shared `useSession()` hook; loads the cloud layer lazily
+on first use (Supabase stays out of the first paint), one subscription feeds
+every consumer. Consumed by GrossNav (persistent SIGN IN / THE ARCHIVE button,
+visible on mobile) and CalcShell's SaveStrip (the save/sign-in nudge under
+every calculator's actions). Both land on The Shelf's `#archive` anchor.
+CHANGE PRODUCT navigates to The Shelf — never clear the selection;
+`getActiveProduct()` falls back to the first product so calculators can't
+dead-end on the empty state while products exist.
+
 ## Cloud layer (Supabase)
 `src/store/cloud.ts` — magic-link auth + the synced Archive + Union sign-ups.
 Signed out, the Archive is localStorage (`src/store/archive.ts`); signed in it is
