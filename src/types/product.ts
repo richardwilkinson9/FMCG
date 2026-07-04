@@ -3,6 +3,20 @@
  * Define a product once; every tool derives its numbers from these fields.
  */
 
+/**
+ * Which channels a product is listed on, and how much it sells on the
+ * marketplaces. Absent fields default to "listed everywhere" with a sensible
+ * annual volume, so old products/links keep working. Grocery volume comes from
+ * the Listing projection; the marketplaces take an explicit cases/year per SKU.
+ */
+export interface ProductChannels {
+  grocery?: boolean
+  amazon?: boolean
+  tiktok?: boolean
+  amazonCasesPerYear?: number
+  tiktokCasesPerYear?: number
+}
+
 export interface Product {
   id: string
   name: string
@@ -18,6 +32,8 @@ export interface Product {
   weeklyRateOfSale: number
   /** Optional category, used only to show an indicative margin benchmark */
   category?: string
+  /** Per-channel listing membership + marketplace volume */
+  channels?: ProductChannels
 }
 
 export interface CategoryTemplate {

@@ -57,6 +57,7 @@ export function createDemoProduct(): Product {
     vatRate: UK_VAT_RATE.value,
     weeklyRateOfSale: 10,
     category: 'Soft drinks',
+    channels: { grocery: true, amazon: true, tiktok: true, amazonCasesPerYear: 250, tiktokCasesPerYear: 250 },
   }
 }
 

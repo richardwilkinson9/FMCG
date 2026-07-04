@@ -91,7 +91,7 @@ export function CalcActions() {
     if (!product || exportState === 'building') return
     setExportState('building')
     try {
-      await downloadExcelModel(product, scenario)
+      await downloadExcelModel(product, scenario, products)
       logEvent('export', activeCalculator)
       setExportState('idle')
     } catch {

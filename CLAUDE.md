@@ -127,6 +127,22 @@ insert-only into the Supabase `events` table. Wired to view (App), share/export
 - Share URLs (`?s=<base64>`) encode products + full scenario + active page; old links
   decode against defaults (`mergeScenario`), unknown page ids fall back to home.
 
+## Channels & the whole-range export
+Each product carries optional `channels` (`src/types/product.ts`): per-channel
+listed flags (`grocery`/`amazon`/`tiktok`, absent = listed) + per-SKU
+`amazonCasesPerYear`/`tiktokCasesPerYear`. Helpers `channelListed`,
+`skuCasesPerYear`, `amazonChannelPnL`, `tiktokChannelPnL` (calculations.ts)
+aggregate the whole channel across listed SKUs — the Amazon selling plan is a
+single channel cost (×12), charged once, not per SKU. `ChannelPlan.tsx` (THE
+FULL CHANNEL) renders on The Amazon Cut / The TikTok Cut: toggle each SKU in/out,
+edit its cases/year, see the whole-channel GSV→NSV→GM→after-logistics. The Range
+has a grocery in/out checkbox per SKU (grocery totals count listed only). The
+Excel deck's `downloadExcelModel(product, scenario, products)` adds a **The Range**
+sheet: every product, editable 1/0 GROC/AMZ/TTK flags + cases/year, per-channel
+values, and channel P&L totals via SUMPRODUCT over the flags (toggle in Excel →
+totals follow). Per-SKU channel values on that sheet are a snapshot; the primary
+SKU's sheets stay fully live.
+
 ## Inbound logistics & Amazon selling unit
 Each channel carries an **inbound logistics** figure — freight to the customer's
 DC/FC, £ per case, NOT the shopper's delivery: `grocery.logisticsPerCase`,

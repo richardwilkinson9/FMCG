@@ -1,11 +1,12 @@
 import { useStore } from '../store/useStore'
-import { effectiveAmazonFees, amazonCasesPerYear, amazonMonthlyUnits } from '../store/scenario'
-import { amazonFBAMargin, amazonAnnualPnL, estimateAmazonFBAFee, rspExVat, logisticsPerUnit } from '../utils/calculations'
+import { effectiveAmazonFees, amazonMonthlyUnits } from '../store/scenario'
+import { amazonFBAMargin, estimateAmazonFBAFee, rspExVat, logisticsPerUnit } from '../utils/calculations'
 import { AMAZON_CATEGORY_FEES } from '../config/fees'
 import CalcShell, { InputsHeader, CalcActions, RateCardTag } from '../components/gross/CalcShell'
+import ChannelPlan from '../components/gross/ChannelPlan'
 import Field, { TextField, InputSection, MonoToggle } from '../components/gross/Field'
 import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
-import { gbp, neg, pct, n0, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components/gross/format'
+import { gbp, neg, pct, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components/gross/format'
 
 /** The Amazon Cut — what FBA takes before you see a penny. */
 export default function AmazonFBA() {
@@ -21,7 +22,6 @@ export default function AmazonFBA() {
     if (!product) return null
     const estimated = estimateAmazonFBAFee(amazon.weightG, amazon.longestCm, amazon.medianCm, amazon.shortestCm)
     const fees = effectiveAmazonFees(amazon, product.unitsPerCase)
-    const casesYr = amazonCasesPerYear(amazon, product.unitsPerCase)
     return (
       <div>
         <InputsHeader />
@@ -110,18 +110,12 @@ export default function AmazonFBA() {
           Professional plan: Amazon's £25/month seller subscription — a fixed cost spread across your monthly volume. Inbound logistics is your freight into Amazon's FC, per case.
         </div>
 
-        <InputSection>THE FULL YEAR</InputSection>
+        <InputSection>PLAN SPREAD (THIS SKU)</InputSection>
         <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
           <Field label={`${byCase ? 'Cases' : 'Units'} sold / mo`} inputMode="numeric" value={amazon.monthlyUnits} onCommit={(v) => updateScenario('amazon', { monthlyUnits: Math.max(0, Math.round(v)) })} />
-          <div className="border-2 border-ink bg-white h-[52px] px-3.5 flex items-center justify-between">
-            <span className="text-xs font-semibold">Cases / year (auto)</span>
-            <span className="font-mono text-[15px]">{n0(casesYr)}</span>
-          </div>
         </div>
         <div className="font-mono text-[11px] mt-1.5 opacity-65">
-          {byCase
-            ? `${n0(amazon.monthlyUnits)} cases/mo × 12 = ${n0(casesYr)} cases/year.`
-            : `${n0(amazon.monthlyUnits)} units/mo × 12 ÷ ${product.unitsPerCase}/case = ${n0(casesYr)} cases/year.`} Feeds the annual P&L; the plan is charged for real (£/month × 12).
+          Only spreads the plan fee across this SKU's per-unit view. Set each SKU's annual volume — and toggle SKUs in or out — in THE FULL CHANNEL table on the right.
         </div>
       </div>
     )
@@ -157,8 +151,6 @@ export default function AmazonFBA() {
     const verdict = noMargin
       ? `You lose ${gbp(gpAfterLog)} on every unit after freight. The fees are bigger than the price. ${byCase ? 'Even as cases.' : 'A single unit is not an FBA product — sell a multipack.'}`
       : `FBA keeps ${gbp(totalFees)} of the ${gbp(sp)} sale. After freight you keep ${gbp(gpAfterLog)}. ${byCase ? 'Cases carry their weight.' : 'Thin, but hey, Jeff loves you.'}`
-
-    const casesYr = amazonCasesPerYear(amazon, product.unitsPerCase)
 
     return (
       <div>
@@ -207,34 +199,8 @@ export default function AmazonFBA() {
               />
             )
           })()}
-
-          {(() => {
-            const year = amazonAnnualPnL(product, fees, amazon.planMonthly, casesYr)
-            const annualLogistics = casesYr * amazon.logisticsPerCase
-            const gmAfterLog = year.gm - annualLogistics
-            const yearLoss = gmAfterLog <= 0
-            return (
-              <>
-                <Rule className="mt-3.5 mb-2.5" />
-                <RSection label={`THE FULL YEAR — ${n0(casesYr)} CASES`} />
-                <RLine label={`Units (${n0(casesYr)} × ${product.unitsPerCase})`} value={`${n0(year.units)} units`} dim />
-                <RLine label="GSV (ex-VAT)" value={gbp(year.gsv)} bold />
-                <RLine label="less referral" value={neg(year.referral)} dim />
-                <RLine label="less fulfilment (incl. fuel)" value={neg(year.fulfilment)} dim />
-                <RLine label="less storage" value={neg(year.storage)} dim />
-                <RLine label="less selling plan (12 months)" value={neg(year.plan)} dim />
-                <Rule dotted className="my-2" />
-                <RLine label="NSV" value={gbp(year.nsv)} bold color={year.nsv < 0 ? REDPEN : INK} />
-                <RLine label="NSV as % of GSV" value={pct(year.nsvPctOfGsv)} dim />
-                <RLine label="less COGS" value={neg(year.cogs)} dim />
-                <RLine label="Gross margin, year" value={gbp(year.gm)} bold color={year.gm <= 0 ? REDPEN : INK} />
-                <RLine label="GM as % of NSV" value={pct(year.gmPctOfNsv)} color={year.gm <= 0 ? REDPEN : INK} />
-                <RLine label={`less inbound logistics (${n0(casesYr)} × ${gbp(amazon.logisticsPerCase)})`} value={neg(annualLogistics)} dim />
-                <RLine label="Profit after logistics, year" value={gbp(gmAfterLog)} bold color={yearLoss ? REDPEN : INK} />
-              </>
-            )
-          })()}
         </Receipt>
+        <ChannelPlan channel="amazon" />
         <CalcActions />
       </div>
     )

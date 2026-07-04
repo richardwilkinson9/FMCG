@@ -505,6 +505,89 @@ export function tiktokShopMargin(product: Product, fees: TikTokFees) {
   }
 }
 
+// ── Channels: per-product membership + whole-channel P&L ──────────────────────
+
+/** Default annual volume for a SKU on a marketplace when none is set. */
+export const DEFAULT_CHANNEL_CASES = 250
+
+/** Is this product listed on the channel? Absent = listed (opt-out model). */
+export function channelListed(p: Product, channel: 'grocery' | 'amazon' | 'tiktok'): boolean {
+  return p.channels?.[channel] ?? true
+}
+
+/** A SKU's cases/year on a marketplace, with a sensible default. */
+export function skuCasesPerYear(p: Product, channel: 'amazon' | 'tiktok'): number {
+  const v = channel === 'amazon' ? p.channels?.amazonCasesPerYear : p.channels?.tiktokCasesPerYear
+  return v ?? DEFAULT_CHANNEL_CASES
+}
+
+export interface ChannelSkuRow<Y> {
+  product: Product
+  casesPerYear: number
+  year: Y
+  logistics: number
+}
+
+/**
+ * Whole-channel Amazon P&L across every listed SKU. Each SKU brings its own
+ * price, case size and cases/year; the selling plan (£/mo × 12) is a single
+ * channel cost charged once, not per SKU. Inbound freight is per case per SKU.
+ */
+export function amazonChannelPnL(
+  products: Product[],
+  amazonFeesFor: (p: Product) => AmazonFBAFees,
+  planMonthly: number,
+  logisticsPerCase: number,
+) {
+  const listed = products.filter((p) => channelListed(p, 'amazon'))
+  const rows = listed.map((p) => {
+    const cases = skuCasesPerYear(p, 'amazon')
+    const year = amazonAnnualPnL(p, amazonFeesFor(p), 0, cases) // plan handled at channel level
+    return { product: p, casesPerYear: cases, year, logistics: cases * logisticsPerCase }
+  })
+  const sum = (f: (r: (typeof rows)[number]) => number) => rows.reduce((a, r) => a + f(r), 0)
+  const gsv = sum((r) => r.year.gsv)
+  const fees = sum((r) => r.year.referral + r.year.fulfilment + r.year.storage)
+  const plan = planMonthly * 12
+  const cogs = sum((r) => r.year.cogs)
+  const logistics = sum((r) => r.logistics)
+  const nsv = gsv - fees - plan
+  const gm = nsv - cogs
+  return {
+    rows, skuCount: listed.length, gsv, fees, plan, cogs, logistics,
+    nsv, nsvPctOfGsv: gsv > 0 ? nsv / gsv : 0,
+    gm, gmPctOfNsv: nsv > 0 ? gm / nsv : 0,
+    gmAfterLogistics: gm - logistics,
+  }
+}
+
+/** Whole-channel TikTok Shop P&L across every listed SKU. */
+export function tiktokChannelPnL(
+  products: Product[],
+  tiktokFees: TikTokFees,
+  logisticsPerCase: number,
+) {
+  const listed = products.filter((p) => channelListed(p, 'tiktok'))
+  const rows = listed.map((p) => {
+    const cases = skuCasesPerYear(p, 'tiktok')
+    const year = tiktokAnnualPnL(p, tiktokFees, cases)
+    return { product: p, casesPerYear: cases, year, logistics: cases * logisticsPerCase }
+  })
+  const sum = (f: (r: (typeof rows)[number]) => number) => rows.reduce((a, r) => a + f(r), 0)
+  const gsv = sum((r) => r.year.gsv)
+  const fees = sum((r) => r.year.platform + r.year.affiliate + r.year.orderFees + r.year.refunds)
+  const cogs = sum((r) => r.year.cogs)
+  const logistics = sum((r) => r.logistics)
+  const nsv = gsv - fees
+  const gm = nsv - cogs
+  return {
+    rows, skuCount: listed.length, gsv, fees, cogs, logistics,
+    nsv, nsvPctOfGsv: gsv > 0 ? nsv / gsv : 0,
+    gm, gmPctOfNsv: nsv > 0 ? gm / nsv : 0,
+    gmAfterLogistics: gm - logistics,
+  }
+}
+
 /**
  * Full-year TikTok Shop P&L. Same shape as the Amazon one; the per-order fee
  * assumes one unit per order (the cautious read).

@@ -9,6 +9,7 @@ import {
   amazonFBAMargin,
   tiktokShopMargin,
   listingModel,
+  channelListed,
 } from '../utils/calculations'
 import { PageHeader, IntroLine, EmptyState, CalcActions } from '../components/gross/CalcShell'
 import GrossFooter from '../components/gross/GrossFooter'
@@ -31,6 +32,7 @@ export default function Portfolio() {
   const products = useStore((s) => s.products)
   const scenario = useStore((s) => s.scenario)
   const setActiveCalculator = useStore((s) => s.setActiveCalculator)
+  const updateProduct = useStore((s) => s.updateProduct)
 
   const ws = activeWholesalerMargin(scenario.grocery)
   const tiktokFees = effectiveTikTokFees(scenario.tiktok)
@@ -47,22 +49,24 @@ export default function Portfolio() {
     const amazon = amazonFBAMargin(p, effectiveAmazonFees(scenario.amazon, p.unitsPerCase))
     const tiktok = tiktokShopMargin(p, tiktokFees)
     const listing = listingModel(p, scenario.grocery.retailerMargin, listingInputs, ws)
-    return { p, grocery, amazon, tiktok, listing }
+    return { p, grocery, amazon, tiktok, listing, listed: channelListed(p, 'grocery') }
   })
 
-  const totalGsv = rows.reduce((a, r) => a + r.listing.totalGsv, 0)
-  const totalFunding = rows.reduce((a, r) => a + r.listing.totalFunding, 0)
-  const totalRevenue = rows.reduce((a, r) => a + r.listing.totalNsv, 0)
-  const totalMargin = rows.reduce((a, r) => a + r.listing.totalGrossMargin, 0)
-  // Inbound logistics on the grocery plan, per case across the whole range
-  const totalLogistics = rows.reduce((a, r) => a + r.listing.totalCases * scenario.grocery.logisticsPerCase, 0)
+  // The grocery range plan only counts SKUs listed on grocery
+  const listedRows = rows.filter((r) => r.listed)
+  const totalGsv = listedRows.reduce((a, r) => a + r.listing.totalGsv, 0)
+  const totalFunding = listedRows.reduce((a, r) => a + r.listing.totalFunding, 0)
+  const totalRevenue = listedRows.reduce((a, r) => a + r.listing.totalNsv, 0)
+  const totalMargin = listedRows.reduce((a, r) => a + r.listing.totalGrossMargin, 0)
+  // Inbound logistics on the grocery plan, per case across the listed range
+  const totalLogistics = listedRows.reduce((a, r) => a + r.listing.totalCases * scenario.grocery.logisticsPerCase, 0)
   const marginAfterLogistics = totalMargin - totalLogistics
   const blended = totalRevenue > 0 ? totalMargin / totalRevenue : 0
   const nsvPctOfGsv = totalGsv > 0 ? totalRevenue / totalGsv : 0
-  const carrier = rows.length
-    ? rows.reduce((a, b) => (b.listing.totalGrossMargin > a.listing.totalGrossMargin ? b : a))
+  const carrier = listedRows.length
+    ? listedRows.reduce((a, b) => (b.listing.totalGrossMargin > a.listing.totalGrossMargin ? b : a))
     : null
-  const losers = rows.filter((r) => r.grocery.brandGrossMarginPerUnit <= 0)
+  const losers = listedRows.filter((r) => r.grocery.brandGrossMarginPerUnit <= 0)
 
   let healthColor = BILE
   let healthLabel = HEALTH.healthy
@@ -74,15 +78,17 @@ export default function Portfolio() {
   let verdictColor = INK
   if (rows.length === 0) {
     verdict = ''
+  } else if (listedRows.length === 0) {
+    verdict = 'No SKUs listed on grocery. Tick some back in to build the range plan.'
   } else if (totalMargin <= 0) {
     verdictColor = REDPEN
-    verdict = 'The whole range loses money over the period. This is not a range, it is a leak. Fix the cost prices first.'
+    verdict = 'The listed range loses money over the period. This is not a range, it is a leak. Fix the cost prices first.'
   } else if (losers.length > 0) {
     verdict = `${carrier!.p.name} carries the range. ${losers[0].p.name} loses money every time it sells — the buyer will spot it before you do.`
-  } else if (rows.length === 1) {
+  } else if (listedRows.length === 1) {
     verdict = `One product is a start, not a range. Blended margin ${pct(blended)}. Duplicate it on The Shelf to test a price move.`
   } else {
-    verdict = `Blended margin ${pct(blended)} across ${rows.length} products. ${carrier!.p.name} carries the range.`
+    verdict = `Blended margin ${pct(blended)} across ${listedRows.length} listed products. ${carrier!.p.name} carries the range.`
   }
 
   return (
@@ -117,6 +123,7 @@ export default function Portfolio() {
                 <table className="w-full text-[13px] border-collapse min-w-[640px]">
                   <thead>
                     <tr className="border-b-2 border-ink text-[11px] tracking-[0.08em] opacity-60">
+                      <th scope="col" className="text-center py-2 pr-1 font-normal" title="Listed on grocery">IN</th>
                       <th scope="col" className="text-left py-2 pr-2 font-normal">PRODUCT</th>
                       <th scope="col" className="text-right py-2 px-2 font-normal">RRP</th>
                       <th scope="col" className="text-right py-2 px-2 font-normal">GROCERY</th>
@@ -126,13 +133,22 @@ export default function Portfolio() {
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map(({ p, grocery, amazon, tiktok, listing }) => {
-                      const isCarrier = carrier && p.id === carrier.p.id && totalMargin > 0 && rows.length > 1
+                    {rows.map(({ p, grocery, amazon, tiktok, listing, listed }) => {
+                      const isCarrier = carrier && p.id === carrier.p.id && totalMargin > 0 && listedRows.length > 1
                       const cell = (v: number, str: string) => (
-                        <td className="text-right py-2 px-2" style={{ color: v < 0 ? REDPEN : INK }}>{str}</td>
+                        <td className="text-right py-2 px-2" style={{ color: !listed ? '#0A0A0A55' : v < 0 ? REDPEN : INK }}>{str}</td>
                       )
                       return (
-                        <tr key={p.id} className="border-b-2 border-dotted border-ink">
+                        <tr key={p.id} className="border-b-2 border-dotted border-ink" style={{ opacity: listed ? 1 : 0.55 }}>
+                          <td className="text-center pr-1">
+                            <input
+                              type="checkbox"
+                              checked={listed}
+                              aria-label={`${p.name || 'Product'} listed on grocery`}
+                              onChange={(e) => updateProduct(p.id, { channels: { ...p.channels, grocery: e.target.checked } })}
+                              className="w-[15px] h-[15px] accent-[#0A0A0A] align-middle"
+                            />
+                          </td>
                           <th scope="row" className="text-left py-2 pr-2 font-bold">
                             <span className="flex items-center gap-2">
                               <span
@@ -151,14 +167,15 @@ export default function Portfolio() {
                           {cell(grocery.brandGrossMarginPercent, pct(grocery.brandGrossMarginPercent))}
                           {cell(amazon.grossMarginPercent, pct(amazon.grossMarginPercent))}
                           {cell(tiktok.grossMarginPercent, pct(tiktok.grossMarginPercent))}
-                          {cell(listing.totalGrossMargin, gbp(listing.totalGrossMargin))}
+                          {listed ? cell(listing.totalGrossMargin, gbp(listing.totalGrossMargin)) : <td className="text-right py-2 px-2" style={{ color: '#0A0A0A55' }}>out</td>}
                         </tr>
                       )
                     })}
                   </tbody>
                   <tfoot>
                     <tr className="border-t-2 border-ink font-bold">
-                      <th scope="row" className="text-left py-2.5 pr-2">TOTAL</th>
+                      <td />
+                      <th scope="row" className="text-left py-2.5 pr-2">TOTAL (listed)</th>
                       <td />
                       <td colSpan={3} className="text-right py-2.5 px-2">
                         blended {pct(blended)}

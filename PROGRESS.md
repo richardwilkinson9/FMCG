@@ -234,6 +234,25 @@ The maths was not touched — every formula still comes from calculations.ts.
 - Note: the multi-promo calendar (2–6 promos, each with start week + run length +
   mechanic) was already shipped in the earlier promo sprint — no change needed.
 
+## Channels + whole-range export (July 2026)
+- [x] **Per-product channels** — each product can be toggled in or out of
+      grocery / Amazon / TikTok, and carries its own cases/year on the
+      marketplaces (`product.channels`, opt-out default = listed).
+- [x] **Whole-channel P&L** — THE FULL CHANNEL table on The Amazon Cut and The
+      TikTok Cut: tick SKUs in/out, set how many cases each sells, and read the
+      aggregated channel GSV → fees → NSV (%GSV) → GM (%NSV) → after logistics.
+      The Amazon selling plan is charged once at channel level, not per SKU.
+- [x] **The Range grocery toggle** — an in/out checkbox per SKU; the range plan
+      totals count only listed products.
+- [x] **Export carries the whole range** — the deck gained a The Range sheet:
+      every product with editable GROC/AMZ/TTK 1/0 flags + cases/year, per-channel
+      values, and channel P&L totals via SUMPRODUCT over the flags (toggle a SKU
+      in Excel and the totals follow). Primary SKU's sheets stay fully live.
+- [x] Verified: multi-SKU channel maths hand-checked (membership excluded C,
+      plan charged once, logistics summed); Playwright confirmed the table, the
+      in/out toggle (3→2 SKUs), the Range grocery column and a 3-product export;
+      deck read back (The Range sheet, all products, SUMPRODUCT totals).
+
 ## Next
 - [ ] Verify all calculation logic with real-world examples
 - [ ] Consider a proper branded PDF (jsPDF) if print proves insufficient

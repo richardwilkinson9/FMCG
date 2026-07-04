@@ -1,10 +1,11 @@
 import { useStore } from '../store/useStore'
 import { effectiveTikTokFees } from '../store/scenario'
-import { tiktokShopMargin, tiktokAnnualPnL, rspExVat, logisticsPerUnit } from '../utils/calculations'
+import { tiktokShopMargin, rspExVat, logisticsPerUnit } from '../utils/calculations'
 import CalcShell, { InputsHeader, CalcActions, RateCardTag } from '../components/gross/CalcShell'
+import ChannelPlan from '../components/gross/ChannelPlan'
 import Field, { TextField, InputSection } from '../components/gross/Field'
 import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
-import { gbp, neg, pct, n0, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components/gross/format'
+import { gbp, neg, pct, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components/gross/format'
 
 /** The TikTok Cut — commission, affiliate, and the per-order nibble. */
 export default function TikTokShop() {
@@ -46,13 +47,7 @@ export default function TikTokShop() {
             onCommit={(v) => updateScenario('tiktok', { logisticsPerCase: v })} />
         </div>
         <div className="font-mono text-[11px] mt-1.5 opacity-65">
-          Inbound logistics is your freight into the TikTok/3PL warehouse, per case — not the shopper's delivery.
-        </div>
-
-        <InputSection>THE FULL YEAR</InputSection>
-        <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
-          <Field label="Cases sold / year" inputMode="numeric" value={tiktok.casesPerYear} onCommit={(v) => updateScenario('tiktok', { casesPerYear: Math.max(0, Math.round(v)) })} />
-          <Field label="Units per case" inputMode="numeric" value={product.unitsPerCase} onCommit={(v) => updateProduct(product.id, { unitsPerCase: Math.round(v) })} />
+          Inbound logistics is your freight into the TikTok/3PL warehouse, per case — not the shopper's delivery. Set each SKU's annual volume, and toggle SKUs in or out, in THE FULL CHANNEL table on the right.
         </div>
         <div className="font-mono text-[11px] mt-1.5 opacity-65">
           Feeds the annual P&L on the receipt. Per-order fee assumes one unit per order — the cautious read.
@@ -135,34 +130,8 @@ export default function TikTokShop() {
               />
             )
           })()}
-
-          {(() => {
-            const year = tiktokAnnualPnL(product, fees, tiktok.casesPerYear)
-            const annualLogistics = tiktok.casesPerYear * tiktok.logisticsPerCase
-            const gmAfterLog = year.gm - annualLogistics
-            const yearLoss = gmAfterLog <= 0
-            return (
-              <>
-                <Rule className="mt-3.5 mb-2.5" />
-                <RSection label={`THE FULL YEAR — ${n0(tiktok.casesPerYear)} CASES`} />
-                <RLine label={`Units (${n0(tiktok.casesPerYear)} × ${product.unitsPerCase})`} value={`${n0(year.units)} units`} dim />
-                <RLine label="GSV (ex-VAT)" value={gbp(year.gsv)} bold />
-                <RLine label="less platform commission" value={neg(year.platform)} dim />
-                <RLine label="less affiliate commission" value={neg(year.affiliate)} dim />
-                <RLine label="less per-order fees" value={neg(year.orderFees)} dim />
-                <RLine label="less refund admin" value={neg(year.refunds)} dim />
-                <Rule dotted className="my-2" />
-                <RLine label="NSV" value={gbp(year.nsv)} bold color={year.nsv < 0 ? REDPEN : INK} />
-                <RLine label="NSV as % of GSV" value={pct(year.nsvPctOfGsv)} dim />
-                <RLine label="less COGS" value={neg(year.cogs)} dim />
-                <RLine label="Gross margin, year" value={gbp(year.gm)} bold color={year.gm <= 0 ? REDPEN : INK} />
-                <RLine label="GM as % of NSV" value={pct(year.gmPctOfNsv)} color={year.gm <= 0 ? REDPEN : INK} />
-                <RLine label={`less inbound logistics (${n0(tiktok.casesPerYear)} × ${gbp(tiktok.logisticsPerCase)})`} value={neg(annualLogistics)} dim />
-                <RLine label="Profit after logistics, year" value={gbp(gmAfterLog)} bold color={yearLoss ? REDPEN : INK} />
-              </>
-            )
-          })()}
         </Receipt>
+        <ChannelPlan channel="tiktok" />
         <CalcActions />
       </div>
     )

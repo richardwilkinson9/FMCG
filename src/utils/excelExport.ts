@@ -18,6 +18,8 @@ import {
   listingModel,
   stockLedger,
   promoUpliftForWeek,
+  channelListed,
+  skuCasesPerYear,
 } from './calculations'
 
 /**
@@ -62,7 +64,11 @@ function receiptBase(ws: Worksheet, cols = 8) {
   }
 }
 
-export async function downloadExcelModel(product: Product, scenario: Scenario): Promise<void> {
+export async function downloadExcelModel(
+  product: Product,
+  scenario: Scenario,
+  products: Product[] = [product],
+): Promise<void> {
   const ExcelJS = await import('exceljs')
   const wb = new ExcelJS.Workbook()
   wb.creator = 'GROSS.'
@@ -85,6 +91,26 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
   const amzCasesYear = amazonCasesPerYear(scenario.amazon, product.unitsPerCase)
   const amazonYear = amazonAnnualPnL(product, amazonFees, scenario.amazon.planMonthly, amzCasesYear)
   const tiktokYear = tiktokAnnualPnL(product, tiktokFees, scenario.tiktok.casesPerYear)
+
+  // Whole-range snapshot for The Range sheet (every product, per channel)
+  const rangeRows = products.map((p) => {
+    const g = listingModel(p, scenario.grocery.retailerMargin, listingInputs, ws)
+    const aYr = amazonAnnualPnL(p, effectiveAmazonFees(scenario.amazon, p.unitsPerCase), 0, skuCasesPerYear(p, 'amazon'))
+    const tYr = tiktokAnnualPnL(p, effectiveTikTokFees(scenario.tiktok), skuCasesPerYear(p, 'tiktok'))
+    return {
+      p,
+      grocIn: channelListed(p, 'grocery') ? 1 : 0,
+      amzIn: channelListed(p, 'amazon') ? 1 : 0,
+      ttkIn: channelListed(p, 'tiktok') ? 1 : 0,
+      amzCases: skuCasesPerYear(p, 'amazon'),
+      ttkCases: skuCasesPerYear(p, 'tiktok'),
+      grocGm: g.totalGrossMargin,
+      grocCases: g.totalCases,
+      amzGsv: aYr.gsv, amzGm: aYr.gm,
+      ttkGsv: tYr.gsv, ttkGm: tYr.gm,
+    }
+  })
+  const amzChannelPlan = scenario.amazon.planMonthly * 12
   // Inbound logistics per consumer unit, per channel
   const upc = Math.max(product.unitsPerCase, 1)
   const groceryLogUnit = scenario.grocery.logisticsPerCase / upc
@@ -694,8 +720,104 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
   }
   verdictAndFooter(lu, r, 'The biggest channel is rarely the one that pays.')
 
-  // ── THE RANGE (static snapshot) ────────────────────────────────────────────
-  // (Multi-product; the live model above runs on the product on shelf.)
+  // ── THE RANGE (all products, per channel) ──────────────────────────────────
+  const rng = wb.addWorksheet('The Range', { properties: { tabColor: { argb: BILE } } })
+  rng.views = [{ showGridLines: false }]
+  for (let i = 1; i <= 16; i++) rng.getColumn(i).fill = fill(RECEIPT)
+  rng.getColumn(1).width = 2
+  ;[24, 9, 9, 9, 8, 8, 11, 8, 11, 14, 14, 14, 14, 14].forEach((wdt, i) => { rng.getColumn(i + 2).width = wdt })
+  let rr = toolHeader(rng, 'THE RANGE', 'every product, in or out per channel · 1 = listed, 0 = out')
+  const headers = ['SKU', 'COST', 'RSP', 'UPC', 'GROC', 'AMZ', 'AMZ CS/YR', 'TTK', 'TTK CS/YR', 'GROCERY GM', 'AMAZON GSV', 'AMAZON GM', 'TIKTOK GSV', 'TIKTOK GM']
+  headers.forEach((h, i) => {
+    const c = rng.getCell(rr, i + 2)
+    c.value = h
+    c.fill = fill(INK)
+    c.font = { name: MONO, size: 8, bold: true, color: { argb: BILE } }
+    c.alignment = { horizontal: i === 0 ? 'left' : 'right' }
+  })
+  rr++
+  const dr0 = rr
+  const inputBorder = {
+    top: { style: 'thin' as const, color: { argb: INK } }, bottom: { style: 'thin' as const, color: { argb: INK } },
+    left: { style: 'thin' as const, color: { argb: INK } }, right: { style: 'thin' as const, color: { argb: INK } },
+  }
+  for (const row of rangeRows) {
+    const cells: [number, number | string, string | null, boolean][] = [
+      [2, row.p.name, null, false],
+      [3, row.p.cogsPerUnit, GBP, false],
+      [4, row.p.rrpIncVat, GBP, false],
+      [5, row.p.unitsPerCase, INT, false],
+      [6, row.grocIn, '0', true],
+      [7, row.amzIn, '0', true],
+      [8, row.amzCases, INT, true],
+      [9, row.ttkIn, '0', true],
+      [10, row.ttkCases, INT, true],
+      [11, row.grocGm, GBP, false],
+      [12, row.amzGsv, GBP, false],
+      [13, row.amzGm, GBP, false],
+      [14, row.ttkGsv, GBP, false],
+      [15, row.ttkGm, GBP, false],
+    ]
+    for (const [col, value, fmt, editable] of cells) {
+      const c = rng.getCell(rr, col)
+      c.value = value
+      if (fmt) c.numFmt = fmt
+      mono(c, { bold: col === 2 })
+      c.alignment = { horizontal: col === 2 ? 'left' : 'right' }
+      if (editable) { c.fill = fill(WHITE); c.border = inputBorder }
+    }
+    rr++
+  }
+  const drL = rr - 1
+  // Totals row — respects the in/out flags via SUMPRODUCT
+  const rngTotLabel = rng.getCell(rr, 2)
+  rngTotLabel.value = 'TOTAL (listed)'
+  mono(rngTotLabel, { bold: true })
+  const sp2 = (flagCol: string, valCol: string, cached: number) =>
+    ({ formula: `SUMPRODUCT($${flagCol}$${dr0}:$${flagCol}$${drL},$${valCol}$${dr0}:$${valCol}$${drL})`, result: cached })
+  const grocGmTot = rangeRows.reduce((a, x) => a + x.grocIn * x.grocGm, 0)
+  const amzGsvTot = rangeRows.reduce((a, x) => a + x.amzIn * x.amzGsv, 0)
+  const amzGmTot = rangeRows.reduce((a, x) => a + x.amzIn * x.amzGm, 0)
+  const ttkGsvTot = rangeRows.reduce((a, x) => a + x.ttkIn * x.ttkGsv, 0)
+  const ttkGmTot = rangeRows.reduce((a, x) => a + x.ttkIn * x.ttkGm, 0)
+  const totals: [number, ReturnType<typeof sp2>][] = [
+    [11, sp2('F', 'K', grocGmTot)], [12, sp2('G', 'L', amzGsvTot)], [13, sp2('G', 'M', amzGmTot)],
+    [14, sp2('I', 'N', ttkGsvTot)], [15, sp2('I', 'O', ttkGmTot)],
+  ]
+  for (const [col, f] of totals) {
+    const c = rng.getCell(rr, col)
+    setF(c, f.formula, f.result, GBP)
+    mono(c, { bold: true })
+    c.alignment = { horizontal: 'right' }
+  }
+  for (let i = 2; i <= 15; i++) rng.getCell(rr, i).border = { top: { style: 'medium', color: { argb: INK } } }
+  rr += 2
+
+  // Channel P&L summary
+  const csum = (label: string, formula: string, result: number, bold = false) => {
+    const l = rng.getCell(rr, 2); l.value = label; mono(l, { bold })
+    rng.mergeCells(rr, 2, rr, 4)
+    const v = rng.getCell(rr, 5); setF(v, formula, result, GBP); mono(v, { bold }); v.alignment = { horizontal: 'right' }
+    rng.getColumn(5).width = Math.max(rng.getColumn(5).width ?? 8, 16)
+    rr++
+  }
+  const sec = (t: string) => { const c = rng.getCell(rr, 2); c.value = t; mono(c, { size: 8, color: 'FF666666' }); rr++ }
+  sec('THE GROCERY CHANNEL, PERIOD')
+  csum('Gross margin, listed SKUs', `$K$${drL + 1}`, grocGmTot, true)
+  rr++
+  sec('THE AMAZON CHANNEL, FULL YEAR')
+  csum('GSV', `$L$${drL + 1}`, amzGsvTot, true)
+  csum('Gross margin (before plan)', `$M$${drL + 1}`, amzGmTot)
+  csum('less selling plan (12 months)', `-AmzPlan*12`, -amzChannelPlan)
+  csum('Gross margin, channel', `$M$${drL + 1}-AmzPlan*12`, amzGmTot - amzChannelPlan, true)
+  rr++
+  sec('THE TIKTOK CHANNEL, FULL YEAR')
+  csum('GSV', `$N$${drL + 1}`, ttkGsvTot, true)
+  csum('Gross margin, channel', `$O$${drL + 1}`, ttkGmTot, true)
+  const rngNote = rng.getCell(rr + 1, 2)
+  rngNote.value = 'Toggle a SKU in/out with the GROC/AMZ/TTK 1-0 cells; the totals follow. Per-SKU channel values are a snapshot — the primary SKU’s sheets stay fully live.'
+  mono(rngNote, { size: 8, color: 'FF666666' })
+  rng.mergeCells(rr + 1, 2, rr + 1, 9)
 
   // ── DOWNLOAD ───────────────────────────────────────────────────────────────
   const buffer = await wb.xlsx.writeBuffer()
