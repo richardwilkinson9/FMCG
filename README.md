@@ -1,59 +1,109 @@
-# FMCG Maths
+# GROSS.
 
-Free commercial calculators for UK FMCG brand teams. Define a product once, and every calculator reads from it — no more re-entering cost price, case size or RRP in every spreadsheet.
+**Do the gross maths.** Free commercial calculators for UK FMCG brand teams —
+live at **[getgross.co.uk](https://getgross.co.uk)**.
 
-## Calculators
+Define a product once and eleven calculators read from it: retailer margins,
+gross-to-net, promo paybacks, supply plans, Amazon and TikTok fees, the whole
+range side by side. Every model exports as a formula-live branded Excel deck.
+Free, no sign-up, no webinar, no "journey".
 
-1. **Retailer P&L / Margin Builder** — margin waterfall from cost price and RRP
-2. **Minimum Margin Calculator** — solve backwards for the cost price or RRP that hits your target margins
-3. **Retailer Listing Model** — project revenue, volume and gross margin across a store estate
-4. **Trade Spend ROI** — how much incremental volume to break even on a trade investment
-5. **Stock Forecast** — units to produce/hold, with a reorder point
-6. **Amazon FBA Margin** — true margin after referral, fulfilment and storage fees
-7. **TikTok Shop Margin** — true margin after platform commission, affiliate fees and charges
-8. **Cross-Channel Comparison** — side-by-side net margin across Grocery, Amazon and TikTok
+---
 
-## Local development
+## Where the project is right now (July 2026)
+
+**Built and live-ready — the product is feature-complete for launch:**
+
+| Area | State |
+|---|---|
+| 11 calculators + The Rate Card | ✅ Built, branded, verified |
+| Shared product spine + scenario | ✅ One product definition drives every tool |
+| Promo calendar | ✅ Up to 6 promos/yr, mechanics, supplier funding, GSV→NSV→GM |
+| Channels | ✅ Per-SKU in/out per channel, whole-channel P&Ls, sell-by-case Amazon |
+| Excel export ("the deck") | ✅ Formula-live, named cells, whole range, all channels |
+| Share links | ✅ Full model in the URL; clean per-tool paths; OG cards |
+| Cloud (Supabase) | ✅ Magic-link login, synced Archive w/ version history, The Union, anonymous analytics — needs the SQL in [SETUP_SUPABASE.md](./SETUP_SUPABASE.md) run once |
+| SEO | ✅ Per-tool indexable pages, prerendered crawlable content, JSON-LD, sitemap — **owner to-do: verify in Google Search Console + submit sitemap** |
+| Maths regression suite | ✅ 27 hand-computed tests; run inside every build |
+| Marketing assets | ✅ 3 carousel designs (30 slides + LinkedIn PDFs) in `marketing/`; strategy in [MARKETING.md](./MARKETING.md) |
+| The Ledger (newsletter) | ⬜ Sign-ups collecting; **issue #1 not yet written** — the next real task |
+
+Deployment: Vercel project `fmcg`, production deploys from branch
+`claude/fmcg-maths-mvp-f72yht`, domain `getgross.co.uk` via Cloudflare DNS.
+
+## The tools
+
+| Page | What it answers |
+|---|---|
+| The Shelf | Define the range once — every tool reads it |
+| The P&L | What the retailer really makes on you (+ category benchmark) |
+| The Waterfall | Every deduction between shelf price and your bank |
+| The Floor | The lowest cost price / RRP that still clears your margin |
+| The Listing | The range review, week by week, with the full promo calendar |
+| The Payback | How much volume a promo needs to pay itself back |
+| The Stock Answer | What to order and when, following the promo calendar |
+| The Amazon Cut | FBA fees per unit + the whole Amazon channel P&L |
+| The TikTok Cut | TikTok Shop fees per unit + the whole channel P&L |
+| The Line-Up | Every channel side by side, ranked on profit after freight |
+| The Range | The whole portfolio on one till roll, gross to net |
+| The Rate Card | Every fee default, dated and sourced — the trust backbone |
+
+## Documentation map
+
+| File | What it holds |
+|---|---|
+| [CLAUDE.md](./CLAUDE.md) | Architecture, conventions, where everything lives — read first when developing |
+| [BRAND.md](./BRAND.md) | The brand system: voice, colours, type, layout rules, copy bans |
+| [PROGRESS.md](./PROGRESS.md) | The full build log, sprint by sprint |
+| [MARKETING.md](./MARKETING.md) | Strategy: funnel, The Ledger plan, channels, monetisation sequence |
+| [SETUP_SUPABASE.md](./SETUP_SUPABASE.md) | One-off cloud setup (SQL + auth URLs) |
+
+## Development
 
 ```bash
-# Install dependencies
 npm install
-
-# Start the dev server (opens at http://localhost:5173)
-npm run dev
-
-# Type-check
-npx tsc --noEmit
-
-# Production build
-npm run build
+npm run dev        # dev server at localhost:5173
+npm test           # the maths regression suite (27 tests, hand-computed)
+npx tsc --noEmit   # type-check
+npm run build      # tsc + tests + vite build + prerender (SEO pages + sitemap)
+npm run gen:og     # regenerate the static OG share cards (needs Chromium; commit output)
+node scripts/gen-carousel.mjs  # regenerate the social carousels (3 designs)
 ```
 
-## Deploying on Vercel
+The build **fails** if a formula regression breaks a test or if the SEO
+prerender can't parse the page registry — both on purpose.
 
-1. Push this repository to GitHub.
-2. Go to [vercel.com](https://vercel.com) and sign in with your GitHub account.
-3. Click **Add New Project** and import this repository.
-4. Vercel will auto-detect Vite. The defaults are correct:
-   - **Framework Preset:** Vite
-   - **Build Command:** `npm run build`
-   - **Output Directory:** `dist`
-5. Click **Deploy**. That's it — your site is live.
+## The two golden rules
 
-Every push to `main` will trigger a new deployment automatically.
-
-## Architecture
-
-See [CLAUDE.md](./CLAUDE.md) for full architecture documentation, conventions, and where to find things.
-
-## Updating fee defaults
-
-All marketplace and retailer fee defaults live in `src/config/fees.ts`. Each fee has a dated note — update the values and notes when rate cards change. Every fee is also editable in the UI, so users can override defaults for their specific situation.
+1. **The maths is sacred.** All calculation logic lives in
+   `src/utils/calculations.ts` as pure functions, locked by
+   `calculations.test.ts` with hand-computed expected values. If a change fails
+   a test, the change is wrong. The humour lives in the frame only.
+2. **The free promise is forever.** The calculators and the Excel deck are
+   free, no sign-up. Monetisation (see MARKETING.md) sells the frame — never
+   the calculation.
 
 ## Tech stack
 
-- **Vite** + **React** + **TypeScript** — fast dev, type-safe
-- **Tailwind CSS** — utility-first styling
-- **Zustand** — lightweight state management
-- No backend — everything runs in the browser
-- State shared via URL query string (no server needed)
+- **Vite + React 19 + TypeScript** · **Tailwind CSS v4** (tokens in `src/index.css`)
+- **Zustand** — in-memory state; the URL is the persistence (`?s=` share blob)
+- **exceljs** (lazy chunk) — the formula-live Excel deck
+- **Supabase** — auth, synced archive, union sign-ups, anonymous events (all fail-soft)
+- **Vercel** — hosting, clean URLs, SPA fallback
+- **vitest** — the maths regression suite
+- Fonts self-hosted (Anton, Space Mono, Inter) — no third-party runtime calls
+
+## Structure
+
+```
+src/
+  calculators/   the eleven tools (lazy chunks)
+  pages/         Home, The Shelf, The Rate Card
+  components/gross/  the design system (Receipt, CalcShell, Field, ChannelPlan…)
+  store/         useStore (products), scenario (all settings), cloud, archive
+  utils/         calculations.ts (SACRED) + tests, excelExport, urlState, routeMeta
+  config/        pages (route registry), fees (dated defaults), benchmarks, supabase
+scripts/         prerender (SEO), gen-og (share cards), gen-carousel (social)
+marketing/       carousel assets (3 designs × 10 slides + LinkedIn PDFs)
+public/          fonts, OG cards, robots.txt
+```

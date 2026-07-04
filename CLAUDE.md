@@ -1,5 +1,9 @@
 # GROSS. — Architecture & Conventions
 
+*Docs map: [README.md](./README.md) = status + front door · [BRAND.md](./BRAND.md)
+= the full brand system (voice, colour, type, canon strings) · [PROGRESS.md](./PROGRESS.md)
+= build log · [MARKETING.md](./MARKETING.md) = strategy.*
+
 ## What is this?
 **GROSS.** ("Do the gross maths.") — free commercial calculators for UK FMCG brand teams.
 A single-page web app: a brutalist homepage plus nine linked calculators. Built with

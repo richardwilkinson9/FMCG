@@ -1,4 +1,8 @@
-# FMCG Maths — Progress
+# GROSS. — Build log
+
+*Chronological record of every sprint. Current state summary lives in
+[README.md](./README.md); architecture in [CLAUDE.md](./CLAUDE.md); brand in
+[BRAND.md](./BRAND.md); marketing strategy in [MARKETING.md](./MARKETING.md).*
 
 ## Done
 - [x] Scaffolded Vite + React + TypeScript + Tailwind CSS project
@@ -275,9 +279,37 @@ The maths was not touched — every formula still comes from calculations.ts.
       deck landed); CalcActions no longer subscribes to the whole store (was
       re-rendering on every keystroke).
 
-## Next
+## Marketing foundations (July 2026)
+- [x] **MARKETING.md** — the portable strategy master: positioning, funnel,
+      The Ledger newsletter plan (format/cadence/traction/guardrails),
+      channels, SWOT-tested monetisation sequence, next actions.
+- [x] **Social carousel campaign #1** — "Your margin is gross.": 10 slides,
+      ≤10 words each, real demo-model numbers, in THREE full design
+      directions (bile poster / ink poster / till roll), each as 1080×1350
+      PNGs for Instagram + a PDF for LinkedIn document posts. One generator
+      (`scripts/gen-carousel.mjs`) drives all three — edit copy, re-run.
+- [x] **BRAND.md** — the brand system written down: voice, colour rules,
+      type, layout motifs, canon strings, naming, application specs.
+- [x] README rewritten as the front door: live status table, tool list,
+      documentation map, golden rules.
+
+## Where we are (04 Jul 2026)
+The product is feature-complete for launch and deploys automatically. The
+remaining work is GO-TO-MARKET, not build:
+1. Owner: run the events SQL (SETUP_SUPABASE.md) + verify sign-in on the live
+   site.
+2. Owner: Google Search Console verification + submit sitemap.xml.
+3. Write The Ledger issue #1 (the strategy and format are specced in
+   MARKETING.md).
+4. Post carousel #1 (assets ready in marketing/carousel/).
+5. Build: a post-export email prompt (peak-intent capture) when ready.
+
+## Next (product backlog, unprioritised)
 - [ ] Verify all calculation logic with real-world examples
 - [ ] Consider a proper branded PDF (jsPDF) if print proves insufficient
+- [ ] Fully formula-live per-SKU fee cells on the deck's Range sheet
+- [ ] Waterfall promo-funding derived view on by default once users have
+      built calendars
 
 ## Open decisions
 - **The Portfolio** (multi-product table) was not in the GROSS card set. The
