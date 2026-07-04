@@ -1,7 +1,7 @@
 import { useStore } from '../store/useStore'
 import { effectiveTikTokFees } from '../store/scenario'
 import { tiktokShopMargin, tiktokAnnualPnL, rspExVat } from '../utils/calculations'
-import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
+import CalcShell, { InputsHeader, CalcActions, RateCardTag } from '../components/gross/CalcShell'
 import Field, { TextField, InputSection } from '../components/gross/Field'
 import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
 import { gbp, neg, pct, n0, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components/gross/format'
@@ -31,7 +31,7 @@ export default function TikTokShop() {
         </div>
 
         <InputSection>
-          TIKTOK SHOP FEES <span className="border-2 border-ink px-[5px] py-px">dated defaults — check the rate card</span>
+          TIKTOK SHOP FEES <RateCardTag label="dated defaults — check the rate card" />
         </InputSection>
         <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
           <Field label="Platform commission" suffix="%" scale={100} value={fees.platformCommission}

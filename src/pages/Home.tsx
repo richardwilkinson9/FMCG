@@ -213,10 +213,10 @@ export default function Home() {
               <h2 className="font-display text-[clamp(30px,4vw,54px)] tracking-[-0.02em] leading-[0.92] m-0">
                 Join the Union.<br />It's free, obviously.
               </h2>
-              <p className="text-sm mt-4 mb-0 font-mono">One email a week. It's called The Ledger and it's mostly maths.</p>
+              <p className="text-sm mt-4 mb-0 font-mono max-w-[42ch]">The rate card, kept current. When Amazon or a multiple moves a fee, you get the email before your buyer does. It's called The Ledger.</p>
             </div>
             {unionState === 'signed' ? (
-              <p className="font-mono text-sm m-0 self-center">In. First issue when it exists.</p>
+              <p className="font-mono text-sm m-0 self-center">In. We'll email when a fee moves.</p>
             ) : (
               <div className="flex flex-col gap-1.5 min-w-[320px] shrink-0">
                 <div className="flex border-2 border-ink bg-white">
@@ -273,6 +273,7 @@ export default function Home() {
                 <div className="font-mono text-[11px] tracking-[0.1em] text-bile mb-3">THE UNION</div>
                 <div className="flex flex-col gap-[9px]">
                   <a href="#union" className="text-receipt no-underline hover:text-bile">The Ledger</a>
+                  <button onClick={() => go('methodology')} className="text-receipt text-left bg-transparent border-0 p-0 text-sm cursor-pointer hover:text-bile">The Rate Card</button>
                 </div>
               </div>
             </div>

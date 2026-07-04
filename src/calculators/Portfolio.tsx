@@ -10,7 +10,7 @@ import {
   tiktokShopMargin,
   listingModel,
 } from '../utils/calculations'
-import { PageHeader, EmptyState, CalcActions } from '../components/gross/CalcShell'
+import { PageHeader, IntroLine, EmptyState, CalcActions } from '../components/gross/CalcShell'
 import GrossFooter from '../components/gross/GrossFooter'
 import { Receipt, Rule, RLine, RSection } from '../components/gross/Receipt'
 import { gbp, pct, n0, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components/gross/format'
@@ -89,6 +89,7 @@ export default function Portfolio() {
         subtitle="Every product on one till roll."
         stampNote="same assumptions as every page"
       />
+      <IntroLine />
 
       {rows.length === 0 ? (
         <EmptyState />

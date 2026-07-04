@@ -2,7 +2,7 @@ import { useStore } from '../store/useStore'
 import { effectiveAmazonFees } from '../store/scenario'
 import { amazonFBAMargin, amazonAnnualPnL, estimateAmazonFBAFee, rspExVat } from '../utils/calculations'
 import { AMAZON_CATEGORY_FEES } from '../config/fees'
-import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
+import CalcShell, { InputsHeader, CalcActions, RateCardTag } from '../components/gross/CalcShell'
 import Field, { TextField, InputSection, MonoToggle } from '../components/gross/Field'
 import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
 import { gbp, neg, pct, n0, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components/gross/format'
@@ -32,7 +32,7 @@ export default function AmazonFBA() {
         </div>
 
         <InputSection>
-          FBA FEES <span className="border-2 border-ink px-[5px] py-px">dated defaults — check the rate card</span>
+          FBA FEES <RateCardTag label="dated defaults — check the rate card" />
         </InputSection>
 
         <div className="mb-4">

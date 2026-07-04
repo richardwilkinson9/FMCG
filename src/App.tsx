@@ -1,10 +1,13 @@
 import { useEffect } from 'react'
 import { useStore } from './store/useStore'
 import { decodeStateFromUrl, encodeStateToUrl } from './utils/urlState'
+import { pageIdFromPath } from './config/pages'
+import { applyRouteMeta } from './utils/routeMeta'
 import Ticker from './components/gross/Ticker'
 import GrossNav from './components/gross/GrossNav'
 import Home from './pages/Home'
 import Shelf from './pages/Shelf'
+import Methodology from './pages/Methodology'
 import Portfolio from './calculators/Portfolio'
 import RetailerPnL from './calculators/RetailerPnL'
 import Waterfall from './calculators/Waterfall'
@@ -17,8 +20,9 @@ import TikTokShop from './calculators/TikTokShop'
 import CrossChannel from './calculators/CrossChannel'
 
 /**
- * GROSS. — view registry. The homepage plus nine calculators; ids are stable
- * so pre-rebrand share links keep working.
+ * GROSS. — view registry. The homepage plus the calculators and the rate card;
+ * ids are stable so pre-rebrand share links keep working. Slugs (the clean,
+ * indexable URLs) live in config/pages.ts.
  */
 const PAGES: Record<string, () => React.JSX.Element> = {
   'home': Home,
@@ -33,12 +37,14 @@ const PAGES: Record<string, () => React.JSX.Element> = {
   'amazon-fba': AmazonFBA,
   'tiktok-shop': TikTokShop,
   'cross-channel': CrossChannel,
+  'methodology': Methodology,
 }
 
 function App() {
   const activeCalculator = useStore((s) => s.activeCalculator)
 
-  // Restore full state (products + all calculator settings) from a shared URL
+  // Restore state on load. A shared `?s=` blob wins (full model). Otherwise the
+  // clean path decides the tool (deep links from search / a pasted URL).
   useEffect(() => {
     const decoded = decodeStateFromUrl()
     if (decoded) {
@@ -48,8 +54,18 @@ function App() {
         activeCalculator: decoded.activeCalculator in PAGES ? decoded.activeCalculator : 'home',
         scenario: decoded.scenario,
       })
+    } else {
+      const fromPath = pageIdFromPath(window.location.pathname)
+      if (fromPath && fromPath in PAGES) {
+        useStore.setState({ activeCalculator: fromPath })
+      }
     }
   }, [])
+
+  // Keep the tab title, meta and OG tags in step with the active view.
+  useEffect(() => {
+    applyRouteMeta(activeCalculator)
+  }, [activeCalculator])
 
   // Keep the address bar in sync with the full model (debounced replaceState):
   // a refresh never loses work, and the URL is always the share link.

@@ -36,6 +36,7 @@ export default function GrossNav() {
       <nav aria-label="Site" className="hidden min-[901px]:flex gap-7">
         <button onClick={() => goToSection('calculators')} className={link}>Calculators</button>
         <button onClick={() => { setActiveCalculator('cross-channel'); window.scrollTo(0, 0) }} className={link}>The Line-Up</button>
+        <button onClick={() => { setActiveCalculator('methodology'); window.scrollTo(0, 0) }} className={link}>The Rate Card</button>
         <button onClick={() => goToSection('union')} className={link}>The Ledger</button>
       </nav>
     </div>

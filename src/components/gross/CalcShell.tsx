@@ -3,8 +3,42 @@ import { useState } from 'react'
 import { useStore } from '../../store/useStore'
 import { encodeStateToUrl } from '../../utils/urlState'
 import { downloadExcelModel } from '../../utils/excelExport'
+import { pageById } from '../../config/pages'
 import GrossFooter from './GrossFooter'
 import LedgerRat from './LedgerRat'
+
+/**
+ * The "dated default — check the rate card" tag, now a link to The Rate Card
+ * (the methodology page) so every fee caveat has somewhere to go.
+ */
+export function RateCardTag({ label = 'dated default — check the rate card' }: { label?: string }) {
+  const setActiveCalculator = useStore((s) => s.setActiveCalculator)
+  return (
+    <button
+      onClick={() => { setActiveCalculator('methodology'); window.scrollTo(0, 0) }}
+      className="border-2 border-ink px-[5px] py-px font-normal cursor-pointer bg-transparent hover:bg-bile"
+      title="See The Rate Card"
+    >
+      {label}
+    </button>
+  )
+}
+
+/**
+ * The one-line, crawlable intro under a page header. Reads the active page from
+ * the registry so it needs no props — it serves SEO and the first-time reader
+ * without cluttering the header band.
+ */
+export function IntroLine() {
+  const activeCalculator = useStore((s) => s.activeCalculator)
+  const intro = pageById(activeCalculator)?.intro
+  if (!intro) return null
+  return (
+    <div className="border-b-2 border-ink bg-white px-[clamp(20px,4vw,44px)] py-3">
+      <p className="max-w-[1180px] mx-auto font-mono text-[13px] leading-snug opacity-75 m-0">{intro}</p>
+    </div>
+  )
+}
 
 /**
  * The shared calculator page template: Bile-Green header band (SKU eyebrow,
@@ -173,6 +207,7 @@ export default function CalcShell({
   return (
     <div className="bg-receipt text-ink font-body min-h-screen">
       <PageHeader sku={sku} group={group} type={type} title={title} subtitle={subtitle} stampNote={stampNote} />
+      <IntroLine />
 
       {hasProduct ? (
         <div className="py-[clamp(26px,4vw,52px)] px-[clamp(20px,4vw,44px)]">
