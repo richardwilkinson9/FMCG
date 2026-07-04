@@ -33,7 +33,6 @@ export default function Portfolio() {
   const setActiveCalculator = useStore((s) => s.setActiveCalculator)
 
   const ws = activeWholesalerMargin(scenario.grocery)
-  const amazonFees = effectiveAmazonFees(scenario.amazon)
   const tiktokFees = effectiveTikTokFees(scenario.tiktok)
   const listingInputs = {
     stores: scenario.listing.stores,
@@ -44,7 +43,8 @@ export default function Portfolio() {
 
   const rows = products.map((p) => {
     const grocery = retailerPnL(p, scenario.grocery.retailerMargin, ws)
-    const amazon = amazonFBAMargin(p, amazonFees)
+    // Amazon fees resolve per product so sell-by-case amortises on each case size
+    const amazon = amazonFBAMargin(p, effectiveAmazonFees(scenario.amazon, p.unitsPerCase))
     const tiktok = tiktokShopMargin(p, tiktokFees)
     const listing = listingModel(p, scenario.grocery.retailerMargin, listingInputs, ws)
     return { p, grocery, amazon, tiktok, listing }
@@ -54,6 +54,9 @@ export default function Portfolio() {
   const totalFunding = rows.reduce((a, r) => a + r.listing.totalFunding, 0)
   const totalRevenue = rows.reduce((a, r) => a + r.listing.totalNsv, 0)
   const totalMargin = rows.reduce((a, r) => a + r.listing.totalGrossMargin, 0)
+  // Inbound logistics on the grocery plan, per case across the whole range
+  const totalLogistics = rows.reduce((a, r) => a + r.listing.totalCases * scenario.grocery.logisticsPerCase, 0)
+  const marginAfterLogistics = totalMargin - totalLogistics
   const blended = totalRevenue > 0 ? totalMargin / totalRevenue : 0
   const nsvPctOfGsv = totalGsv > 0 ? totalRevenue / totalGsv : 0
   const carrier = rows.length
@@ -181,6 +184,12 @@ export default function Portfolio() {
               <RLine label="NSV as % of GSV" value={pct(nsvPctOfGsv)} dim />
               <RLine label="Gross margin, range" value={gbp(totalMargin)} bold color={totalMargin < 0 ? REDPEN : INK} />
               <RLine label="GM as % of NSV (blended)" value={pct(blended)} dim color={totalMargin < 0 ? REDPEN : INK} />
+              {scenario.grocery.logisticsPerCase > 0 && (
+                <>
+                  <RLine label="less inbound logistics, range" value={`−${gbp(totalLogistics).replace('−', '')}`} dim color={REDPEN} />
+                  <RLine label="Margin after logistics, range" value={gbp(marginAfterLogistics)} bold color={marginAfterLogistics < 0 ? REDPEN : INK} />
+                </>
+              )}
             </Receipt>
 
             <div className="no-print flex gap-3 mt-4">

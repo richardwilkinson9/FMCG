@@ -1,6 +1,6 @@
 import { useStore } from '../store/useStore'
 import { effectiveTikTokFees } from '../store/scenario'
-import { tiktokShopMargin, tiktokAnnualPnL, rspExVat } from '../utils/calculations'
+import { tiktokShopMargin, tiktokAnnualPnL, rspExVat, logisticsPerUnit } from '../utils/calculations'
 import CalcShell, { InputsHeader, CalcActions, RateCardTag } from '../components/gross/CalcShell'
 import Field, { TextField, InputSection } from '../components/gross/Field'
 import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
@@ -42,6 +42,11 @@ export default function TikTokShop() {
             onCommit={(v) => updateScenario('tiktok', { perOrderFee: v })} />
           <Field label="Refund admin" suffix="%" scale={100} value={tiktok.refundAdmin}
             onCommit={(v) => updateScenario('tiktok', { refundAdmin: v })} />
+          <Field label="Inbound logistics / case" prefix="£" value={tiktok.logisticsPerCase}
+            onCommit={(v) => updateScenario('tiktok', { logisticsPerCase: v })} />
+        </div>
+        <div className="font-mono text-[11px] mt-1.5 opacity-65">
+          Inbound logistics is your freight into the TikTok/3PL warehouse, per case — not the shopper's delivery.
         </div>
 
         <InputSection>THE FULL YEAR</InputSection>
@@ -62,13 +67,16 @@ export default function TikTokShop() {
     const sp = rspExVat(product)
     const gp = result.grossProfit
     const pctVal = result.grossMarginPercent
-    const noMargin = gp <= 0
+    const logUnit = logisticsPerUnit(tiktok.logisticsPerCase, product.unitsPerCase)
+    const gpAfterLog = gp - logUnit
+    const noMargin = gpAfterLog <= 0
 
     let healthColor = BILE
     let healthLabel = HEALTH.healthy
+    const pctAfter = sp > 0 ? gpAfterLog / sp : 0
     if (noMargin) { healthColor = REDPEN; healthLabel = HEALTH.underwater }
-    else if (pctVal < 0.12) { healthColor = REDPEN; healthLabel = HEALTH.thin }
-    else if (pctVal < 0.25) { healthColor = REDUCED; healthLabel = HEALTH.tight }
+    else if (pctAfter < 0.12) { healthColor = REDPEN; healthLabel = HEALTH.thin }
+    else if (pctAfter < 0.25) { healthColor = REDUCED; healthLabel = HEALTH.tight }
 
     // The verdict names the biggest single fee
     const parts: [string, number][] = [
@@ -105,16 +113,18 @@ export default function TikTokShop() {
           <RSection label="YOUR MARGIN" health={{ color: healthColor, label: healthLabel }} />
           <AnswerBlock
             rows={[
-              { label: 'Gross profit / unit', value: gbp(gp), color: noMargin ? REDPEN : BILE },
-              { label: 'Margin % (of gross)', value: pct(pctVal), big: false, color: noMargin ? REDPEN : BILE },
+              { label: 'Gross profit / unit', value: gbp(gp), color: gp <= 0 ? REDPEN : BILE },
+              { label: 'Margin % (of gross)', value: pct(pctVal), big: false, color: gp <= 0 ? REDPEN : BILE },
             ]}
           />
-          <RLine label="Margin as % of net revenue" value={result.netRevenue > 0 ? pct(result.grossMarginPctOfNet) : '—'} color={noMargin ? REDPEN : INK} />
+          <RLine label="Margin as % of net revenue" value={result.netRevenue > 0 ? pct(result.grossMarginPctOfNet) : '—'} color={gp <= 0 ? REDPEN : INK} />
+          <RLine label={`less inbound logistics (${gbp(tiktok.logisticsPerCase)}/case)`} value={neg(logUnit)} dim />
+          <RLine label="Profit after logistics / unit" value={gbp(gpAfterLog)} bold color={gpAfterLog <= 0 ? REDPEN : INK} />
           {(() => {
-            // The lowest sale price (inc VAT) at which the unit stops losing money
+            // The lowest sale price (inc VAT) at which the unit stops losing money, freight included
             const pctFees = fees.platformCommission + fees.affiliateCommission + fees.refundAdminPercent
             const breakEven = pctFees < 1
-              ? ((fees.perOrderFee + product.cogsPerUnit) / (1 - pctFees)) * (1 + product.vatRate)
+              ? ((fees.perOrderFee + product.cogsPerUnit + logUnit) / (1 - pctFees)) * (1 + product.vatRate)
               : Infinity
             return (
               <RLine
@@ -128,7 +138,9 @@ export default function TikTokShop() {
 
           {(() => {
             const year = tiktokAnnualPnL(product, fees, tiktok.casesPerYear)
-            const yearLoss = year.gm <= 0
+            const annualLogistics = tiktok.casesPerYear * tiktok.logisticsPerCase
+            const gmAfterLog = year.gm - annualLogistics
+            const yearLoss = gmAfterLog <= 0
             return (
               <>
                 <Rule className="mt-3.5 mb-2.5" />
@@ -143,9 +155,10 @@ export default function TikTokShop() {
                 <RLine label="NSV" value={gbp(year.nsv)} bold color={year.nsv < 0 ? REDPEN : INK} />
                 <RLine label="NSV as % of GSV" value={pct(year.nsvPctOfGsv)} dim />
                 <RLine label="less COGS" value={neg(year.cogs)} dim />
-                <RLine label="Gross margin, year" value={gbp(year.gm)} bold color={yearLoss ? REDPEN : INK} />
-                <RLine label="GM as % of NSV" value={pct(year.gmPctOfNsv)} color={yearLoss ? REDPEN : INK} />
-                <RLine label="GM as % of GSV" value={pct(year.gmPctOfGsv)} dim />
+                <RLine label="Gross margin, year" value={gbp(year.gm)} bold color={year.gm <= 0 ? REDPEN : INK} />
+                <RLine label="GM as % of NSV" value={pct(year.gmPctOfNsv)} color={year.gm <= 0 ? REDPEN : INK} />
+                <RLine label={`less inbound logistics (${n0(tiktok.casesPerYear)} × ${gbp(tiktok.logisticsPerCase)})`} value={neg(annualLogistics)} dim />
+                <RLine label="Profit after logistics, year" value={gbp(gmAfterLog)} bold color={yearLoss ? REDPEN : INK} />
               </>
             )
           })()}

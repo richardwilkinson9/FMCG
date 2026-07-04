@@ -1,6 +1,6 @@
 import { useStore } from '../store/useStore'
 import { activeWholesalerMargin } from '../store/scenario'
-import { retailerPnL, rspExVat, listingModel } from '../utils/calculations'
+import { retailerPnL, rspExVat, listingModel, logisticsPerUnit } from '../utils/calculations'
 import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
 import BuyerStrip from '../components/gross/BuyerStrip'
 import Field, { TextField, InputSection, MonoToggle } from '../components/gross/Field'
@@ -150,6 +150,17 @@ export default function Waterfall() {
             ]}
           />
           <RLine label="Margin as % of net revenue" value={net > 0 ? pct(gm / net) : '—'} color={noMargin ? REDPEN : INK} />
+          {(() => {
+            const logUnit = logisticsPerUnit(grocery.logisticsPerCase, product.unitsPerCase)
+            if (logUnit <= 0) return null
+            const afterLog = gm - logUnit
+            return (
+              <>
+                <RLine label={`less inbound logistics (${gbp(grocery.logisticsPerCase)}/case)`} value={neg(logUnit)} dim />
+                <RLine label="Contribution after logistics / unit" value={gbp(afterLog)} bold color={afterLog <= 0 ? REDPEN : INK} />
+              </>
+            )
+          })()}
 
           <div className="mt-3.5 mb-1.5 text-[11px] tracking-[0.1em] opacity-60">WHERE YOUR LIST PRICE GOES</div>
           <div className="flex h-[34px] border-2 border-ink overflow-hidden">

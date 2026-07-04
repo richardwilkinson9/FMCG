@@ -208,6 +208,32 @@ The maths was not touched — every formula still comes from calculations.ts.
       OG cards, reconciliation (7.3% derived vs 15% flat), Range depth, benchmark
       display, export still live — all via Playwright + xlsx read-back.
 
+## Logistics + Amazon unit/case + in-app Back (July 2026)
+- [x] **In-app Back button** — navigation pushes history entries and a popstate
+      handler restores the previous tool, so browser Back stays inside GROSS
+      instead of leaving the site (blob still re-added by the debounced sync).
+- [x] **Inbound logistics per case** — £/case freight to the customer (retailer,
+      Amazon FC, TikTok warehouse; not the shopper), one field per channel. Sits
+      below gross margin as "margin/contribution/profit after logistics" on The
+      P&L, Waterfall, Amazon, TikTok, Line-Up (now ranks channels on profit after
+      freight), Listing annual plan, The Range, and The Payback (break-even in
+      cases after freight). Full support in the Excel deck (named cells +
+      after-logistics lines + freight in the break-evens).
+- [x] **Amazon sell-by-unit / sell-by-case toggle** — one listing = one case
+      amortises fulfilment & storage across the case (per-unit fees plummet — why
+      cases win). Fees resolve per product via effectiveAmazonFees(a, unitsPerCase).
+- [x] **Amazon monthly throughput → cases/year auto** — enter units (or cases)
+      per month; cases/year is derived and shown read-only, and drives the annual
+      P&L and the deck's AmzCasesYear. "Selling plan" relabelled + explained as
+      Amazon's £25/mo Professional subscription.
+- [x] Verified: hand-checked amortisation (£12/case → £0.50/unit), cases/year
+      (40 cases/mo → 480; 500 units/mo → 250), logistics per unit; Playwright
+      confirmed Back navigation, the case toggle relabelling, auto cases/year and
+      after-logistics lines; deck read back (GroceryLogistics/AmzLogistics/
+      TtkLogistics cells, AmzCasesYear 480, 8 after-logistics lines on The Cuts).
+- Note: the multi-promo calendar (2–6 promos, each with start week + run length +
+  mechanic) was already shipped in the earlier promo sprint — no change needed.
+
 ## Next
 - [ ] Verify all calculation logic with real-world examples
 - [ ] Consider a proper branded PDF (jsPDF) if print proves insufficient

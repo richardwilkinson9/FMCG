@@ -26,6 +26,8 @@ export interface GroceryScenario {
   retailerMargin: number
   wholesalerEnabled: boolean
   wholesalerMargin: number
+  /** Inbound freight to the retailer/wholesaler DC, £ per case (not the shopper) */
+  logisticsPerCase: number
 }
 
 export interface MinMarginScenario {
@@ -128,12 +130,15 @@ export interface AmazonScenario {
   fulfilmentFee: number
   storageFee: number
   fuelSurcharge: number
-  /** Professional selling plan £/month, spread across monthly volume */
+  /** Professional selling plan £/month (the £25 Amazon subscription), spread across monthly volume */
   planMonthly: number
-  /** Expected units sold per month — amortises the plan fee per unit */
+  /** Expected throughput per month, in the selling unit (units, or cases if sellByCase) */
   monthlyUnits: number
-  /** Full-year view: cases sold through Amazon per year */
-  casesPerYear: number
+  /** Sold as full cases on Amazon (one listing = one case) rather than singles.
+   *  Amortises fulfilment/storage across the case, which is why cases win. */
+  sellByCase: boolean
+  /** Inbound freight to the Amazon fulfilment centre, £ per case */
+  logisticsPerCase: number
 }
 
 export interface TikTokScenario {
@@ -146,6 +151,8 @@ export interface TikTokScenario {
   refundAdmin: number
   /** Full-year view: cases sold through TikTok Shop per year */
   casesPerYear: number
+  /** Inbound freight to the TikTok/3PL warehouse, £ per case */
+  logisticsPerCase: number
 }
 
 /**
@@ -182,6 +189,7 @@ export function defaultScenario(): Scenario {
       retailerMargin: GROCERY_DEFAULTS.retailerMarginPercent.value,
       wholesalerEnabled: false,
       wholesalerMargin: GROCERY_DEFAULTS.wholesalerMarginPercent.value,
+      logisticsPerCase: 0,
     },
     minMargin: {
       targetBrandMargin: 0.3,
@@ -225,7 +233,8 @@ export function defaultScenario(): Scenario {
       fuelSurcharge: AMAZON_FBA_DEFAULTS.fuelLogisticsSurcharge.value,
       planMonthly: AMAZON_FBA_DEFAULTS.professionalPlanMonthly.value,
       monthlyUnits: 500,
-      casesPerYear: 250,
+      sellByCase: false,
+      logisticsPerCase: 0,
     },
     tiktok: {
       estimatorOn: true,
@@ -235,6 +244,7 @@ export function defaultScenario(): Scenario {
       perOrderFee: TIKTOK_SHOP_DEFAULTS.perOrderFee.value,
       refundAdmin: TIKTOK_SHOP_DEFAULTS.refundAdminPercent.value,
       casesPerYear: 250,
+      logisticsPerCase: 0,
     },
     buyers: [],
   }
@@ -292,23 +302,37 @@ export function activeWholesalerMargin(g: GroceryScenario): number {
   return g.wholesalerEnabled ? g.wholesalerMargin : 0
 }
 
-/** Resolve the Amazon fees in force: estimated from dimensions/category, or manual. */
-export function effectiveAmazonFees(a: AmazonScenario): AmazonFBAFees {
-  if (a.estimatorOn) {
-    const estimated = estimateAmazonFBAFee(a.weightG, a.longestCm, a.medianCm, a.shortestCm)
-    return {
-      referralFeePercent: getAmazonReferralRate(a.category),
-      fulfilmentFeePerUnit: estimated.fee,
-      monthlyStoragePerUnit: a.storageFee,
-      fuelLogisticsSurcharge: a.fuelSurcharge,
-    }
-  }
+/**
+ * Resolve the Amazon fees in force, expressed PER CONSUMER UNIT.
+ *
+ * When selling by the case (one Amazon listing = one case), the fulfilment and
+ * storage fees are charged once per case, so per consumer unit they divide by
+ * unitsPerCase — which is exactly why full cases are cheaper to fulfil. Referral
+ * is a percentage of price, so it's unchanged per unit either way. Pass the
+ * product's unitsPerCase; omit it (or when selling by unit) and nothing divides.
+ */
+export function effectiveAmazonFees(a: AmazonScenario, unitsPerCase = 1): AmazonFBAFees {
+  const perCase = a.sellByCase && unitsPerCase > 0 ? unitsPerCase : 1
+  const fulfilment = a.estimatorOn
+    ? estimateAmazonFBAFee(a.weightG, a.longestCm, a.medianCm, a.shortestCm).fee
+    : a.fulfilmentFee
   return {
-    referralFeePercent: a.referralFee,
-    fulfilmentFeePerUnit: a.fulfilmentFee,
-    monthlyStoragePerUnit: a.storageFee,
+    referralFeePercent: a.estimatorOn ? getAmazonReferralRate(a.category) : a.referralFee,
+    fulfilmentFeePerUnit: fulfilment / perCase,
+    monthlyStoragePerUnit: a.storageFee / perCase,
     fuelLogisticsSurcharge: a.fuelSurcharge,
   }
+}
+
+/** Amazon cases per year, derived from the monthly throughput and the case size. */
+export function amazonCasesPerYear(a: AmazonScenario, unitsPerCase: number): number {
+  if (a.sellByCase) return Math.round(a.monthlyUnits * 12)
+  return unitsPerCase > 0 ? Math.round((a.monthlyUnits * 12) / unitsPerCase) : 0
+}
+
+/** Consumer units sold per month on Amazon (throughput × case size when by case). */
+export function amazonMonthlyUnits(a: AmazonScenario, unitsPerCase: number): number {
+  return a.sellByCase ? a.monthlyUnits * unitsPerCase : a.monthlyUnits
 }
 
 /** Resolve the TikTok fees in force: category-based commission, or manual. */

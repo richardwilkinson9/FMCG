@@ -10,6 +10,16 @@ export function exVat(incVat: number, vatRate: number): number {
   return incVat / (1 + vatRate)
 }
 
+/**
+ * Inbound logistics (freight to the customer's DC/FC) expressed per consumer
+ * unit. Entered as £ per case; this spreads it across the units in a case.
+ * Sits BELOW gross margin — it's a distribution cost, not part of COGS — so it
+ * feeds "margin after logistics", never the sacred gross-margin formula.
+ */
+export function logisticsPerUnit(logisticsPerCase: number, unitsPerCase: number): number {
+  return unitsPerCase > 0 ? logisticsPerCase / unitsPerCase : 0
+}
+
 /** Retailer selling price excluding VAT */
 export function rspExVat(product: Product): number {
   return exVat(product.rrpIncVat, product.vatRate)

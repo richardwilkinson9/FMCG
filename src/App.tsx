@@ -1,7 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useStore } from './store/useStore'
 import { decodeStateFromUrl, encodeStateToUrl } from './utils/urlState'
-import { pageIdFromPath } from './config/pages'
+import { pageIdFromPath, pathForPageId } from './config/pages'
 import { applyRouteMeta } from './utils/routeMeta'
 import { logEvent } from './store/cloud'
 import Ticker from './components/gross/Ticker'
@@ -43,6 +43,9 @@ const PAGES: Record<string, () => React.JSX.Element> = {
 
 function App() {
   const activeCalculator = useStore((s) => s.activeCalculator)
+  const initialMount = useRef(true)
+  // Set when a change came from Back/Forward, so we don't push it back on.
+  const fromPopstate = useRef(false)
 
   // Restore state on load. A shared `?s=` blob wins (full model). Otherwise the
   // clean path decides the tool (deep links from search / a pasted URL).
@@ -63,11 +66,51 @@ function App() {
     }
   }, [])
 
-  // Keep the tab title, meta and OG tags in step with the active view, and
-  // count the view (anonymous, fire-and-forget).
+  // Back/Forward stay inside GROSS: restore the tool from the history entry
+  // instead of leaving the site.
+  useEffect(() => {
+    const onPop = () => {
+      const current = useStore.getState().activeCalculator
+      const decoded = decodeStateFromUrl()
+      if (decoded) {
+        const target = decoded.activeCalculator in PAGES ? decoded.activeCalculator : 'home'
+        if (target !== current) fromPopstate.current = true
+        useStore.setState({
+          products: decoded.products,
+          activeProductId: decoded.activeProductId,
+          activeCalculator: target,
+          scenario: decoded.scenario,
+        })
+      } else {
+        const id = pageIdFromPath(window.location.pathname)
+        const target = id && id in PAGES ? id : 'home'
+        if (target !== current) fromPopstate.current = true
+        useStore.setState({ activeCalculator: target })
+      }
+      window.scrollTo(0, 0)
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
+
+  // Keep the tab title, meta and OG tags in step with the active view, count
+  // the view, and push a history entry so Back returns to the previous tool.
   useEffect(() => {
     applyRouteMeta(activeCalculator)
     logEvent('view', activeCalculator)
+    if (initialMount.current) {
+      initialMount.current = false
+      return
+    }
+    if (fromPopstate.current) {
+      fromPopstate.current = false
+      return
+    }
+    const path = pathForPageId(activeCalculator)
+    if (window.location.pathname !== path) {
+      // Clean path now; the debounced sync below re-adds the ?s= share blob.
+      window.history.pushState(null, '', path)
+    }
   }, [activeCalculator])
 
   // Keep the address bar in sync with the full model (debounced replaceState):

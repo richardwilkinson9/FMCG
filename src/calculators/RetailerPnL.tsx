@@ -1,6 +1,6 @@
 import { useStore } from '../store/useStore'
 import { activeWholesalerMargin } from '../store/scenario'
-import { retailerPnL, rspExVat } from '../utils/calculations'
+import { retailerPnL, rspExVat, logisticsPerUnit } from '../utils/calculations'
 import { GROCERY_DEFAULTS } from '../config/fees'
 import { BENCHMARK_CATEGORIES, BENCHMARK_CHECKED, benchmarkFor } from '../config/benchmarks'
 import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
@@ -48,8 +48,11 @@ export default function RetailerPnL() {
             <Field label="Wholesaler margin" suffix="%" scale={100} tag={DATED_TAG} value={grocery.wholesalerMargin} onCommit={(v) => updateScenario('grocery', { wholesalerMargin: v })} />
           </div>
         )}
+        <div className="mt-4">
+          <Field label="Inbound logistics / case" prefix="£" value={grocery.logisticsPerCase} onCommit={(v) => updateScenario('grocery', { logisticsPerCase: v })} />
+        </div>
         <div className="font-mono text-[11px] mt-1.5 opacity-65">
-          {GROCERY_DEFAULTS.retailerMarginPercent.note}
+          {GROCERY_DEFAULTS.retailerMarginPercent.note} Logistics is your freight into the retailer's DC, per case.
         </div>
 
         <InputSection>THE BENCHMARK</InputSection>
@@ -123,6 +126,19 @@ export default function RetailerPnL() {
           />
           <RLine label="Margin / case" value={gbp(result.marginPerCase)} color={noMargin ? REDPEN : INK} />
           <RLine label="Net revenue / case" value={gbp(result.revenuePerCase)} />
+
+          {(() => {
+            const logUnit = logisticsPerUnit(grocery.logisticsPerCase, product.unitsPerCase)
+            if (logUnit <= 0) return null
+            const afterLog = gmUnit - logUnit
+            return (
+              <>
+                <RLine label={`less inbound logistics (${gbp(grocery.logisticsPerCase)}/case)`} value={neg(logUnit)} dim />
+                <RLine label="Margin after logistics / unit" value={gbp(afterLog)} bold color={afterLog <= 0 ? REDPEN : INK} />
+                <RLine label="After logistics as % of net" value={result.brandNetRevenue > 0 ? pct(afterLog / result.brandNetRevenue) : '—'} dim color={afterLog <= 0 ? REDPEN : undefined} />
+              </>
+            )
+          })()}
 
           <Rule dotted className="mt-3 mb-2" />
           {(() => {

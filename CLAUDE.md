@@ -127,6 +127,28 @@ insert-only into the Supabase `events` table. Wired to view (App), share/export
 - Share URLs (`?s=<base64>`) encode products + full scenario + active page; old links
   decode against defaults (`mergeScenario`), unknown page ids fall back to home.
 
+## Inbound logistics & Amazon selling unit
+Each channel carries an **inbound logistics** figure — freight to the customer's
+DC/FC, £ per case, NOT the shopper's delivery: `grocery.logisticsPerCase`,
+`amazon.logisticsPerCase`, `tiktok.logisticsPerCase`. It sits BELOW gross margin
+(a distribution cost, never part of COGS or the sacred gross-margin formula):
+components/deck add a "margin/contribution/profit after logistics" line via
+`logisticsPerUnit(perCase, unitsPerCase)`. Shown on The P&L, Waterfall, Amazon,
+TikTok, Line-Up (ranking is on profit-after-freight), Listing annual plan, The
+Range, The Payback (break-even uses contribution after freight), and the deck
+(named cells GroceryLogistics/AmzLogistics/TtkLogistics).
+**Amazon selling unit**: `amazon.sellByCase` — one listing = one case, so
+fulfilment/storage are charged per case and `effectiveAmazonFees(a, unitsPerCase)`
+divides them per consumer unit (why cases win). `amazon.monthlyUnits` is throughput
+in the selling unit; `amazonCasesPerYear()` derives cases/year from it (the deck's
+AmzCasesYear); `amazonMonthlyUnits()` gives consumer units/month for the plan
+amortisation. Every `effectiveAmazonFees` caller passes `product.unitsPerCase`.
+
+## Routing history
+`App.tsx` pushes a history entry on each in-app navigation (clean path) and a
+`popstate` handler restores the tool from the entry, so browser Back stays inside
+GROSS instead of leaving the site; the debounced replaceState re-adds the `?s=` blob.
+
 ## Fee config
 All dated fee defaults in `src/config/fees.ts` (incl. `AMAZON_SIZE_TIERS`,
 `AMAZON_CATEGORY_FEES`, `TIKTOK_CATEGORY_FEES`). Every fee is an editable input with a

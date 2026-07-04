@@ -54,7 +54,7 @@ export function buildScenarioCsv(product: Product, scenario: Scenario): string {
     scenario.stock.weeksOfCover,
     product.unitsPerCase,
   )
-  const amazonFees = effectiveAmazonFees(scenario.amazon)
+  const amazonFees = effectiveAmazonFees(scenario.amazon, product.unitsPerCase)
   const amazon = amazonFBAMargin(product, amazonFees)
   const tiktokFees = effectiveTikTokFees(scenario.tiktok)
   const tiktok = tiktokShopMargin(product, tiktokFees)

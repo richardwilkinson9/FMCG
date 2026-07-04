@@ -4,6 +4,8 @@ import {
   activeWholesalerMargin,
   effectiveAmazonFees,
   effectiveTikTokFees,
+  amazonCasesPerYear,
+  amazonMonthlyUnits,
 } from '../store/scenario'
 import {
   retailerPnL,
@@ -66,7 +68,7 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
   wb.creator = 'GROSS.'
 
   const ws = activeWholesalerMargin(scenario.grocery)
-  const amazonFees = effectiveAmazonFees(scenario.amazon)
+  const amazonFees = effectiveAmazonFees(scenario.amazon, product.unitsPerCase)
   const tiktokFees = effectiveTikTokFees(scenario.tiktok)
   const grocery = retailerPnL(product, scenario.grocery.retailerMargin, ws)
   const rsp = rspExVat(product)
@@ -80,8 +82,14 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
   }
   const weeks = weeklyProjection(product, scenario.grocery.retailerMargin, listingInputs, ws)
   const listing = listingModel(product, scenario.grocery.retailerMargin, listingInputs, ws)
-  const amazonYear = amazonAnnualPnL(product, amazonFees, scenario.amazon.planMonthly, scenario.amazon.casesPerYear)
+  const amzCasesYear = amazonCasesPerYear(scenario.amazon, product.unitsPerCase)
+  const amazonYear = amazonAnnualPnL(product, amazonFees, scenario.amazon.planMonthly, amzCasesYear)
   const tiktokYear = tiktokAnnualPnL(product, tiktokFees, scenario.tiktok.casesPerYear)
+  // Inbound logistics per consumer unit, per channel
+  const upc = Math.max(product.unitsPerCase, 1)
+  const groceryLogUnit = scenario.grocery.logisticsPerCase / upc
+  const amazonLogUnit = scenario.amazon.logisticsPerCase / upc
+  const tiktokLogUnit = scenario.tiktok.logisticsPerCase / upc
   const stockDemand: number[] = []
   for (let w = 1; w <= scenario.stock.planWeeks; w++) {
     stockDemand.push(product.weeklyRateOfSale * scenario.listing.stores * (1 + promoUpliftForWeek(scenario.listing.promos, w)))
@@ -92,7 +100,7 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
     ? (listing.totalGsv > 0 ? listing.totalFunding / listing.totalGsv : 0)
     : scenario.waterfall.promoFunding
   const stamp = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase().replace(/,/g, '')
-  const planCut = scenario.amazon.planMonthly / Math.max(scenario.amazon.monthlyUnits, 1)
+  const planCut = scenario.amazon.planMonthly / Math.max(amazonMonthlyUnits(scenario.amazon, product.unitsPerCase), 1)
 
   // Small style helpers ------------------------------------------------------
   const mono = (c: Cell, opts: { bold?: boolean; size?: number; color?: string } = {}) => {
@@ -275,6 +283,7 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
   heading('THE CHAIN')
   assumption('Retailer margin', scenario.grocery.retailerMargin, 'RetailerMargin', PCT, 'dated default — check the rate card')
   assumption('Wholesaler margin', ws, 'WholesalerMargin', PCT, '0 = selling direct')
+  assumption('Inbound logistics / case', scenario.grocery.logisticsPerCase, 'GroceryLogistics', GBP, 'Freight to the retailer DC, per case')
   ar++
 
   heading('TRADE SPEND (% of list)')
@@ -355,9 +364,10 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
   assumption('Fulfilment / unit', amazonFees.fulfilmentFeePerUnit, 'AmzFulfil', GBP)
   assumption('Storage / unit / mo', amazonFees.monthlyStoragePerUnit, 'AmzStorage', GBP)
   assumption('Fuel surcharge', amazonFees.fuelLogisticsSurcharge, 'AmzFuel', PCT)
-  assumption('Selling plan / mo', scenario.amazon.planMonthly, 'AmzPlan', GBP)
-  assumption('Units sold / mo', scenario.amazon.monthlyUnits, 'AmzUnits', INT)
-  assumption('Cases sold / year', scenario.amazon.casesPerYear, 'AmzCasesYear', INT, 'Feeds the full-year P&L on The Cuts')
+  assumption('Professional plan / mo', scenario.amazon.planMonthly, 'AmzPlan', GBP, "Amazon's £25 seller subscription")
+  assumption('Units sold / mo (consumer)', amazonMonthlyUnits(scenario.amazon, product.unitsPerCase), 'AmzUnits', INT, scenario.amazon.sellByCase ? 'sold as cases; = cases/mo × case size' : '')
+  assumption('Cases sold / year', amzCasesYear, 'AmzCasesYear', INT, 'Derived from units/mo; drives the full-year P&L')
+  assumption('Inbound logistics / case', scenario.amazon.logisticsPerCase, 'AmzLogistics', GBP, 'Freight into the Amazon FC, per case')
   ar++
 
   heading('THE TIKTOK CUT')
@@ -366,6 +376,7 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
   assumption('Per-order fee', tiktokFees.perOrderFee, 'TtkOrderFee', GBP)
   assumption('Refund admin', tiktokFees.refundAdminPercent, 'TtkRefund', PCT)
   assumption('Cases sold / year', scenario.tiktok.casesPerYear, 'TtkCasesYear', INT, 'Feeds the full-year P&L on The Cuts')
+  assumption('Inbound logistics / case', scenario.tiktok.logisticsPerCase, 'TtkLogistics', GBP, 'Freight into the TikTok/3PL warehouse, per case')
 
   // ── THE P&L ────────────────────────────────────────────────────────────────
   const pnl = wb.addWorksheet('The P&L', { properties: { tabColor: { argb: BILE } } })
@@ -392,6 +403,8 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
   wb.definedNames.add(`'The P&L'!$E$${r - 2}`, 'MarginPerUnit')
   r = line(pnl, r, 'Margin / case', { formula: 'MarginPerUnit*UnitsPerCase', result: grocery.marginPerCase })
   r = line(pnl, r, 'Net revenue / case', { formula: 'NetRevPerUnit*UnitsPerCase', result: grocery.revenuePerCase })
+  r = line(pnl, r, 'less inbound logistics / unit', { formula: '-GroceryLogistics/UnitsPerCase', result: -groceryLogUnit, dim: true })
+  r = line(pnl, r, 'Margin after logistics / unit', { formula: 'MarginPerUnit-GroceryLogistics/UnitsPerCase', result: grocery.brandGrossMarginPerUnit - groceryLogUnit, bold: true, red: grocery.brandGrossMarginPerUnit - groceryLogUnit <= 0 })
   r++
   r = sectionEyebrow(pnl, r, 'IF THE BUYER PUSHES')
   const pushed25 = retailerPnL(product, scenario.grocery.retailerMargin + 0.025, ws)
@@ -510,6 +523,8 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
   apLine('NSV as % of GSV', `IF($E$${wpTot}=0,0,$G$${wpTot}/$E$${wpTot})`, listing.nsvPctOfGsv, PCT)
   apLine('Gross margin (NSV less COGS)', `$H$${wpTot}`, listing.totalGrossMargin, GBP, true)
   apLine('GM as % of NSV', `IF($G$${wpTot}=0,0,$H$${wpTot}/$G$${wpTot})`, listing.gmPctOfNsv, PCT)
+  apLine('less inbound logistics', `-($D$${wpTot}/UnitsPerCase)*GroceryLogistics`, -listing.totalCases * scenario.grocery.logisticsPerCase, GBP)
+  apLine('Margin after logistics', `$H$${wpTot}-($D$${wpTot}/UnitsPerCase)*GroceryLogistics`, listing.totalGrossMargin - listing.totalCases * scenario.grocery.logisticsPerCase, GBP, true)
 
   // ── STOCK PLAN ─────────────────────────────────────────────────────────────
   const sp = wb.addWorksheet('Stock Plan', { properties: { tabColor: { argb: INK } } })
@@ -574,9 +589,11 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
     { label: 'Amazon gross profit / unit', formula: `$E$${amzNetRow}-COGS`, result: amzGp, fmt: GBP, red: amzGp <= 0 },
   ])
   r = line(cuts, r, 'Margin as % of net revenue', { formula: `IF($E$${amzNetRow}=0,0,($E$${amzNetRow}-COGS)/$E$${amzNetRow})`, result: amzNetUnit > 0 ? amzGp / amzNetUnit : 0, fmt: PCT })
+  r = line(cuts, r, 'less inbound logistics / unit', { formula: '-AmzLogistics/UnitsPerCase', result: -amazonLogUnit, dim: true })
+  r = line(cuts, r, 'Profit after logistics / unit', { formula: `$E$${amzNetRow}-COGS-AmzLogistics/UnitsPerCase`, result: amzGp - amazonLogUnit, fmt: GBP, bold: true, red: amzGp - amazonLogUnit <= 0 })
   r = line(cuts, r, 'Break-even sale price (inc VAT)', {
-    formula: '(COGS+AmzFulfil*(1+AmzFuel)+AmzStorage+AmzPlan/MAX(AmzUnits,1))/(1-AmzReferral)*(1+VAT)',
-    result: ((product.cogsPerUnit + amazonFees.fulfilmentFeePerUnit * (1 + amazonFees.fuelLogisticsSurcharge) + amazonFees.monthlyStoragePerUnit + planCut) / (1 - amazonFees.referralFeePercent)) * (1 + product.vatRate),
+    formula: '(COGS+AmzFulfil*(1+AmzFuel)+AmzStorage+AmzPlan/MAX(AmzUnits,1)+AmzLogistics/UnitsPerCase)/(1-AmzReferral)*(1+VAT)',
+    result: ((product.cogsPerUnit + amazonFees.fulfilmentFeePerUnit * (1 + amazonFees.fuelLogisticsSurcharge) + amazonFees.monthlyStoragePerUnit + planCut + amazonLogUnit) / (1 - amazonFees.referralFeePercent)) * (1 + product.vatRate),
     bold: true,
   })
   r += 2
@@ -594,15 +611,17 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
     { label: 'TikTok gross profit / unit', formula: `$E$${ttkNetRow}-COGS`, result: tiktok.grossProfit, fmt: GBP, red: tiktok.grossProfit <= 0 },
   ])
   r = line(cuts, r, 'Margin as % of net revenue', { formula: `IF($E$${ttkNetRow}=0,0,($E$${ttkNetRow}-COGS)/$E$${ttkNetRow})`, result: tiktok.grossMarginPctOfNet, fmt: PCT })
+  r = line(cuts, r, 'less inbound logistics / unit', { formula: '-TtkLogistics/UnitsPerCase', result: -tiktokLogUnit, dim: true })
+  r = line(cuts, r, 'Profit after logistics / unit', { formula: `$E$${ttkNetRow}-COGS-TtkLogistics/UnitsPerCase`, result: tiktok.grossProfit - tiktokLogUnit, fmt: GBP, bold: true, red: tiktok.grossProfit - tiktokLogUnit <= 0 })
   r = line(cuts, r, 'Break-even sale price (inc VAT)', {
-    formula: '(TtkOrderFee+COGS)/(1-TtkCommission-TtkAffiliate-TtkRefund)*(1+VAT)',
-    result: ((tiktokFees.perOrderFee + product.cogsPerUnit) / (1 - tiktokFees.platformCommission - tiktokFees.affiliateCommission - tiktokFees.refundAdminPercent)) * (1 + product.vatRate),
+    formula: '(TtkOrderFee+COGS+TtkLogistics/UnitsPerCase)/(1-TtkCommission-TtkAffiliate-TtkRefund)*(1+VAT)',
+    result: ((tiktokFees.perOrderFee + product.cogsPerUnit + tiktokLogUnit) / (1 - tiktokFees.platformCommission - tiktokFees.affiliateCommission - tiktokFees.refundAdminPercent)) * (1 + product.vatRate),
     bold: true,
   })
 
   // FULL YEAR — x cases a year through each marketplace
   r += 2
-  r = sectionEyebrow(cuts, r, `THE FULL YEAR — AMAZON (${scenario.amazon.casesPerYear} CASES)`)
+  r = sectionEyebrow(cuts, r, `THE FULL YEAR — AMAZON (${amzCasesYear} CASES)`)
   r = line(cuts, r, 'Units (cases × units per case)', { formula: 'AmzCasesYear*UnitsPerCase', result: amazonYear.units, fmt: INT, dim: true })
   r = line(cuts, r, 'GSV (ex-VAT)', { formula: 'AmzCasesYear*UnitsPerCase*RSPexVAT', result: amazonYear.gsv, bold: true })
   const amzYearGsv = r - 1
@@ -620,6 +639,8 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
   const amzYearGmRow = r - 1
   r = line(cuts, r, 'GM as % of NSV', { formula: `IF($E$${amzYearNsv}=0,0,$E$${amzYearGmRow}/$E$${amzYearNsv})`, result: amazonYear.gmPctOfNsv, fmt: PCT })
   r = line(cuts, r, 'GM as % of GSV', { formula: `IF($E$${amzYearGsv}=0,0,$E$${amzYearGmRow}/$E$${amzYearGsv})`, result: amazonYear.gmPctOfGsv, fmt: PCT, dim: true })
+  r = line(cuts, r, 'less inbound logistics (year)', { formula: '-AmzCasesYear*AmzLogistics', result: -amzCasesYear * scenario.amazon.logisticsPerCase, dim: true })
+  r = line(cuts, r, 'Profit after logistics, year', { formula: `$E$${amzYearGmRow}-AmzCasesYear*AmzLogistics`, result: amazonYear.gm - amzCasesYear * scenario.amazon.logisticsPerCase, fmt: GBP, bold: true, red: amazonYear.gm - amzCasesYear * scenario.amazon.logisticsPerCase <= 0 })
 
   r += 2
   r = sectionEyebrow(cuts, r, `THE FULL YEAR — TIKTOK (${scenario.tiktok.casesPerYear} CASES)`)
@@ -640,6 +661,8 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
   const ttkYearGmRow = r - 1
   r = line(cuts, r, 'GM as % of NSV', { formula: `IF($E$${ttkYearNsv}=0,0,$E$${ttkYearGmRow}/$E$${ttkYearNsv})`, result: tiktokYear.gmPctOfNsv, fmt: PCT })
   r = line(cuts, r, 'GM as % of GSV', { formula: `IF($E$${ttkYearGsv}=0,0,$E$${ttkYearGmRow}/$E$${ttkYearGsv})`, result: tiktokYear.gmPctOfGsv, fmt: PCT, dim: true })
+  r = line(cuts, r, 'less inbound logistics (year)', { formula: '-TtkCasesYear*TtkLogistics', result: -scenario.tiktok.casesPerYear * scenario.tiktok.logisticsPerCase, dim: true })
+  r = line(cuts, r, 'Profit after logistics, year', { formula: `$E$${ttkYearGmRow}-TtkCasesYear*TtkLogistics`, result: tiktokYear.gm - scenario.tiktok.casesPerYear * scenario.tiktok.logisticsPerCase, fmt: GBP, bold: true, red: tiktokYear.gm - scenario.tiktok.casesPerYear * scenario.tiktok.logisticsPerCase <= 0 })
 
   verdictAndFooter(cuts, r + 1, 'Same cost price across both. Fees are dated defaults — check the rate card.')
 

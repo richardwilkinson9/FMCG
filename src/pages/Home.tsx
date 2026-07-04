@@ -57,7 +57,7 @@ export default function Home() {
     const comparison = crossChannelComparison(
       product,
       scenario.grocery.retailerMargin,
-      effectiveAmazonFees(scenario.amazon),
+      effectiveAmazonFees(scenario.amazon, product.unitsPerCase),
       effectiveTikTokFees(scenario.tiktok),
       activeWholesalerMargin(scenario.grocery),
     )

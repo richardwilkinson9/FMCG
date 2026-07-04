@@ -30,6 +30,7 @@ export default function BuyerStrip() {
       scenario: {
         ...state.scenario,
         grocery: {
+          ...state.scenario.grocery,
           retailerMargin: b.retailerMargin,
           wholesalerEnabled: b.wholesalerEnabled,
           wholesalerMargin: b.wholesalerMargin,

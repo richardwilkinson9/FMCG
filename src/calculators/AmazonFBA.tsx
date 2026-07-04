@@ -1,6 +1,6 @@
 import { useStore } from '../store/useStore'
-import { effectiveAmazonFees } from '../store/scenario'
-import { amazonFBAMargin, amazonAnnualPnL, estimateAmazonFBAFee, rspExVat } from '../utils/calculations'
+import { effectiveAmazonFees, amazonCasesPerYear, amazonMonthlyUnits } from '../store/scenario'
+import { amazonFBAMargin, amazonAnnualPnL, estimateAmazonFBAFee, rspExVat, logisticsPerUnit } from '../utils/calculations'
 import { AMAZON_CATEGORY_FEES } from '../config/fees'
 import CalcShell, { InputsHeader, CalcActions, RateCardTag } from '../components/gross/CalcShell'
 import Field, { TextField, InputSection, MonoToggle } from '../components/gross/Field'
@@ -14,10 +14,14 @@ export default function AmazonFBA() {
   const updateProduct = useStore((s) => s.updateProduct)
   const updateScenario = useStore((s) => s.updateScenario)
 
+  const byCase = amazon.sellByCase
+  const sellWord = byCase ? 'case' : 'unit'
+
   const inputs = () => {
     if (!product) return null
     const estimated = estimateAmazonFBAFee(amazon.weightG, amazon.longestCm, amazon.medianCm, amazon.shortestCm)
-    const fees = effectiveAmazonFees(amazon)
+    const fees = effectiveAmazonFees(amazon, product.unitsPerCase)
+    const casesYr = amazonCasesPerYear(amazon, product.unitsPerCase)
     return (
       <div>
         <InputsHeader />
@@ -27,8 +31,22 @@ export default function AmazonFBA() {
         </div>
         <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
           <Field label="Cost price / unit" prefix="£" value={product.cogsPerUnit} onCommit={(v) => updateProduct(product.id, { cogsPerUnit: v })} />
-          <Field label="Sale Price" prefix="£" value={product.rrpIncVat} onCommit={(v) => updateProduct(product.id, { rrpIncVat: v })} />
+          <Field label="Sale price / unit" prefix="£" value={product.rrpIncVat} onCommit={(v) => updateProduct(product.id, { rrpIncVat: v })} />
+          <Field label="Units per case" inputMode="numeric" value={product.unitsPerCase} onCommit={(v) => updateProduct(product.id, { unitsPerCase: Math.round(v) })} />
           <Field label="VAT rate" suffix="%" scale={100} value={product.vatRate} onCommit={(v) => updateProduct(product.id, { vatRate: v })} />
+        </div>
+
+        <div className="mt-4">
+          <MonoToggle
+            label="SELL AS FULL CASES (NOT SINGLES)"
+            on={byCase}
+            onToggle={() => updateScenario('amazon', { sellByCase: !byCase })}
+          />
+        </div>
+        <div className="font-mono text-[11px] mt-1.5 opacity-65">
+          {byCase
+            ? `One listing = one case of ${product.unitsPerCase}. Fulfilment and storage are charged once per case, so they spread across the units — usually much cheaper per unit.`
+            : 'One listing = one single unit. Toggle on if you sell full cases/multipacks on Amazon.'}
         </div>
 
         <InputSection>
@@ -37,7 +55,7 @@ export default function AmazonFBA() {
 
         <div className="mb-4">
           <MonoToggle
-            label="ESTIMATE FEE FROM SIZE & WEIGHT"
+            label={`ESTIMATE FEE FROM ${byCase ? 'CASE' : 'UNIT'} SIZE & WEIGHT`}
             on={amazon.estimatorOn}
             onToggle={() => updateScenario('amazon', { estimatorOn: !amazon.estimatorOn })}
           />
@@ -62,40 +80,48 @@ export default function AmazonFBA() {
               </div>
             </label>
             <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
-              <Field label="Unit weight" suffix="g" value={amazon.weightG} onCommit={(v) => updateScenario('amazon', { weightG: v })} />
+              <Field label={`${byCase ? 'Case' : 'Unit'} weight`} suffix="g" value={amazon.weightG} onCommit={(v) => updateScenario('amazon', { weightG: v })} />
               <Field label="Longest side" suffix="cm" value={amazon.longestCm} onCommit={(v) => updateScenario('amazon', { longestCm: v })} />
               <Field label="Median side" suffix="cm" value={amazon.medianCm} onCommit={(v) => updateScenario('amazon', { medianCm: v })} />
               <Field label="Shortest side" suffix="cm" value={amazon.shortestCm} onCommit={(v) => updateScenario('amazon', { shortestCm: v })} />
             </div>
             <div className="border-2 border-ink bg-ink text-bile py-3 px-3.5 font-mono text-[13px] flex justify-between flex-wrap gap-1.5 mt-2">
               <span>SIZE TIER: {estimated.tier}</span>
-              <span>FULFILMENT {gbp(estimated.fee)} · REFERRAL {(fees.referralFeePercent * 100).toFixed(0)}%</span>
+              <span>
+                FULFILMENT {gbp(estimated.fee)}/{sellWord}
+                {byCase ? ` · ${gbp(fees.fulfilmentFeePerUnit)}/unit` : ''} · REFERRAL {(fees.referralFeePercent * 100).toFixed(0)}%
+              </span>
             </div>
           </>
         ) : (
           <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
             <Field label="Referral fee" suffix="%" scale={100} value={amazon.referralFee} onCommit={(v) => updateScenario('amazon', { referralFee: v })} />
-            <Field label="Fulfilment / unit" prefix="£" value={amazon.fulfilmentFee} onCommit={(v) => updateScenario('amazon', { fulfilmentFee: v })} />
+            <Field label={`Fulfilment / ${sellWord}`} prefix="£" value={amazon.fulfilmentFee} onCommit={(v) => updateScenario('amazon', { fulfilmentFee: v })} />
           </div>
         )}
 
         <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4 mt-4">
-          <Field label="Storage / unit / mo" prefix="£" value={amazon.storageFee} onCommit={(v) => updateScenario('amazon', { storageFee: v })} />
+          <Field label={`Storage / ${sellWord} / mo`} prefix="£" value={amazon.storageFee} onCommit={(v) => updateScenario('amazon', { storageFee: v })} />
           <Field label="Fuel surcharge" suffix="%" scale={100} value={amazon.fuelSurcharge} onCommit={(v) => updateScenario('amazon', { fuelSurcharge: v })} />
-          <Field label="Selling plan / mo" prefix="£" value={amazon.planMonthly} onCommit={(v) => updateScenario('amazon', { planMonthly: v })} />
-          <Field label="Units sold / mo" inputMode="numeric" value={amazon.monthlyUnits} onCommit={(v) => updateScenario('amazon', { monthlyUnits: Math.round(v) })} />
+          <Field label="Inbound logistics / case" prefix="£" value={amazon.logisticsPerCase} onCommit={(v) => updateScenario('amazon', { logisticsPerCase: v })} />
+          <Field label="Professional plan / mo" prefix="£" value={amazon.planMonthly} onCommit={(v) => updateScenario('amazon', { planMonthly: v })} />
         </div>
         <div className="font-mono text-[11px] mt-1.5 opacity-65">
-          Fixed costs spread across monthly volume. Fewer units, heavier per-unit fees.
+          Professional plan: Amazon's £25/month seller subscription — a fixed cost spread across your monthly volume. Inbound logistics is your freight into Amazon's FC, per case.
         </div>
 
         <InputSection>THE FULL YEAR</InputSection>
         <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
-          <Field label="Cases sold / year" inputMode="numeric" value={amazon.casesPerYear} onCommit={(v) => updateScenario('amazon', { casesPerYear: Math.max(0, Math.round(v)) })} />
-          <Field label="Units per case" inputMode="numeric" value={product.unitsPerCase} onCommit={(v) => updateProduct(product.id, { unitsPerCase: Math.round(v) })} />
+          <Field label={`${byCase ? 'Cases' : 'Units'} sold / mo`} inputMode="numeric" value={amazon.monthlyUnits} onCommit={(v) => updateScenario('amazon', { monthlyUnits: Math.max(0, Math.round(v)) })} />
+          <div className="border-2 border-ink bg-white h-[52px] px-3.5 flex items-center justify-between">
+            <span className="text-xs font-semibold">Cases / year (auto)</span>
+            <span className="font-mono text-[15px]">{n0(casesYr)}</span>
+          </div>
         </div>
         <div className="font-mono text-[11px] mt-1.5 opacity-65">
-          Feeds the annual P&L on the receipt. The selling plan is charged for real: £/month × 12.
+          {byCase
+            ? `${n0(amazon.monthlyUnits)} cases/mo × 12 = ${n0(casesYr)} cases/year.`
+            : `${n0(amazon.monthlyUnits)} units/mo × 12 ÷ ${product.unitsPerCase}/case = ${n0(casesYr)} cases/year.`} Feeds the annual P&L; the plan is charged for real (£/month × 12).
         </div>
       </div>
     )
@@ -103,39 +129,45 @@ export default function AmazonFBA() {
 
   const receipt = () => {
     if (!product) return null
-    const fees = effectiveAmazonFees(amazon)
+    const fees = effectiveAmazonFees(amazon, product.unitsPerCase)
     const result = amazonFBAMargin(product, fees)
     const sp = rspExVat(product)
     const tierName = amazon.estimatorOn
       ? estimateAmazonFBAFee(amazon.weightG, amazon.longestCm, amazon.medianCm, amazon.shortestCm).tier
       : 'manual'
 
-    // The receipt spreads the selling plan across monthly volume as a per-unit fee
-    const planCut = amazon.planMonthly / (amazon.monthlyUnits || 1)
+    // The selling plan spread across monthly CONSUMER units (cases × case size when by case)
+    const monthlyUnits = amazonMonthlyUnits(amazon, product.unitsPerCase)
+    const planCut = amazon.planMonthly / (monthlyUnits || 1)
+    const logUnit = logisticsPerUnit(amazon.logisticsPerCase, product.unitsPerCase)
     const totalFees = result.totalFees + planCut
     const net = result.netRevenue - planCut
     const gp = result.grossProfit - planCut
+    const gpAfterLog = gp - logUnit
     const pctVal = sp > 0 ? gp / sp : 0
-    const noMargin = gp <= 0
+    const noMargin = gpAfterLog <= 0
 
     let healthColor = BILE
     let healthLabel = HEALTH.healthy
+    const pctAfter = sp > 0 ? gpAfterLog / sp : 0
     if (noMargin) { healthColor = REDPEN; healthLabel = HEALTH.underwater }
-    else if (pctVal < 0.12) { healthColor = REDPEN; healthLabel = HEALTH.thin }
-    else if (pctVal < 0.25) { healthColor = REDUCED; healthLabel = HEALTH.tight }
+    else if (pctAfter < 0.12) { healthColor = REDPEN; healthLabel = HEALTH.thin }
+    else if (pctAfter < 0.25) { healthColor = REDUCED; healthLabel = HEALTH.tight }
 
     const verdict = noMargin
-      ? `You lose ${gbp(gp)} on every unit. The fees are bigger than the price. A single unit is not an FBA product — sell a multipack.`
-      : `FBA keeps ${gbp(totalFees)} of the ${gbp(sp)} sale. You keep ${gbp(gp)}. Thin, but hey, Jeff loves you.`
+      ? `You lose ${gbp(gpAfterLog)} on every unit after freight. The fees are bigger than the price. ${byCase ? 'Even as cases.' : 'A single unit is not an FBA product — sell a multipack.'}`
+      : `FBA keeps ${gbp(totalFees)} of the ${gbp(sp)} sale. After freight you keep ${gbp(gpAfterLog)}. ${byCase ? 'Cases carry their weight.' : 'Thin, but hey, Jeff loves you.'}`
+
+    const casesYr = amazonCasesPerYear(amazon, product.unitsPerCase)
 
     return (
       <div>
-        <Receipt tool="THE AMAZON CUT" name={product.name} subline="FBA margin · per unit" verdict={verdict} verdictColor={noMargin ? REDPEN : INK}>
+        <Receipt tool="THE AMAZON CUT" name={product.name} subline={`FBA margin · per unit${byCase ? ` · sold as cases of ${product.unitsPerCase}` : ''}`} verdict={verdict} verdictColor={noMargin ? REDPEN : INK}>
           <Rule className="mt-4 mb-2.5" />
           <RSection label="WHAT AMAZON TAKES" />
           <RLine label="Sale price ex-VAT" value={gbp(sp)} bold />
           <RLine label={`Referral fee (${(fees.referralFeePercent * 100).toFixed(0)}%)`} value={neg(result.referralFee)} dim />
-          <RLine label={`Fulfilment (${tierName})`} value={neg(result.fulfilmentFee)} dim />
+          <RLine label={`Fulfilment (${tierName}${byCase ? ', per unit of case' : ''})`} value={neg(result.fulfilmentFee)} dim />
           <RLine label="Storage / unit" value={neg(result.storageFee)} dim />
           <RLine label="Selling plan / unit" value={neg(planCut)} dim />
           <Rule dotted className="my-2" />
@@ -148,18 +180,21 @@ export default function AmazonFBA() {
           <RSection label="YOUR MARGIN" health={{ color: healthColor, label: healthLabel }} />
           <AnswerBlock
             rows={[
-              { label: 'Gross profit / unit', value: gbp(gp), color: noMargin ? REDPEN : BILE },
-              { label: 'Margin % (of gross)', value: pct(pctVal), big: false, color: noMargin ? REDPEN : BILE },
+              { label: 'Gross profit / unit', value: gbp(gp), color: gp <= 0 ? REDPEN : BILE },
+              { label: 'Margin % (of gross)', value: pct(pctVal), big: false, color: gp <= 0 ? REDPEN : BILE },
             ]}
           />
-          <RLine label="Margin as % of net revenue" value={net > 0 ? pct(gp / net) : '—'} color={noMargin ? REDPEN : INK} />
+          <RLine label="Margin as % of net revenue" value={net > 0 ? pct(gp / net) : '—'} color={gp <= 0 ? REDPEN : INK} />
+          <RLine label={`less inbound logistics (${gbp(amazon.logisticsPerCase)}/case)`} value={neg(logUnit)} dim />
+          <RLine label="Profit after logistics / unit" value={gbp(gpAfterLog)} bold color={gpAfterLog <= 0 ? REDPEN : INK} />
           {(() => {
-            // The lowest sale price (inc VAT) at which the unit stops losing money
+            // The lowest sale price (inc VAT) at which the unit stops losing money, freight included
             const perUnitCosts =
               product.cogsPerUnit +
               fees.fulfilmentFeePerUnit * (1 + fees.fuelLogisticsSurcharge) +
               fees.monthlyStoragePerUnit +
-              planCut
+              planCut +
+              logUnit
             const breakEven = fees.referralFeePercent < 1
               ? (perUnitCosts / (1 - fees.referralFeePercent)) * (1 + product.vatRate)
               : Infinity
@@ -174,13 +209,15 @@ export default function AmazonFBA() {
           })()}
 
           {(() => {
-            const year = amazonAnnualPnL(product, fees, amazon.planMonthly, amazon.casesPerYear)
-            const yearLoss = year.gm <= 0
+            const year = amazonAnnualPnL(product, fees, amazon.planMonthly, casesYr)
+            const annualLogistics = casesYr * amazon.logisticsPerCase
+            const gmAfterLog = year.gm - annualLogistics
+            const yearLoss = gmAfterLog <= 0
             return (
               <>
                 <Rule className="mt-3.5 mb-2.5" />
-                <RSection label={`THE FULL YEAR — ${n0(amazon.casesPerYear)} CASES`} />
-                <RLine label={`Units (${n0(amazon.casesPerYear)} × ${product.unitsPerCase})`} value={`${n0(year.units)} units`} dim />
+                <RSection label={`THE FULL YEAR — ${n0(casesYr)} CASES`} />
+                <RLine label={`Units (${n0(casesYr)} × ${product.unitsPerCase})`} value={`${n0(year.units)} units`} dim />
                 <RLine label="GSV (ex-VAT)" value={gbp(year.gsv)} bold />
                 <RLine label="less referral" value={neg(year.referral)} dim />
                 <RLine label="less fulfilment (incl. fuel)" value={neg(year.fulfilment)} dim />
@@ -190,9 +227,10 @@ export default function AmazonFBA() {
                 <RLine label="NSV" value={gbp(year.nsv)} bold color={year.nsv < 0 ? REDPEN : INK} />
                 <RLine label="NSV as % of GSV" value={pct(year.nsvPctOfGsv)} dim />
                 <RLine label="less COGS" value={neg(year.cogs)} dim />
-                <RLine label="Gross margin, year" value={gbp(year.gm)} bold color={yearLoss ? REDPEN : INK} />
-                <RLine label="GM as % of NSV" value={pct(year.gmPctOfNsv)} color={yearLoss ? REDPEN : INK} />
-                <RLine label="GM as % of GSV" value={pct(year.gmPctOfGsv)} dim />
+                <RLine label="Gross margin, year" value={gbp(year.gm)} bold color={year.gm <= 0 ? REDPEN : INK} />
+                <RLine label="GM as % of NSV" value={pct(year.gmPctOfNsv)} color={year.gm <= 0 ? REDPEN : INK} />
+                <RLine label={`less inbound logistics (${n0(casesYr)} × ${gbp(amazon.logisticsPerCase)})`} value={neg(annualLogistics)} dim />
+                <RLine label="Profit after logistics, year" value={gbp(gmAfterLog)} bold color={yearLoss ? REDPEN : INK} />
               </>
             )
           })()}

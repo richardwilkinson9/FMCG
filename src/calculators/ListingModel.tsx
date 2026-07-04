@@ -214,6 +214,9 @@ export default function ListingModel() {
           <RLine label="less promo funding" value={neg(result.totalFunding)} dim color={result.totalFunding > 0 ? REDPEN : undefined} />
           <RLine label="NSV" value={gbp(result.totalNsv)} bold />
           <RLine label="NSV as % of GSV" value={pct(result.nsvPctOfGsv)} dim />
+          {grocery.logisticsPerCase > 0 && (
+            <RLine label={`less inbound logistics (${n0(result.totalCases)} × ${gbp(grocery.logisticsPerCase)})`} value={neg(result.totalCases * grocery.logisticsPerCase)} dim />
+          )}
           <RLine label="Retail sales value (consumer £)" value={gbp(result.totalRetailSalesValue)} dim />
 
           {result.promoSummaries.length > 0 && (
@@ -243,6 +246,16 @@ export default function ListingModel() {
               { label: 'GM as % of NSV', value: pct(result.gmPctOfNsv), big: false, color: noMargin ? REDPEN : BILE },
             ]}
           />
+          {grocery.logisticsPerCase > 0 && (() => {
+            const annualLog = result.totalCases * grocery.logisticsPerCase
+            const afterLog = result.totalGrossMargin - annualLog
+            return (
+              <>
+                <RLine label="less inbound logistics, period" value={neg(annualLog)} dim />
+                <RLine label="Margin after logistics, period" value={gbp(afterLog)} bold color={afterLog <= 0 ? REDPEN : INK} />
+              </>
+            )
+          })()}
           <RLine label="Margin / unit (off promo)" value={gbp(gmUnit)} color={gmUnit <= 0 ? REDPEN : INK} />
         </Receipt>
         <CalcActions />
