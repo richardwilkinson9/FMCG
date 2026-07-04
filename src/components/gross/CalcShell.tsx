@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useStore } from '../../store/useStore'
 import { encodeStateToUrl } from '../../utils/urlState'
 import { downloadExcelModel } from '../../utils/excelExport'
-import { logEvent } from '../../store/cloud'
+import { logEvent } from '../../utils/analytics'
 import { pageById } from '../../config/pages'
 import GrossFooter from './GrossFooter'
 import LedgerRat from './LedgerRat'
@@ -74,11 +74,13 @@ export function InputsHeader() {
 
 /** Copy share link + Export, beneath the receipt. */
 export function CalcActions() {
-  const { products, activeProductId, activeCalculator, scenario, getActiveProduct } = useStore()
+  // No store subscription — state is read at click time, so this button row
+  // doesn't re-render on every keystroke elsewhere on the page.
   const [copied, setCopied] = useState(false)
   const [exportState, setExportState] = useState<'idle' | 'building' | 'failed'>('idle')
 
   const copyLink = () => {
+    const { products, activeProductId, activeCalculator, scenario } = useStore.getState()
     const url = encodeStateToUrl(products, activeProductId, activeCalculator, scenario)
     navigator.clipboard?.writeText(url).catch(() => {})
     logEvent('share', activeCalculator)
@@ -87,6 +89,7 @@ export function CalcActions() {
   }
 
   const doExport = async () => {
+    const { products, activeCalculator, scenario, getActiveProduct } = useStore.getState()
     const product = getActiveProduct()
     if (!product || exportState === 'building') return
     setExportState('building')

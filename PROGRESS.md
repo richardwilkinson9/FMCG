@@ -253,6 +253,28 @@ The maths was not touched — every formula still comes from calculations.ts.
       in/out toggle (3→2 SKUs), the Range grocery column and a 3-product export;
       deck read back (The Range sheet, all products, SUMPRODUCT totals).
 
+## Hardening + SEO sprint (autonomous, July 2026)
+- [x] **Maths regression suite** — 27 vitest tests over every calculation with
+      hand-computed expected values (P&L, chain, solvers, promo calendar incl.
+      overlap/clipping, GSV/NSV/GM, trade spend, stock ledger conservation,
+      marketplace per-unit + full-year, channel P&Ls, logistics, fee estimator).
+      Runs inside `npm run build` — a formula regression can no longer deploy.
+- [x] **Code-splitting** — calculators/Shelf/Rate Card are lazy chunks; the
+      Supabase client loads lazily via utils/analytics. Main bundle 537KB →
+      241KB (149KB → 75KB gzip). Core Web Vitals = SEO.
+- [x] **Crawlable static content per route** — the prerender now injects a real
+      body into #root (H1, description, intro, links to every other tool) so
+      JS-blind crawlers see a full page with an internal-link mesh; React
+      replaces it on mount. Verified with JavaScript disabled.
+- [x] **JSON-LD structured data** — WebSite + Organization on home;
+      WebApplication (free, GBP) + BreadcrumbList on every tool page.
+- [x] **Prerender hardened** — fails the build loudly if the pages.ts parse
+      breaks (it caught a real gap: double-quoted strings); sitemap gains
+      lastmod from the last commit date; og:locale + theme-color added.
+- [x] Cleanups: removed the dead CSV export (utils/export.ts, unwired since the
+      deck landed); CalcActions no longer subscribes to the whole store (was
+      re-rendering on every keystroke).
+
 ## Next
 - [ ] Verify all calculation logic with real-world examples
 - [ ] Consider a proper branded PDF (jsPDF) if print proves insufficient

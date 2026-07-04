@@ -1,44 +1,45 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, lazy, Suspense, type ComponentType, type LazyExoticComponent } from 'react'
 import { useStore } from './store/useStore'
 import { decodeStateFromUrl, encodeStateToUrl } from './utils/urlState'
 import { pageIdFromPath, pathForPageId } from './config/pages'
 import { applyRouteMeta } from './utils/routeMeta'
-import { logEvent } from './store/cloud'
+import { logEvent } from './utils/analytics'
 import Ticker from './components/gross/Ticker'
 import GrossNav from './components/gross/GrossNav'
 import Home from './pages/Home'
-import Shelf from './pages/Shelf'
-import Methodology from './pages/Methodology'
-import Portfolio from './calculators/Portfolio'
-import RetailerPnL from './calculators/RetailerPnL'
-import Waterfall from './calculators/Waterfall'
-import MinimumMargin from './calculators/MinimumMargin'
-import ListingModel from './calculators/ListingModel'
-import TradeSpendROI from './calculators/TradeSpendROI'
-import StockForecast from './calculators/StockForecast'
-import AmazonFBA from './calculators/AmazonFBA'
-import TikTokShop from './calculators/TikTokShop'
-import CrossChannel from './calculators/CrossChannel'
 
 /**
  * GROSS. — view registry. The homepage plus the calculators and the rate card;
  * ids are stable so pre-rebrand share links keep working. Slugs (the clean,
  * indexable URLs) live in config/pages.ts.
+ *
+ * The homepage is eager (it's the LCP); everything else is a lazy chunk so the
+ * first paint doesn't carry eleven calculators. A stale chunk after a redeploy
+ * is caught by the vite:preloadError reload in main.tsx.
  */
-const PAGES: Record<string, () => React.JSX.Element> = {
+const PAGES: Record<string, ComponentType | LazyExoticComponent<ComponentType>> = {
   'home': Home,
-  'products': Shelf,
-  'portfolio': Portfolio,
-  'retailer-pnl': RetailerPnL,
-  'waterfall': Waterfall,
-  'min-margin': MinimumMargin,
-  'listing-model': ListingModel,
-  'trade-spend': TradeSpendROI,
-  'stock-forecast': StockForecast,
-  'amazon-fba': AmazonFBA,
-  'tiktok-shop': TikTokShop,
-  'cross-channel': CrossChannel,
-  'methodology': Methodology,
+  'products': lazy(() => import('./pages/Shelf')),
+  'portfolio': lazy(() => import('./calculators/Portfolio')),
+  'retailer-pnl': lazy(() => import('./calculators/RetailerPnL')),
+  'waterfall': lazy(() => import('./calculators/Waterfall')),
+  'min-margin': lazy(() => import('./calculators/MinimumMargin')),
+  'listing-model': lazy(() => import('./calculators/ListingModel')),
+  'trade-spend': lazy(() => import('./calculators/TradeSpendROI')),
+  'stock-forecast': lazy(() => import('./calculators/StockForecast')),
+  'amazon-fba': lazy(() => import('./calculators/AmazonFBA')),
+  'tiktok-shop': lazy(() => import('./calculators/TikTokShop')),
+  'cross-channel': lazy(() => import('./calculators/CrossChannel')),
+  'methodology': lazy(() => import('./pages/Methodology')),
+}
+
+/** Receipt-paper placeholder while a lazy page chunk loads (usually <100ms). */
+function PageLoading() {
+  return (
+    <div className="min-h-[60vh] bg-receipt flex items-start justify-center pt-24">
+      <span className="font-mono text-[13px] tracking-[0.1em] opacity-50">TOTTING UP…</span>
+    </div>
+  )
 }
 
 function App() {
@@ -143,7 +144,9 @@ function App() {
       <Ticker />
       <GrossNav />
       <main>
-        <Page />
+        <Suspense fallback={<PageLoading />}>
+          <Page />
+        </Suspense>
       </main>
     </div>
   )

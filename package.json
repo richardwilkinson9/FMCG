@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && node scripts/prerender.mjs",
+    "build": "tsc -b && vitest run && vite build && node scripts/prerender.mjs",
+    "test": "vitest run",
     "gen:og": "node scripts/gen-og.mjs",
     "lint": "oxlint",
     "preview": "vite preview"
@@ -30,6 +31,7 @@
     "playwright": "^1.61.1",
     "tailwindcss": "^4.3.2",
     "typescript": "~6.0.2",
-    "vite": "^8.1.1"
+    "vite": "^8.1.1",
+    "vitest": "^4.1.9"
   }
 }

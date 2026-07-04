@@ -176,7 +176,25 @@ Deadpan, dry, blunt, British. Real FMCG jargon used correctly. Short sentences. 
 verdict/health strings come from the design handover — don't paraphrase them. Banned:
 empower, unlock, seamless, solution, journey, supercharge, elevate.
 
+## The maths regression suite
+`src/utils/calculations.test.ts` (vitest) locks every formula with HAND-COMPUTED
+expected values and runs inside `npm run build`, so a formula regression cannot
+deploy. If a change fails a test, the change is wrong — never "update the
+expected value" without redoing the arithmetic on paper.
+
+## Performance & crawlability
+Calculator pages are lazy chunks (`lazy()` in App.tsx's PAGES; Home is eager);
+analytics loads the cloud layer lazily (`utils/analytics.ts`) so Supabase stays
+out of the first paint. `scripts/prerender.mjs` injects into each route's HTML:
+static crawlable body content INSIDE #root (H1, description, internal-link mesh
+— React replaces it on mount), JSON-LD (WebSite/Organization on home,
+WebApplication + BreadcrumbList per tool), and writes sitemap.xml with lastmod.
+It FAILS THE BUILD if the pages.ts parse looks wrong. Note: `vite preview` only
+resolves prerendered routes with a trailing slash; Vercel's cleanUrls serves
+them correctly without.
+
 ## Commands
 - `npm run dev` — start dev server
-- `npm run build` — production build (runs tsc then vite build)
+- `npm run build` — production build (tsc, vitest, vite build, prerender)
+- `npm test` — run the maths regression suite
 - `npx tsc --noEmit` — type-check without building

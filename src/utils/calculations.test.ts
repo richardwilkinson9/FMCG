@@ -1,0 +1,333 @@
+import { describe, it, expect } from 'vitest'
+import type { Product } from '../types/product'
+import {
+  exVat,
+  rspExVat,
+  costPerCase,
+  retailerPnL,
+  solveForCostPrice,
+  solveForRrp,
+  weeklyProjection,
+  listingModel,
+  promoUpliftForWeek,
+  promoFundingRateForWeek,
+  promoDiscountForWeek,
+  tradeSpendROI,
+  stockLedger,
+  amazonFBAMargin,
+  tiktokShopMargin,
+  amazonAnnualPnL,
+  tiktokAnnualPnL,
+  amazonChannelPnL,
+  tiktokChannelPnL,
+  channelListed,
+  skuCasesPerYear,
+  logisticsPerUnit,
+  estimateAmazonFBAFee,
+  type PromoWindow,
+  type AmazonFBAFees,
+  type TikTokFees,
+} from './calculations'
+
+/**
+ * THE MATHS IS SACRED. Every expected value below was computed BY HAND,
+ * independently of the implementation. If a change makes one of these fail,
+ * the change is wrong — not the test. Do not "update the expected value"
+ * without redoing the arithmetic on paper.
+ */
+
+// The demo product from the GROSS design references
+const volt: Product = {
+  id: 'v1',
+  name: 'VOLT 250ml',
+  cogsPerUnit: 0.32,
+  unitsPerCase: 24,
+  rrpIncVat: 1.5,
+  vatRate: 0.2,
+  weeklyRateOfSale: 10,
+}
+
+describe('VAT and per-case basics', () => {
+  it('strips VAT', () => {
+    // 1.50 / 1.2 = 1.25
+    expect(exVat(1.5, 0.2)).toBeCloseTo(1.25, 10)
+    expect(rspExVat(volt)).toBeCloseTo(1.25, 10)
+    // zero-rated food: unchanged
+    expect(exVat(2.0, 0)).toBe(2.0)
+  })
+
+  it('cost per case', () => {
+    expect(costPerCase(volt)).toBeCloseTo(0.32 * 24, 10) // 7.68
+  })
+})
+
+describe('retailerPnL — the grocery chain', () => {
+  it('direct to retailer at 35%', () => {
+    const r = retailerPnL(volt, 0.35, 0)
+    // shelf ex-VAT 1.25; retailer takes 35% = 0.4375; brand banks 0.8125
+    expect(r.rspExVat).toBeCloseTo(1.25, 10)
+    expect(r.retailerMarginPerUnit).toBeCloseTo(0.4375, 10)
+    expect(r.brandNetRevenue).toBeCloseTo(0.8125, 10)
+    // GM = 0.8125 − 0.32 = 0.4925; % of net = 0.4925/0.8125 = 0.606153…
+    expect(r.brandGrossMarginPerUnit).toBeCloseTo(0.4925, 10)
+    expect(r.brandGrossMarginPercent).toBeCloseTo(0.4925 / 0.8125, 10)
+    expect(r.marginPerCase).toBeCloseTo(0.4925 * 24, 10) // 11.82
+    expect(r.revenuePerCase).toBeCloseTo(0.8125 * 24, 10) // 19.50
+  })
+
+  it('via a wholesaler at 25%', () => {
+    const r = retailerPnL(volt, 0.35, 0.25)
+    // retailer pays 0.8125; wholesaler takes 25% of that = 0.203125; brand banks 0.609375
+    expect(r.wholesalerMarginPerUnit).toBeCloseTo(0.203125, 10)
+    expect(r.brandNetRevenue).toBeCloseTo(0.609375, 10)
+    expect(r.brandGrossMarginPerUnit).toBeCloseTo(0.609375 - 0.32, 10)
+  })
+
+  it('zero net revenue does not divide by zero', () => {
+    const r = retailerPnL(volt, 1.0, 0)
+    expect(r.brandNetRevenue).toBeCloseTo(0, 10)
+    expect(r.brandGrossMarginPercent).toBe(0)
+  })
+})
+
+describe('solvers — The Floor', () => {
+  it('solveForCostPrice inverts the chain', () => {
+    // rsp 1.25 → cost to retailer 0.8125 → at 30% target brand margin,
+    // required COGS = 0.8125 × 0.7 = 0.56875
+    const s = solveForCostPrice(1.5, 0.2, 0.35, 0.3, 0)
+    expect(s.requiredCogs).toBeCloseTo(0.56875, 10)
+  })
+
+  it('solveForRrp round-trips solveForCostPrice', () => {
+    const s = solveForRrp(0.32, 0.2, 0.35, 0.3, 0.25)
+    // Feed the answer back: the required COGS at that RRP must be 0.32
+    const back = solveForCostPrice(s.rrpIncVat, 0.2, 0.35, 0.3, 0.25)
+    expect(back.requiredCogs).toBeCloseTo(0.32, 10)
+  })
+})
+
+describe('the promo calendar', () => {
+  const promos: PromoWindow[] = [
+    { startWeek: 9, weeks: 6, uplift: 0.65, discount: 0.25, supplierFunded: true },
+    { startWeek: 35, weeks: 6, uplift: 0.5, discount: 0.2, supplierFunded: false },
+  ]
+
+  it('helpers read the calendar', () => {
+    expect(promoUpliftForWeek(promos, 8)).toBe(0)
+    expect(promoUpliftForWeek(promos, 9)).toBeCloseTo(0.65, 10)
+    expect(promoUpliftForWeek(promos, 14)).toBeCloseTo(0.65, 10) // last week (9+6-1)
+    expect(promoUpliftForWeek(promos, 15)).toBe(0)
+    // only supplier-funded promos deduct off invoice
+    expect(promoFundingRateForWeek(promos, 9)).toBeCloseTo(0.25, 10)
+    expect(promoFundingRateForWeek(promos, 35)).toBe(0)
+    // the shopper gets the cut either way
+    expect(promoDiscountForWeek(promos, 35)).toBeCloseTo(0.2, 10)
+  })
+
+  it('overlapping promos stack (matches the deck SUMPRODUCT)', () => {
+    const overlap: PromoWindow[] = [
+      { startWeek: 1, weeks: 4, uplift: 0.5, discount: 0.2, supplierFunded: true },
+      { startWeek: 3, weeks: 4, uplift: 0.3, discount: 0.1, supplierFunded: true },
+    ]
+    expect(promoUpliftForWeek(overlap, 3)).toBeCloseTo(0.8, 10)
+    expect(promoFundingRateForWeek(overlap, 3)).toBeCloseTo(0.3, 10)
+  })
+
+  it('weekly projection: GSV/funding/NSV/GM, hand-checked totals', () => {
+    const inputs = { stores: 500, skus: 1, weeksInPeriod: 52, promos }
+    const m = listingModel(volt, 0.35, inputs, 0)
+    // base 5,000/wk; promo1 8,250 ×6; promo2 7,500 ×6; 40 base weeks
+    const vol = 40 * 5000 + 6 * 8250 + 6 * 7500 // 294,500
+    expect(m.totalVolume).toBeCloseTo(vol, 6)
+    const list = 0.8125
+    expect(m.totalGsv).toBeCloseTo(vol * list, 6) // 239,281.25
+    // only promo1 funded: 6 × 8,250 × 0.8125 × 0.25 = 10,054.6875
+    expect(m.totalFunding).toBeCloseTo(10054.6875, 6)
+    expect(m.totalNsv).toBeCloseTo(vol * list - 10054.6875, 6)
+    expect(m.totalGrossMargin).toBeCloseTo(m.totalNsv - vol * 0.32, 6)
+    expect(m.nsvPctOfGsv).toBeCloseTo(m.totalNsv / m.totalGsv, 10)
+    expect(m.totalCases).toBeCloseTo(vol / 24, 6)
+  })
+
+  it('promo summaries attribute incremental units and funding', () => {
+    const inputs = { stores: 500, skus: 1, weeksInPeriod: 52, promos }
+    const m = listingModel(volt, 0.35, inputs, 0)
+    expect(m.promoSummaries[0].incrementalUnits).toBeCloseTo(6 * 5000 * 0.65, 6) // 19,500
+    expect(m.promoSummaries[0].fundingCost).toBeCloseTo(10054.6875, 6)
+    expect(m.promoSummaries[1].fundingCost).toBe(0) // retailer funded
+  })
+
+  it('a promo hanging off the calendar is clipped', () => {
+    const clipped: PromoWindow[] = [{ startWeek: 50, weeks: 6, uplift: 0.5, discount: 0.2, supplierFunded: true }]
+    const m = listingModel(volt, 0.35, { stores: 500, skus: 1, weeksInPeriod: 52, promos: clipped }, 0)
+    expect(m.promoSummaries[0].weeksInPeriod).toBe(3) // weeks 50, 51, 52
+    expect(m.promoSummaries[0].clamped).toBe(true)
+  })
+
+  it('no promos: GSV = NSV', () => {
+    const m = listingModel(volt, 0.35, { stores: 500, skus: 1, weeksInPeriod: 52, promos: [] }, 0)
+    expect(m.totalGsv).toBeCloseTo(m.totalNsv, 10)
+    expect(m.totalVolume).toBeCloseTo(52 * 5000, 6)
+  })
+
+  it('weeklyProjection cumulative columns agree with the totals', () => {
+    const inputs = { stores: 500, skus: 1, weeksInPeriod: 52, promos }
+    const weeks = weeklyProjection(volt, 0.35, inputs, 0)
+    const last = weeks[weeks.length - 1]
+    const sumGsv = weeks.reduce((a, w) => a + w.gsv, 0)
+    expect(last.cumulativeGsv).toBeCloseTo(sumGsv, 6)
+    expect(last.cumulativeNsv).toBeCloseTo(weeks.reduce((a, w) => a + w.nsv, 0), 6)
+  })
+})
+
+describe('tradeSpendROI — The Payback', () => {
+  it('break-even units = investment / margin per unit', () => {
+    const r = tradeSpendROI(volt, 0.35, 10000, 2.0, 0)
+    // margin/unit 0.4925 → 10,000 / 0.4925 = 20,304.568…
+    expect(r.breakEvenUnits).toBeCloseTo(10000 / 0.4925, 6)
+    expect(r.targetReturnUnits).toBeCloseTo(30000 / 0.4925, 6)
+    expect(r.breakEvenCases).toBeCloseTo(10000 / 0.4925 / 24, 6)
+  })
+
+  it('no margin → Infinity, not a crash', () => {
+    const r = tradeSpendROI({ ...volt, cogsPerUnit: 5 }, 0.35, 10000, 2.0, 0)
+    expect(r.breakEvenUnits).toBe(Infinity)
+  })
+})
+
+describe('stockLedger — The Stock Answer', () => {
+  it('flat demand, no starting stock: orders cover lead + cover in whole cases', () => {
+    const demand = new Array(10).fill(100)
+    const plan = stockLedger(demand, 500, 2, 2, 24)
+    // Demand is met until stock runs out; every order is a whole number of cases
+    for (const row of plan.rows) {
+      expect(row.orderPlaced % 24).toBe(0)
+      expect(row.closing).toBeGreaterThanOrEqual(0)
+    }
+    // conservation: start + arrivals = consumed + closing + unmet backstop
+    const totalArrived = plan.rows.reduce((a, r) => a + r.arrivals, 0)
+    const consumed = plan.rows.reduce((a, r) => a + (r.demand - r.shortfall), 0)
+    expect(500 + totalArrived - consumed).toBeCloseTo(plan.endingStock, 6)
+  })
+
+  it('starving lead time causes recorded stockouts', () => {
+    const plan = stockLedger(new Array(8).fill(1000), 500, 4, 0, 1)
+    expect(plan.stockoutWeeks).toBeGreaterThan(0)
+    expect(plan.lostUnits).toBeGreaterThan(0)
+  })
+})
+
+const amazonFees: AmazonFBAFees = {
+  referralFeePercent: 0.15,
+  fulfilmentFeePerUnit: 0.1,
+  monthlyStoragePerUnit: 0.02,
+  fuelLogisticsSurcharge: 0.015,
+}
+
+const tiktokFees: TikTokFees = {
+  platformCommission: 0.09,
+  affiliateCommission: 0.05,
+  perOrderFee: 0.3,
+  refundAdminPercent: 0.01,
+}
+
+describe('marketplace per-unit margins', () => {
+  it('amazonFBAMargin hand-check', () => {
+    const r = amazonFBAMargin(volt, amazonFees)
+    // sp 1.25; referral 0.1875; fulfilment 0.1×1.015 = 0.1015; storage 0.02
+    expect(r.referralFee).toBeCloseTo(0.1875, 10)
+    expect(r.fulfilmentFee).toBeCloseTo(0.1015, 10)
+    const totalFees = 0.1875 + 0.1015 + 0.02
+    expect(r.totalFees).toBeCloseTo(totalFees, 10)
+    expect(r.netRevenue).toBeCloseTo(1.25 - totalFees, 10)
+    expect(r.grossProfit).toBeCloseTo(1.25 - totalFees - 0.32, 10)
+    expect(r.netPctOfGross).toBeCloseTo((1.25 - totalFees) / 1.25, 10)
+  })
+
+  it('tiktokShopMargin hand-check', () => {
+    const r = tiktokShopMargin(volt, tiktokFees)
+    // platform 0.1125, affiliate 0.0625, refund 0.0125, order 0.30 → 0.4875
+    expect(r.totalFees).toBeCloseTo(0.1125 + 0.0625 + 0.0125 + 0.3, 10)
+    expect(r.netRevenue).toBeCloseTo(1.25 - 0.4875, 10)
+    expect(r.grossProfit).toBeCloseTo(1.25 - 0.4875 - 0.32, 10)
+  })
+})
+
+describe('full-year marketplace P&L', () => {
+  it('amazonAnnualPnL: 250 cases hand-check', () => {
+    const y = amazonAnnualPnL(volt, amazonFees, 25, 250)
+    expect(y.units).toBe(6000)
+    expect(y.gsv).toBeCloseTo(6000 * 1.25, 6) // 7,500
+    expect(y.referral).toBeCloseTo(7500 * 0.15, 6) // 1,125
+    expect(y.fulfilment).toBeCloseTo(6000 * 0.1015, 6) // 609
+    expect(y.storage).toBeCloseTo(6000 * 0.02, 6) // 120
+    expect(y.plan).toBe(300) // £25 × 12, charged for real
+    const nsv = 7500 - 1125 - 609 - 120 - 300
+    expect(y.nsv).toBeCloseTo(nsv, 6)
+    expect(y.cogs).toBeCloseTo(1920, 6)
+    expect(y.gm).toBeCloseTo(nsv - 1920, 6)
+    expect(y.nsvPctOfGsv).toBeCloseTo(nsv / 7500, 10)
+    expect(y.gmPctOfNsv).toBeCloseTo((nsv - 1920) / nsv, 10)
+  })
+
+  it('tiktokAnnualPnL: 250 cases hand-check', () => {
+    const y = tiktokAnnualPnL(volt, tiktokFees, 250)
+    // gsv 7,500; platform 675; affiliate 375; orders 1,800; refunds 75
+    expect(y.totalFees).toBeCloseTo(675 + 375 + 1800 + 75, 6)
+    expect(y.nsv).toBeCloseTo(7500 - 2925, 6) // 4,575
+    expect(y.gm).toBeCloseTo(4575 - 1920, 6) // 2,655
+  })
+})
+
+describe('channels — membership + whole-channel P&L', () => {
+  const withChannels = (over: Product['channels']): Product => ({ ...volt, id: Math.random().toString(), channels: over })
+
+  it('absent channels = listed everywhere with default volume', () => {
+    expect(channelListed(volt, 'amazon')).toBe(true)
+    expect(channelListed(withChannels({ amazon: false }), 'amazon')).toBe(false)
+    expect(skuCasesPerYear(volt, 'amazon')).toBe(250)
+    expect(skuCasesPerYear(withChannels({ amazonCasesPerYear: 40 }), 'amazon')).toBe(40)
+  })
+
+  it('amazonChannelPnL: plan charged once, delisted SKU excluded, logistics summed', () => {
+    const a = withChannels({ amazonCasesPerYear: 250 })
+    const b: Product = { ...volt, id: 'b', name: 'B', cogsPerUnit: 0.4, rrpIncVat: 2.0, unitsPerCase: 12, channels: { amazonCasesPerYear: 100 } }
+    const c = withChannels({ amazon: false })
+    const ch = amazonChannelPnL([a, b, c], () => amazonFees, 25, 2)
+    expect(ch.skuCount).toBe(2)
+    // GSV: A 6,000 × 1.25 + B 1,200 × (2/1.2)
+    const gsv = 6000 * 1.25 + 1200 * (2 / 1.2)
+    expect(ch.gsv).toBeCloseTo(gsv, 6)
+    expect(ch.plan).toBe(300) // once, not per SKU
+    expect(ch.logistics).toBeCloseTo((250 + 100) * 2, 6)
+    // GM = sum of per-SKU GM (no plan) − channel plan
+    const yA = amazonAnnualPnL(a, amazonFees, 0, 250)
+    const yB = amazonAnnualPnL(b, amazonFees, 0, 100)
+    expect(ch.gm).toBeCloseTo(yA.gm + yB.gm - 300, 6)
+    expect(ch.gmAfterLogistics).toBeCloseTo(ch.gm - 700, 6)
+  })
+
+  it('tiktokChannelPnL aggregates listed SKUs', () => {
+    const a = withChannels({ tiktokCasesPerYear: 250 })
+    const c = withChannels({ tiktok: false })
+    const ch = tiktokChannelPnL([a, c], tiktokFees, 0)
+    expect(ch.skuCount).toBe(1)
+    const y = tiktokAnnualPnL(a, tiktokFees, 250)
+    expect(ch.gm).toBeCloseTo(y.gm, 6)
+  })
+})
+
+describe('logistics', () => {
+  it('spreads £/case across the units', () => {
+    expect(logisticsPerUnit(3, 24)).toBeCloseTo(0.125, 10)
+    expect(logisticsPerUnit(3, 0)).toBe(0) // no division by zero
+  })
+})
+
+describe('Amazon fee estimator', () => {
+  it('picks the smallest tier that fits and falls through to oversize', () => {
+    expect(estimateAmazonFBAFee(50, 20, 10, 2).tier).toBe('Small envelope')
+    expect(estimateAmazonFBAFee(200, 20, 10, 5).fee).toBeGreaterThan(0)
+    expect(estimateAmazonFBAFee(99999, 999, 999, 999).tier).toContain('oversize')
+  })
+})
