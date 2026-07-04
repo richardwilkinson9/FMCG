@@ -2,6 +2,7 @@ import { useStore } from '../store/useStore'
 import { activeWholesalerMargin } from '../store/scenario'
 import { retailerPnL, rspExVat } from '../utils/calculations'
 import { GROCERY_DEFAULTS } from '../config/fees'
+import { BENCHMARK_CATEGORIES, BENCHMARK_CHECKED, benchmarkFor } from '../config/benchmarks'
 import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
 import BuyerStrip from '../components/gross/BuyerStrip'
 import Field, { TextField, InputSection, MonoToggle } from '../components/gross/Field'
@@ -49,6 +50,27 @@ export default function RetailerPnL() {
         )}
         <div className="font-mono text-[11px] mt-1.5 opacity-65">
           {GROCERY_DEFAULTS.retailerMarginPercent.note}
+        </div>
+
+        <InputSection>THE BENCHMARK</InputSection>
+        <label className="block">
+          <span className="block text-xs font-semibold mb-1.5">Category (for the margin benchmark)</span>
+          <div className="relative border-2 border-ink bg-white h-[52px] flex items-center">
+            <select
+              value={product.category ?? 'General FMCG'}
+              onChange={(e) => updateProduct(product.id, { category: e.target.value })}
+              aria-label="Product category"
+              className="flex-1 border-0 outline-none bg-transparent px-3.5 font-mono text-[15px] text-ink h-full cursor-pointer appearance-none"
+            >
+              {BENCHMARK_CATEGORIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+            <span className="w-11 flex items-center justify-center border-l-2 border-ink font-mono text-sm h-full pointer-events-none">▾</span>
+          </div>
+        </label>
+        <div className="font-mono text-[11px] mt-1.5 opacity-65">
+          Indicative ranges only — a sense-check, not a target. Sourced on The Rate Card.
         </div>
         <BuyerStrip />
       </div>
@@ -101,6 +123,31 @@ export default function RetailerPnL() {
           />
           <RLine label="Margin / case" value={gbp(result.marginPerCase)} color={noMargin ? REDPEN : INK} />
           <RLine label="Net revenue / case" value={gbp(result.revenuePerCase)} />
+
+          <Rule dotted className="mt-3 mb-2" />
+          {(() => {
+            const bm = benchmarkFor(product.category)
+            const below = gmPct < bm.low
+            const above = gmPct > bm.high
+            const within = !below && !above
+            const verdictText = noMargin
+              ? 'Below anything anyone would call a margin.'
+              : within
+                ? `In range for ${bm.category.toLowerCase()}.`
+                : below
+                  ? `Below the ${bm.category.toLowerCase()} range. Thin for the category.`
+                  : `Above the ${bm.category.toLowerCase()} range. Enjoy it while it lasts.`
+            const color = noMargin || below ? REDPEN : within ? INK : BILE
+            return (
+              <>
+                <RSection label={`BENCHMARK — ${bm.category.toUpperCase()}`} />
+                <RLine label="Indicative range (of net revenue)" value={`${pct(bm.low)} – ${pct(bm.high)}`} dim />
+                <RLine label="You are at" value={pct(gmPct)} bold color={noMargin ? REDPEN : INK} />
+                <RLine label="Read" value={verdictText} dim color={color} />
+                <div className="font-mono text-[10px] mt-1 opacity-55">Indicative only — checked {BENCHMARK_CHECKED}. See The Rate Card.</div>
+              </>
+            )
+          })()}
 
           <Rule dotted className="mt-3 mb-2" />
           <RSection label="IF THE BUYER PUSHES" />

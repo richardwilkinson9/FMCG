@@ -3,6 +3,7 @@ import { useStore } from './store/useStore'
 import { decodeStateFromUrl, encodeStateToUrl } from './utils/urlState'
 import { pageIdFromPath } from './config/pages'
 import { applyRouteMeta } from './utils/routeMeta'
+import { logEvent } from './store/cloud'
 import Ticker from './components/gross/Ticker'
 import GrossNav from './components/gross/GrossNav'
 import Home from './pages/Home'
@@ -62,9 +63,11 @@ function App() {
     }
   }, [])
 
-  // Keep the tab title, meta and OG tags in step with the active view.
+  // Keep the tab title, meta and OG tags in step with the active view, and
+  // count the view (anonymous, fire-and-forget).
   useEffect(() => {
     applyRouteMeta(activeCalculator)
+    logEvent('view', activeCalculator)
   }, [activeCalculator])
 
   // Keep the address bar in sync with the full model (debounced replaceState):

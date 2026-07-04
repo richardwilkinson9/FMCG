@@ -16,6 +16,8 @@ export interface Product {
   vatRate: number
   /** Assumed weekly rate of sale per store (units) */
   weeklyRateOfSale: number
+  /** Optional category, used only to show an indicative margin benchmark */
+  category?: string
 }
 
 export interface CategoryTemplate {

@@ -1,9 +1,9 @@
 import { useStore } from '../store/useStore'
 import { activeWholesalerMargin } from '../store/scenario'
-import { retailerPnL, rspExVat } from '../utils/calculations'
+import { retailerPnL, rspExVat, listingModel } from '../utils/calculations'
 import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
 import BuyerStrip from '../components/gross/BuyerStrip'
-import Field, { TextField, InputSection } from '../components/gross/Field'
+import Field, { TextField, InputSection, MonoToggle } from '../components/gross/Field'
 import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
 import { gbp, neg, pct, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components/gross/format'
 
@@ -16,8 +16,18 @@ export default function Waterfall() {
   const product = useStore((s) => s.getActiveProduct())
   const grocery = useStore((s) => s.scenario.grocery)
   const waterfall = useStore((s) => s.scenario.waterfall)
+  const listing = useStore((s) => s.scenario.listing)
   const updateProduct = useStore((s) => s.updateProduct)
   const updateScenario = useStore((s) => s.updateScenario)
+
+  // The promo funding implied by the actual promo calendar: annual supplier-
+  // funded spend as a share of annual GSV (the same "% of list" lens).
+  const calendarFundingRate = (() => {
+    if (!product) return 0
+    const lm = listingModel(product, grocery.retailerMargin, listing, activeWholesalerMargin(grocery))
+    return lm.totalGsv > 0 ? lm.totalFunding / lm.totalGsv : 0
+  })()
+  const effectivePromoFunding = waterfall.promoFromCalendar ? calendarFundingRate : waterfall.promoFunding
 
   const inputs = () => {
     if (!product) return null
@@ -38,13 +48,29 @@ export default function Waterfall() {
         <InputSection>
           TRADE SPEND <span className="font-normal opacity-70">(% of your list price)</span>
         </InputSection>
+        <div className="mb-4">
+          <MonoToggle
+            label="PROMO FUNDING FROM MY CALENDAR"
+            on={waterfall.promoFromCalendar}
+            onToggle={() => updateScenario('waterfall', { promoFromCalendar: !waterfall.promoFromCalendar })}
+          />
+        </div>
         <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
-          <Field label="Promo funding" suffix="%" scale={100} value={waterfall.promoFunding} onCommit={(v) => updateScenario('waterfall', { promoFunding: v })} />
+          {waterfall.promoFromCalendar ? (
+            <div className="border-2 border-ink bg-white h-[52px] px-3.5 flex items-center justify-between">
+              <span className="text-xs font-semibold">Promo funding</span>
+              <span className="font-mono text-[15px]">{(calendarFundingRate * 100).toFixed(1)}%</span>
+            </div>
+          ) : (
+            <Field label="Promo funding" suffix="%" scale={100} value={waterfall.promoFunding} onCommit={(v) => updateScenario('waterfall', { promoFunding: v })} />
+          )}
           <Field label="Back margin / retro" suffix="%" scale={100} value={waterfall.backMargin} onCommit={(v) => updateScenario('waterfall', { backMargin: v })} />
           <Field label="Other trade spend" suffix="%" scale={100} value={waterfall.otherTrade} onCommit={(v) => updateScenario('waterfall', { otherTrade: v })} />
         </div>
         <div className="font-mono text-[11px] mt-1.5 opacity-65">
-          Back margin is still margin. It still comes off your invoice.
+          {waterfall.promoFromCalendar
+            ? `Derived from The Listing: your supplier-funded promos are ${(calendarFundingRate * 100).toFixed(1)}% of annual GSV. Edit the calendar there.`
+            : 'Back margin is still margin. It still comes off your invoice.'}
         </div>
         <BuyerStrip />
       </div>
@@ -58,7 +84,7 @@ export default function Waterfall() {
     const rsp = rspExVat(product)
     const list = pnl.brandNetRevenue
 
-    const promoCut = list * waterfall.promoFunding
+    const promoCut = list * effectivePromoFunding
     const retroCut = list * waterfall.backMargin
     const otherCut = list * waterfall.otherTrade
     const tradeTotal = promoCut + retroCut + otherCut
@@ -100,7 +126,7 @@ export default function Waterfall() {
             <RLine label={`less wholesaler margin (${Math.round(grocery.wholesalerMargin * 100)}%)`} value={neg(pnl.wholesalerMarginPerUnit)} dim />
           )}
           <RLine label="Your list price" value={gbp(list)} bold />
-          <RLine label={`less promo funding (${parseFloat((waterfall.promoFunding * 100).toFixed(4))}%)`} value={neg(promoCut)} dim />
+          <RLine label={`less promo funding (${parseFloat((effectivePromoFunding * 100).toFixed(4))}%${waterfall.promoFromCalendar ? ', from calendar' : ''})`} value={neg(promoCut)} dim />
           <RLine label={`less back margin (${parseFloat((waterfall.backMargin * 100).toFixed(4))}%)`} value={neg(retroCut)} dim />
           <RLine label={`less other trade (${parseFloat((waterfall.otherTrade * 100).toFixed(4))}%)`} value={neg(otherCut)} dim />
           <RLine

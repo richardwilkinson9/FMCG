@@ -87,6 +87,10 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
     stockDemand.push(product.weeklyRateOfSale * scenario.listing.stores * (1 + promoUpliftForWeek(scenario.listing.promos, w)))
   }
   const plan = stockLedger(stockDemand, scenario.stock.startingStockUnits, scenario.stock.leadWeeks, scenario.stock.weeksOfCover, product.unitsPerCase)
+  // Reconcile the Waterfall's promo funding with the calendar when the toggle is on
+  const effectivePromoFunding = scenario.waterfall.promoFromCalendar
+    ? (listing.totalGsv > 0 ? listing.totalFunding / listing.totalGsv : 0)
+    : scenario.waterfall.promoFunding
   const stamp = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase().replace(/,/g, '')
   const planCut = scenario.amazon.planMonthly / Math.max(scenario.amazon.monthlyUnits, 1)
 
@@ -274,7 +278,7 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
   ar++
 
   heading('TRADE SPEND (% of list)')
-  assumption('Promo funding', scenario.waterfall.promoFunding, 'PromoFunding', PCT)
+  assumption('Promo funding', effectivePromoFunding, 'PromoFunding', PCT, scenario.waterfall.promoFromCalendar ? 'derived from the promo calendar' : '')
   assumption('Back margin / retro', scenario.waterfall.backMargin, 'BackMargin', PCT)
   assumption('Other trade spend', scenario.waterfall.otherTrade, 'OtherTrade', PCT)
   ar++
@@ -404,7 +408,7 @@ export async function downloadExcelModel(product: Product, scenario: Scenario): 
   receiptBase(wf)
   sheetCols(wf)
   const list = grocery.brandNetRevenue
-  const promoCut = list * scenario.waterfall.promoFunding
+  const promoCut = list * effectivePromoFunding
   const retroCut = list * scenario.waterfall.backMargin
   const otherCut = list * scenario.waterfall.otherTrade
   const tradeTotal = promoCut + retroCut + otherCut

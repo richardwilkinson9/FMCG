@@ -151,6 +151,28 @@ export async function migrateLocalToCloud(): Promise<number> {
   return migrated
 }
 
+// ── Anonymous usage counts ───────────────────────────────────────────────────
+
+/**
+ * Fire-and-forget event counter. No cookies, no user id, no personal data —
+ * just {name, slug, timestamp} so we can see which tools get used and what
+ * drives sign-ups. Never awaited, never throws, insert-only (the public key
+ * can't read the table back). "This is a website."
+ */
+export function logEvent(name: string, slug = ''): void {
+  try {
+    void supabase()
+      .from('events')
+      .insert({ name, slug })
+      .then(
+        () => {},
+        () => {},
+      )
+  } catch {
+    // analytics must never affect the page
+  }
+}
+
 // ── The Union ────────────────────────────────────────────────────────────────
 
 export async function unionSignup(email: string): Promise<{ ok: boolean }> {

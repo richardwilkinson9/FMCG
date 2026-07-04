@@ -172,6 +172,42 @@ The maths was not touched — every formula still comes from calculations.ts.
       back (named ranges, formulas, cached results), Playwright pass over the
       new UI, legacy-link migration in the browser.
 
+## Growth + trust sprint (July 2026) — 10 improvements, strawmanned/strongmanned
+- [x] **Real routes + SEO** — every view has a clean, indexable path
+      (/the-payback, /the-rate-card…) in `config/pages.ts` that coexists with
+      the `?s=` share blob (blob wins on load, path decides otherwise). Per-tool
+      `<title>`, description, canonical and OG tags applied at runtime
+      (`routeMeta.ts`) AND prerendered into per-route HTML (`scripts/prerender.mjs`)
+      so JS-blind social scrapers see the right card. Crawlable one-line intro
+      under every header (`IntroLine`). robots.txt + generated sitemap.xml +
+      vercel.json (clean URLs, SPA fallback that never 404s a real file).
+- [x] **Static OG share cards** — one on-brand 1200×630 card per page, rendered
+      once with Chromium (`scripts/gen-og.mjs`, `npm run gen:og`) and committed
+      to public/og; default OG/Twitter tags in index.html.
+- [x] **The Rate Card** (methodology page) — every fee default, its value, the
+      date checked and where it comes from; the "check the rate card" tags now
+      link to it; nav + footer links added.
+- [x] **The Union, with a promise** — rewritten to "the rate card, kept current:
+      when a fee moves you get the email before your buyer does".
+- [x] **Promo funding reconciled** — The Waterfall can derive its promo-funding
+      % from the Listing promo calendar (annual supplier-funded spend ÷ annual
+      GSV) with a manual override; the Excel deck's PromoFunding cell follows.
+- [x] **Anonymous usage counts** — cookieless, no PII: view/share/export/union
+      events insert into a Supabase `events` table (insert-only). Fire-and-forget,
+      never blocks the page. SQL in SETUP_SUPABASE.md.
+- [x] **Mobile receipt audit** — verified at 375px: no horizontal overflow on
+      any tool, receipts read cleanly, promo cards usable. Existing clamp/stack
+      system held; new sections stack correctly.
+- [x] **Category benchmarks** — The P&L shows an indicative brand gross-margin
+      range for the product's category (of net revenue), as a sourced, dated
+      RANGE never a point figure, with the provenance on The Rate Card. New
+      optional Product.category; data in `config/benchmarks.ts`.
+- [x] **The Range, full year** — GSV, promo funding, NSV (% of GSV) and GM
+      (% of NSV) totals across the whole portfolio.
+- [x] Verified: routing/title/meta/blob-precedence, per-route prerender + sitemap,
+      OG cards, reconciliation (7.3% derived vs 15% flat), Range depth, benchmark
+      display, export still live — all via Playwright + xlsx read-back.
+
 ## Next
 - [ ] Verify all calculation logic with real-world examples
 - [ ] Consider a proper branded PDF (jsPDF) if print proves insufficient

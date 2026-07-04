@@ -50,9 +50,12 @@ export default function Portfolio() {
     return { p, grocery, amazon, tiktok, listing }
   })
 
-  const totalRevenue = rows.reduce((a, r) => a + r.listing.totalRevenue, 0)
+  const totalGsv = rows.reduce((a, r) => a + r.listing.totalGsv, 0)
+  const totalFunding = rows.reduce((a, r) => a + r.listing.totalFunding, 0)
+  const totalRevenue = rows.reduce((a, r) => a + r.listing.totalNsv, 0)
   const totalMargin = rows.reduce((a, r) => a + r.listing.totalGrossMargin, 0)
   const blended = totalRevenue > 0 ? totalMargin / totalRevenue : 0
+  const nsvPctOfGsv = totalGsv > 0 ? totalRevenue / totalGsv : 0
   const carrier = rows.length
     ? rows.reduce((a, b) => (b.listing.totalGrossMargin > a.listing.totalGrossMargin ? b : a))
     : null
@@ -166,13 +169,18 @@ export default function Portfolio() {
               </div>
 
               <Rule className="mt-3.5 mb-2.5" />
+              <RSection label="THE ANNUAL PLAN — WHOLE RANGE" />
               <RLine
                 label="Period volume, range"
                 value={`${n0(rows.reduce((a, r) => a + r.listing.totalVolume, 0))} units · ${n0(rows.reduce((a, r) => a + r.listing.totalCases, 0))} cases`}
                 dim
               />
-              <RLine label="Period net revenue, range" value={gbp(totalRevenue)} />
-              <RLine label="Period gross margin, range" value={gbp(totalMargin)} bold color={totalMargin < 0 ? REDPEN : INK} />
+              <RLine label="GSV (invoice, full list)" value={gbp(totalGsv)} bold />
+              <RLine label="less promo funding" value={totalFunding > 0 ? `−${gbp(totalFunding).replace('−', '')}` : gbp(0)} dim color={totalFunding > 0 ? REDPEN : undefined} />
+              <RLine label="NSV, range" value={gbp(totalRevenue)} bold />
+              <RLine label="NSV as % of GSV" value={pct(nsvPctOfGsv)} dim />
+              <RLine label="Gross margin, range" value={gbp(totalMargin)} bold color={totalMargin < 0 ? REDPEN : INK} />
+              <RLine label="GM as % of NSV (blended)" value={pct(blended)} dim color={totalMargin < 0 ? REDPEN : INK} />
             </Receipt>
 
             <div className="no-print flex gap-3 mt-4">

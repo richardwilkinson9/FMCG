@@ -39,8 +39,9 @@ export default function Home() {
   const joinUnion = async () => {
     if (!email.includes('@') || unionState === 'sending') return
     setUnionState('sending')
-    const { unionSignup } = await import('../store/cloud')
+    const { unionSignup, logEvent } = await import('../store/cloud')
     const { ok } = await unionSignup(email)
+    if (ok) logEvent('union')
     setUnionState(ok ? 'signed' : 'failed')
     if (!ok) setTimeout(() => setUnionState('idle'), 3000)
   }

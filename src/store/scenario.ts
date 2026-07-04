@@ -111,6 +111,9 @@ export interface WaterfallScenario {
   promoFunding: number
   backMargin: number
   otherTrade: number
+  /** When true, the promo funding % is derived from the Listing promo calendar
+   *  (annual supplier-funded spend ÷ annual GSV) instead of the manual field. */
+  promoFromCalendar: boolean
 }
 
 export interface AmazonScenario {
@@ -207,6 +210,7 @@ export function defaultScenario(): Scenario {
       promoFunding: 0.15,
       backMargin: 0.05,
       otherTrade: 0.03,
+      promoFromCalendar: false,
     },
     amazon: {
       estimatorOn: true,

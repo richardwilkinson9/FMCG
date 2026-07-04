@@ -7,6 +7,7 @@ import {
   TIKTOK_SHOP_DEFAULTS,
   GROCERY_DEFAULTS,
 } from '../config/fees'
+import { BENCHMARKS, BENCHMARK_CHECKED, BENCHMARK_SOURCE } from '../config/benchmarks'
 
 /** The date every default on this page was last reviewed against a rate card. */
 const CHECKED = '03 JUL 2026'
@@ -123,6 +124,27 @@ export default function Methodology() {
               </div>
             </div>
           ))}
+
+          <div className="mt-8">
+            <h2 className="font-display text-[clamp(24px,3vw,36px)] tracking-[-0.01em] m-0">Category benchmarks</h2>
+            <p className="text-sm mt-1.5 mb-3.5 max-w-[64ch]">
+              The P&L shows an indicative brand gross-margin range for your category. These are
+              broad bands for a sense-check — not targets, and never a precise figure. {BENCHMARK_SOURCE}
+            </p>
+            <div className="border-2 border-ink">
+              <div className="hidden min-[721px]:grid grid-cols-[1fr_auto] gap-4 bg-ink text-bile font-mono text-[11px] tracking-[0.08em] px-4 py-2">
+                <span>CATEGORY</span>
+                <span className="text-right">GROSS MARGIN (OF NET REVENUE)</span>
+              </div>
+              {BENCHMARKS.map((b, i) => (
+                <div key={b.category} className={`grid grid-cols-1 min-[721px]:grid-cols-[1fr_auto] gap-1 min-[721px]:gap-4 px-4 py-3 ${i > 0 ? 'border-t-2 border-dotted border-ink' : ''}`}>
+                  <span className="font-semibold text-sm">{b.category}</span>
+                  <span className="font-mono text-sm min-[721px]:text-right">{(b.low * 100).toFixed(0)}% – {(b.high * 100).toFixed(0)}%</span>
+                </div>
+              ))}
+            </div>
+            <div className="font-mono text-[11px] mt-2 opacity-60">Indicative, checked {BENCHMARK_CHECKED}. Widen or edit in the benchmark config.</div>
+          </div>
 
           <div className="mt-8 border-2 border-ink bg-ink text-receipt p-[clamp(18px,3vw,30px)]">
             <div className="font-mono text-[11px] tracking-[0.1em] text-bile">SIZE TIERS &amp; CATEGORY TABLES</div>

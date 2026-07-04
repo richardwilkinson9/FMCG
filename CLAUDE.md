@@ -93,6 +93,33 @@ SETUP_SUPABASE.md; the publishable key in `src/config/supabase.ts` is public by
 design. Buyers (named term sets) live in `scenario.buyers` — arrays in the
 scenario must REPLACE on merge (see updateScenario/mergeScenario).
 
+## Routing, SEO & share cards
+`src/config/pages.ts` is the single registry (id ↔ slug ↔ title/description/intro)
+that drives client routing, the document `<title>`/meta/OG (`utils/routeMeta.ts`),
+the crawlable `IntroLine` under each header, the sitemap, the per-route prerender
+and the OG cards. Clean paths (`/the-payback`) coexist with the `?s=` blob: on load
+the blob wins (full shared model), otherwise the path selects the tool
+(`pageIdFromPath`). `encodeStateToUrl` writes `/<slug>?s=<blob>`. `scripts/prerender.mjs`
+(runs in `npm run build`) writes `dist/<slug>/index.html` per route with correct
+meta so JS-blind social scrapers get the right card, plus `sitemap.xml`.
+`scripts/gen-og.mjs` (`npm run gen:og`) renders the static 1200×630 OG cards to
+`public/og/` with Chromium — run once and commit; the Vercel build needs no browser.
+`vercel.json` gives clean URLs + an SPA fallback. Adding a page = one entry in
+`pages.ts` + the component in `App.tsx`'s PAGES.
+
+## The Rate Card (methodology) & benchmarks
+`src/pages/Methodology.tsx` (slug `the-rate-card`) lists every fee default, its
+value, the date checked and its source — the trust backbone; the "check the rate
+card" tags (`RateCardTag` in CalcShell) link to it. `src/config/benchmarks.ts` holds
+indicative UK FMCG brand gross-margin RANGES by category (never point figures),
+shown on The P&L against the product's optional `category`, with provenance on The
+Rate Card. Benchmarks are explicitly not-sacred: broad, dated, editable.
+
+## Anonymous analytics
+`logEvent(name, slug)` in `store/cloud.ts` — cookieless, no PII, fire-and-forget,
+insert-only into the Supabase `events` table. Wired to view (App), share/export
+(CalcActions) and union sign-up (Home). Never awaited, never throws.
+
 ## State management
 - **Zustand** — selective subscriptions, simple API. State is in-memory; no localStorage.
 - The full model is debounce-synced into the address bar (replaceState in App.tsx), so a

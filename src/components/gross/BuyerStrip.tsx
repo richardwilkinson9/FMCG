@@ -35,6 +35,7 @@ export default function BuyerStrip() {
           wholesalerMargin: b.wholesalerMargin,
         },
         waterfall: {
+          ...state.scenario.waterfall,
           promoFunding: b.promoFunding,
           backMargin: b.backMargin,
           otherTrade: b.otherTrade,

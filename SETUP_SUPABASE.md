@@ -39,6 +39,23 @@ alter table public.union_signups enable row level security;
 
 create policy "anyone can sign up" on public.union_signups
   for insert with check (true);
+
+-- USAGE COUNTS — anonymous, cookieless. No user id, no personal data: just
+-- which tool was viewed/shared/exported and when. Insert-only from the site;
+-- the public key can't read it back (query it in the dashboard).
+create table public.events (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  slug text,
+  created_at timestamptz not null default now()
+);
+
+alter table public.events enable row level security;
+
+create policy "anyone can log an event" on public.events
+  for insert with check (true);
+
+create index events_name_created on public.events (name, created_at desc);
 ```
 
 ## 2. Point magic links at the site

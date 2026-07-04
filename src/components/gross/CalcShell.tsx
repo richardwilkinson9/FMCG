@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useStore } from '../../store/useStore'
 import { encodeStateToUrl } from '../../utils/urlState'
 import { downloadExcelModel } from '../../utils/excelExport'
+import { logEvent } from '../../store/cloud'
 import { pageById } from '../../config/pages'
 import GrossFooter from './GrossFooter'
 import LedgerRat from './LedgerRat'
@@ -80,6 +81,7 @@ export function CalcActions() {
   const copyLink = () => {
     const url = encodeStateToUrl(products, activeProductId, activeCalculator, scenario)
     navigator.clipboard?.writeText(url).catch(() => {})
+    logEvent('share', activeCalculator)
     setCopied(true)
     setTimeout(() => setCopied(false), 1800)
   }
@@ -90,6 +92,7 @@ export function CalcActions() {
     setExportState('building')
     try {
       await downloadExcelModel(product, scenario)
+      logEvent('export', activeCalculator)
       setExportState('idle')
     } catch {
       // Almost always a stale tab holding a purged chunk after a redeploy

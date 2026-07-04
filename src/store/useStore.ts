@@ -42,6 +42,7 @@ export function createBlankProduct(name = 'New Product'): Product {
     rrpIncVat: 2.50,
     vatRate: UK_VAT_RATE.value,
     weeklyRateOfSale: 5,
+    category: 'General FMCG',
   }
 }
 
@@ -55,6 +56,7 @@ export function createDemoProduct(): Product {
     rrpIncVat: 1.50,
     vatRate: UK_VAT_RATE.value,
     weeklyRateOfSale: 10,
+    category: 'Soft drinks',
   }
 }
 
