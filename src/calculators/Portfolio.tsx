@@ -202,9 +202,7 @@ export default function Portfolio() {
               <RLine label="NSV as % of GSV" value={pct(nsvPctOfGsv)} dim />
               <RLine label="Gross margin, range" value={gbp(totalMargin)} bold color={totalMargin < 0 ? REDPEN : INK} />
               <RLine label="GM as % of NSV (blended)" value={pct(blended)} dim color={totalMargin < 0 ? REDPEN : INK} />
-              {scenario.logistics.perCase > 0 && (
-                <RLine label={`incl. inbound logistics (${gbp(scenario.logistics.perCase)}/case)`} value={`−${gbp(totalLogistics).replace('−', '')}`} dim />
-              )}
+              <RLine label={`incl. inbound logistics (${gbp(scenario.logistics.perCase)}/case)`} value={`−${gbp(totalLogistics).replace('−', '')}`} dim />
             </Receipt>
 
             <div className="no-print flex gap-3 mt-4">
