@@ -4,13 +4,14 @@ import { retailerPnL, rspExVat, tradeSpendROI, logisticsPerUnit } from '../utils
 import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
 import Field, { TextField, InputSection } from '../components/gross/Field'
 import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
-import { gbp, neg, ceil0, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components/gross/format'
+import { gbp, ceil0, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components/gross/format'
 
 /** The Payback — how much volume a promo needs to pay itself back. */
 export default function TradeSpendROI() {
   const product = useStore((s) => s.getActiveProduct())
   const grocery = useStore((s) => s.scenario.grocery)
   const listing = useStore((s) => s.scenario.listing)
+  const logistics = useStore((s) => s.scenario.logistics)
   const tradeSpend = useStore((s) => s.scenario.tradeSpend)
   const updateProduct = useStore((s) => s.updateProduct)
   const updateScenario = useStore((s) => s.updateScenario)
@@ -44,8 +45,9 @@ export default function TradeSpendROI() {
   const receipt = () => {
     if (!product) return null
     const ws = activeWholesalerMargin(grocery)
-    const pnl = retailerPnL(product, grocery.retailerMargin, ws)
-    const result = tradeSpendROI(product, grocery.retailerMargin, tradeSpend.investment, tradeSpend.targetROI, ws)
+    const logUnit = logisticsPerUnit(logistics.perCase, product.unitsPerCase)
+    const pnl = retailerPnL(product, grocery.retailerMargin, ws, logUnit)
+    const result = tradeSpendROI(product, grocery.retailerMargin, tradeSpend.investment, tradeSpend.targetROI, ws, logUnit)
     const rsp = rspExVat(product)
     const gmUnit = result.marginPerUnit
     const noMargin = gmUnit <= 0
@@ -68,19 +70,14 @@ export default function TradeSpendROI() {
           <Rule className="mt-4 mb-2.5" />
           <RSection label="THE PRODUCT" />
           <RLine label="Cost price / unit" value={gbp(product.cogsPerUnit)} />
+          <RLine label={`Inbound logistics / unit (${gbp(logistics.perCase)}/case)`} value={gbp(logUnit)} dim />
           <RLine label="RSP ex-VAT" value={gbp(rsp)} />
           <RLine label="Net revenue / unit" value={gbp(pnl.brandNetRevenue)} />
 
           <Rule className="mt-3.5 mb-2.5" />
-          <RSection label="MARGIN" health={{ color: healthColor, label: healthLabel }} />
+          <RSection label="MARGIN (after landed cost)" health={{ color: healthColor, label: healthLabel }} />
           <RLine label="Margin / unit" value={gbp(gmUnit)} bold color={noMargin ? REDPEN : INK} />
           <RLine label="Margin / case" value={gbp(result.marginPerCase)} color={noMargin ? REDPEN : INK} />
-          {grocery.logisticsPerCase > 0 && (
-            <>
-              <RLine label={`less inbound logistics (${gbp(grocery.logisticsPerCase)}/case)`} value={neg(logisticsPerUnit(grocery.logisticsPerCase, product.unitsPerCase))} dim />
-              <RLine label="Contribution / unit (after freight)" value={gbp(gmUnit - logisticsPerUnit(grocery.logisticsPerCase, product.unitsPerCase))} bold color={gmUnit - logisticsPerUnit(grocery.logisticsPerCase, product.unitsPerCase) <= 0 ? REDPEN : INK} />
-            </>
-          )}
 
           <Rule className="mt-3.5 mb-2.5" />
           <RSection label="THE ANSWER" />
@@ -92,18 +89,6 @@ export default function TradeSpendROI() {
           />
           <RLine label={`Units for ${roiLabel} ROI`} value={ceil0(result.targetReturnUnits)} />
           <RLine label={`Cases for ${roiLabel} ROI`} value={ceil0(result.targetReturnCases)} />
-          {grocery.logisticsPerCase > 0 && (() => {
-            const contribution = gmUnit - logisticsPerUnit(grocery.logisticsPerCase, product.unitsPerCase)
-            const beUnits = contribution > 0 ? tradeSpend.investment / contribution : Infinity
-            return (
-              <RLine
-                label="Break-even cases (after freight)"
-                value={ceil0(beUnits / Math.max(product.unitsPerCase, 1))}
-                bold
-                color={contribution <= 0 ? REDPEN : INK}
-              />
-            )
-          })()}
 
           <Rule dotted className="mt-3 mb-2" />
           <RSection label="THE REALITY CHECK" />

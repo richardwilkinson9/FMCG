@@ -12,9 +12,9 @@ export function exVat(incVat: number, vatRate: number): number {
 
 /**
  * Inbound logistics (freight to the customer's DC/FC) expressed per consumer
- * unit. Entered as £ per case; this spreads it across the units in a case.
- * Sits BELOW gross margin — it's a distribution cost, not part of COGS — so it
- * feeds "margin after logistics", never the sacred gross-margin formula.
+ * unit. Entered ONCE as £ per case — a constant for every product and every
+ * customer — and treated as part of the landed-cost make-up: every margin
+ * function below deducts it alongside COGS.
  */
 export function logisticsPerUnit(logisticsPerCase: number, unitsPerCase: number): number {
   return unitsPerCase > 0 ? logisticsPerCase / unitsPerCase : 0
@@ -40,7 +40,12 @@ export function costPerCase(product: Product): number {
  *
  * wholesalerMarginPercent = 0 means selling direct to retailer (no wholesaler).
  */
-export function retailerPnL(product: Product, retailerMarginPercent: number, wholesalerMarginPercent = 0) {
+export function retailerPnL(
+  product: Product,
+  retailerMarginPercent: number,
+  wholesalerMarginPercent = 0,
+  logisticsPerUnitCost = 0,
+) {
   const rsp = rspExVat(product)
   const costToRetailer = rsp * (1 - retailerMarginPercent)
   const retailerMarginPerUnit = rsp - costToRetailer
@@ -49,7 +54,9 @@ export function retailerPnL(product: Product, retailerMarginPercent: number, who
   const costToWholesaler = costToRetailer - wholesalerMarginPerUnit
 
   const brandNetRevenue = costToWholesaler
-  const brandGrossMarginPerUnit = brandNetRevenue - product.cogsPerUnit
+  // Landed cost = COGS + inbound logistics — both come out before margin
+  const landedCostPerUnit = product.cogsPerUnit + logisticsPerUnitCost
+  const brandGrossMarginPerUnit = brandNetRevenue - landedCostPerUnit
   const brandGrossMarginPercent = brandNetRevenue > 0
     ? brandGrossMarginPerUnit / brandNetRevenue
     : 0
@@ -63,6 +70,8 @@ export function retailerPnL(product: Product, retailerMarginPercent: number, who
     wholesalerMarginPercent,
     costToWholesaler,
     brandNetRevenue,
+    logisticsPerUnit: logisticsPerUnitCost,
+    landedCostPerUnit,
     brandGrossMarginPerUnit,
     brandGrossMarginPercent,
     revenuePerCase: brandNetRevenue * product.unitsPerCase,
@@ -81,11 +90,13 @@ export function solveForCostPrice(
   retailerMarginPercent: number,
   targetBrandMarginPercent: number,
   wholesalerMarginPercent = 0,
+  logisticsPerUnitCost = 0,
 ) {
   const rsp = exVat(rrpIncVat, vatRate)
   const costToRetailer = rsp * (1 - retailerMarginPercent)
   const costToWholesaler = costToRetailer * (1 - wholesalerMarginPercent)
-  const requiredCogs = costToWholesaler * (1 - targetBrandMarginPercent)
+  // Margin target must clear the LANDED cost, so freight comes off the room for COGS
+  const requiredCogs = costToWholesaler * (1 - targetBrandMarginPercent) - logisticsPerUnitCost
   return { requiredCogs, costToRetailer, costToWholesaler, rspExVat: rsp }
 }
 
@@ -95,8 +106,9 @@ export function solveForRrp(
   retailerMarginPercent: number,
   targetBrandMarginPercent: number,
   wholesalerMarginPercent = 0,
+  logisticsPerUnitCost = 0,
 ) {
-  const costToWholesaler = cogsPerUnit / (1 - targetBrandMarginPercent)
+  const costToWholesaler = (cogsPerUnit + logisticsPerUnitCost) / (1 - targetBrandMarginPercent)
   const costToRetailer = costToWholesaler / (1 - wholesalerMarginPercent)
   const rsp = costToRetailer / (1 - retailerMarginPercent)
   const rrpIncVat = rsp * (1 + vatRate)
@@ -178,8 +190,9 @@ export function weeklyProjection(
   retailerMarginPercent: number,
   inputs: ListingModelInputs,
   wholesalerMarginPercent = 0,
+  logisticsPerUnitCost = 0,
 ): WeeklyProjectionRow[] {
-  const pnl = retailerPnL(product, retailerMarginPercent, wholesalerMarginPercent)
+  const pnl = retailerPnL(product, retailerMarginPercent, wholesalerMarginPercent, logisticsPerUnitCost)
   const list = pnl.brandNetRevenue
   const baseWeeklyVolume = product.weeklyRateOfSale * inputs.stores * inputs.skus
 
@@ -200,7 +213,8 @@ export function weeklyProjection(
     const gsv = volume * list
     const funding = gsv * fundingRate
     const nsv = gsv - funding
-    const grossMargin = nsv - volume * product.cogsPerUnit
+    // Landed cost per unit: COGS + the constant inbound logistics
+    const grossMargin = nsv - volume * (product.cogsPerUnit + logisticsPerUnitCost)
     const retailSalesValue = volume * product.rrpIncVat * Math.max(0, 1 - discount)
 
     cumulativeVolume += volume
@@ -229,11 +243,17 @@ export interface PromoSummary {
 }
 
 /** Period totals, derived from the weekly projection so the two always agree. */
-export function listingModel(product: Product, retailerMarginPercent: number, inputs: ListingModelInputs, wholesalerMarginPercent = 0) {
-  const weeks = weeklyProjection(product, retailerMarginPercent, inputs, wholesalerMarginPercent)
+export function listingModel(
+  product: Product,
+  retailerMarginPercent: number,
+  inputs: ListingModelInputs,
+  wholesalerMarginPercent = 0,
+  logisticsPerUnitCost = 0,
+) {
+  const weeks = weeklyProjection(product, retailerMarginPercent, inputs, wholesalerMarginPercent, logisticsPerUnitCost)
   const last = weeks[weeks.length - 1]
   const baseWeeklyVolume = product.weeklyRateOfSale * inputs.stores * inputs.skus
-  const pnl = retailerPnL(product, retailerMarginPercent, wholesalerMarginPercent)
+  const pnl = retailerPnL(product, retailerMarginPercent, wholesalerMarginPercent, logisticsPerUnitCost)
 
   const promoSummaries: PromoSummary[] = inputs.promos.map((p, index) => {
     let incrementalUnits = 0
@@ -291,8 +311,9 @@ export function tradeSpendROI(
   investment: number,
   targetROI: number,
   wholesalerMarginPercent = 0,
+  logisticsPerUnitCost = 0,
 ) {
-  const pnl = retailerPnL(product, retailerMarginPercent, wholesalerMarginPercent)
+  const pnl = retailerPnL(product, retailerMarginPercent, wholesalerMarginPercent, logisticsPerUnitCost)
   const marginPerUnit = pnl.brandGrossMarginPerUnit
 
   const breakEvenUnits = marginPerUnit > 0 ? investment / marginPerUnit : Infinity
@@ -396,7 +417,7 @@ export interface AmazonFBAFees {
   fuelLogisticsSurcharge: number
 }
 
-export function amazonFBAMargin(product: Product, fees: AmazonFBAFees) {
+export function amazonFBAMargin(product: Product, fees: AmazonFBAFees, logisticsPerUnitCost = 0) {
   const sellingPrice = product.rrpIncVat
   const sellingPriceExVat = exVat(sellingPrice, product.vatRate)
 
@@ -406,7 +427,7 @@ export function amazonFBAMargin(product: Product, fees: AmazonFBAFees) {
   const totalFees = referralFee + fulfilmentFee + storageFee
 
   const netRevenue = sellingPriceExVat - totalFees
-  const grossProfit = netRevenue - product.cogsPerUnit
+  const grossProfit = netRevenue - product.cogsPerUnit - logisticsPerUnitCost
   const grossMarginPercent = sellingPriceExVat > 0 ? grossProfit / sellingPriceExVat : 0
   const grossMarginPctOfNet = netRevenue > 0 ? grossProfit / netRevenue : 0
 
@@ -436,6 +457,7 @@ export function amazonAnnualPnL(
   fees: AmazonFBAFees,
   planMonthly: number,
   casesPerYear: number,
+  logisticsPerCase = 0,
 ) {
   const units = casesPerYear * product.unitsPerCase
   const sp = exVat(product.rrpIncVat, product.vatRate)
@@ -447,7 +469,8 @@ export function amazonAnnualPnL(
   const totalFees = referral + fulfilment + storage + plan
   const nsv = gsv - totalFees
   const cogs = units * product.cogsPerUnit
-  const gm = nsv - cogs
+  const logistics = casesPerYear * logisticsPerCase
+  const gm = nsv - cogs - logistics
   return {
     units,
     gsv,
@@ -459,6 +482,7 @@ export function amazonAnnualPnL(
     nsv,
     nsvPctOfGsv: gsv > 0 ? nsv / gsv : 0,
     cogs,
+    logistics,
     gm,
     gmPctOfNsv: nsv > 0 ? gm / nsv : 0,
     gmPctOfGsv: gsv > 0 ? gm / gsv : 0,
@@ -475,7 +499,7 @@ export interface TikTokFees {
   refundAdminPercent: number
 }
 
-export function tiktokShopMargin(product: Product, fees: TikTokFees) {
+export function tiktokShopMargin(product: Product, fees: TikTokFees, logisticsPerUnitCost = 0) {
   const sellingPrice = product.rrpIncVat
   const sellingPriceExVat = exVat(sellingPrice, product.vatRate)
 
@@ -485,7 +509,7 @@ export function tiktokShopMargin(product: Product, fees: TikTokFees) {
   const totalFees = platformFee + affiliateFee + fees.perOrderFee + refundCost
 
   const netRevenue = sellingPriceExVat - totalFees
-  const grossProfit = netRevenue - product.cogsPerUnit
+  const grossProfit = netRevenue - product.cogsPerUnit - logisticsPerUnitCost
   const grossMarginPercent = sellingPriceExVat > 0 ? grossProfit / sellingPriceExVat : 0
   const grossMarginPctOfNet = netRevenue > 0 ? grossProfit / netRevenue : 0
 
@@ -542,8 +566,9 @@ export function amazonChannelPnL(
   const listed = products.filter((p) => channelListed(p, 'amazon'))
   const rows = listed.map((p) => {
     const cases = skuCasesPerYear(p, 'amazon')
-    const year = amazonAnnualPnL(p, amazonFeesFor(p), 0, cases) // plan handled at channel level
-    return { product: p, casesPerYear: cases, year, logistics: cases * logisticsPerCase }
+    // Plan handled at channel level; logistics folds into each SKU's gm
+    const year = amazonAnnualPnL(p, amazonFeesFor(p), 0, cases, logisticsPerCase)
+    return { product: p, casesPerYear: cases, year, logistics: year.logistics }
   })
   const sum = (f: (r: (typeof rows)[number]) => number) => rows.reduce((a, r) => a + f(r), 0)
   const gsv = sum((r) => r.year.gsv)
@@ -552,12 +577,12 @@ export function amazonChannelPnL(
   const cogs = sum((r) => r.year.cogs)
   const logistics = sum((r) => r.logistics)
   const nsv = gsv - fees - plan
-  const gm = nsv - cogs
+  // Landed: COGS + inbound freight both come out before margin
+  const gm = nsv - cogs - logistics
   return {
     rows, skuCount: listed.length, gsv, fees, plan, cogs, logistics,
     nsv, nsvPctOfGsv: gsv > 0 ? nsv / gsv : 0,
     gm, gmPctOfNsv: nsv > 0 ? gm / nsv : 0,
-    gmAfterLogistics: gm - logistics,
   }
 }
 
@@ -570,8 +595,8 @@ export function tiktokChannelPnL(
   const listed = products.filter((p) => channelListed(p, 'tiktok'))
   const rows = listed.map((p) => {
     const cases = skuCasesPerYear(p, 'tiktok')
-    const year = tiktokAnnualPnL(p, tiktokFees, cases)
-    return { product: p, casesPerYear: cases, year, logistics: cases * logisticsPerCase }
+    const year = tiktokAnnualPnL(p, tiktokFees, cases, logisticsPerCase)
+    return { product: p, casesPerYear: cases, year, logistics: year.logistics }
   })
   const sum = (f: (r: (typeof rows)[number]) => number) => rows.reduce((a, r) => a + f(r), 0)
   const gsv = sum((r) => r.year.gsv)
@@ -579,12 +604,11 @@ export function tiktokChannelPnL(
   const cogs = sum((r) => r.year.cogs)
   const logistics = sum((r) => r.logistics)
   const nsv = gsv - fees
-  const gm = nsv - cogs
+  const gm = nsv - cogs - logistics
   return {
     rows, skuCount: listed.length, gsv, fees, cogs, logistics,
     nsv, nsvPctOfGsv: gsv > 0 ? nsv / gsv : 0,
     gm, gmPctOfNsv: nsv > 0 ? gm / nsv : 0,
-    gmAfterLogistics: gm - logistics,
   }
 }
 
@@ -592,7 +616,7 @@ export function tiktokChannelPnL(
  * Full-year TikTok Shop P&L. Same shape as the Amazon one; the per-order fee
  * assumes one unit per order (the cautious read).
  */
-export function tiktokAnnualPnL(product: Product, fees: TikTokFees, casesPerYear: number) {
+export function tiktokAnnualPnL(product: Product, fees: TikTokFees, casesPerYear: number, logisticsPerCase = 0) {
   const units = casesPerYear * product.unitsPerCase
   const sp = exVat(product.rrpIncVat, product.vatRate)
   const gsv = units * sp
@@ -603,7 +627,8 @@ export function tiktokAnnualPnL(product: Product, fees: TikTokFees, casesPerYear
   const totalFees = platform + affiliate + orderFees + refunds
   const nsv = gsv - totalFees
   const cogs = units * product.cogsPerUnit
-  const gm = nsv - cogs
+  const logistics = casesPerYear * logisticsPerCase
+  const gm = nsv - cogs - logistics
   return {
     units,
     gsv,
@@ -615,6 +640,7 @@ export function tiktokAnnualPnL(product: Product, fees: TikTokFees, casesPerYear
     nsv,
     nsvPctOfGsv: gsv > 0 ? nsv / gsv : 0,
     cogs,
+    logistics,
     gm,
     gmPctOfNsv: nsv > 0 ? gm / nsv : 0,
     gmPctOfGsv: gsv > 0 ? gm / gsv : 0,
@@ -630,10 +656,11 @@ export function crossChannelComparison(
   amazonFees: AmazonFBAFees,
   tiktokFees: TikTokFees,
   wholesalerMarginPercent = 0,
+  logisticsPerUnitCost = 0,
 ) {
-  const grocery = retailerPnL(product, retailerMarginPercent, wholesalerMarginPercent)
-  const amazon = amazonFBAMargin(product, amazonFees)
-  const tiktok = tiktokShopMargin(product, tiktokFees)
+  const grocery = retailerPnL(product, retailerMarginPercent, wholesalerMarginPercent, logisticsPerUnitCost)
+  const amazon = amazonFBAMargin(product, amazonFees, logisticsPerUnitCost)
+  const tiktok = tiktokShopMargin(product, tiktokFees, logisticsPerUnitCost)
 
   return {
     grocery: {

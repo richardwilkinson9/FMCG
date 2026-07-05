@@ -320,7 +320,21 @@ The maths was not touched — every formula still comes from calculations.ts.
       delisted product in node-Excel → upload → every change live on The
       Listing and The Shelf.
 
-## Where we are (04 Jul 2026)
+## Logistics as landed cost (July 2026)
+- [x] **One freight constant, inside the margin** — inbound logistics is now a
+      single `scenario.logistics.perCase` figure applied to every product and
+      every customer, folded into gross margin as landed cost
+      (GM = net revenue − COGS − freight/unit, spread by each product's case
+      size). Every calculator, the Line-Up ranking, the solvers on The Floor,
+      the break-evens, the annual/channel P&Ls, the Excel deck (single named
+      cell `Logistics`) and the importer all use it; the old per-channel
+      fields and every "profit after logistics" line are gone. Old share
+      links and old decks migrate automatically. Five new hand-computed
+      regression tests lock the landed-cost arithmetic (31 total). Verified
+      end-to-end: P&L shows landed GM, export carries `Logistics`=3, deck
+      edited to 5 in node-Excel, uploaded, value live on the site.
+
+## Where we are (05 Jul 2026)
 The product is feature-complete for launch and deploys automatically. The
 remaining work is GO-TO-MARKET, not build:
 1. Owner: run the events SQL (SETUP_SUPABASE.md) + verify sign-in on the live

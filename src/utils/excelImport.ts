@@ -152,7 +152,12 @@ export async function importExcelModel(file: File): Promise<ImportResult> {
     s.grocery.wholesalerEnabled = ws > 0
     if (ws > 0) s.grocery.wholesalerMargin = ws
   }
-  take('GroceryLogistics', (v) => { s.grocery.logisticsPerCase = v })
+  // One constant freight figure — new decks carry 'Logistics'; old decks had
+  // per-channel cells, so fall back to the grocery one for a sensible read.
+  take('Logistics', (v) => { s.logistics.perCase = Math.max(0, v) })
+  if (named(wb, 'Logistics') == null) {
+    take('GroceryLogistics', (v) => { s.logistics.perCase = Math.max(0, v) })
+  }
   take('PromoFunding', (v) => { s.waterfall.promoFunding = v; s.waterfall.promoFromCalendar = false })
   take('BackMargin', (v) => { s.waterfall.backMargin = v })
   take('OtherTrade', (v) => { s.waterfall.otherTrade = v })
@@ -202,7 +207,6 @@ export async function importExcelModel(file: File): Promise<ImportResult> {
     take('AmzFuel', (v) => { s.amazon.fuelSurcharge = v })
     take('AmzPlan', (v) => { s.amazon.planMonthly = v })
     take('AmzUnits', (v) => { s.amazon.monthlyUnits = Math.max(0, Math.round(v)) })
-    take('AmzLogistics', (v) => { s.amazon.logisticsPerCase = v })
   }
   const ttkCom = named(wb, 'TtkCommission')
   if (ttkCom != null) {
@@ -212,7 +216,6 @@ export async function importExcelModel(file: File): Promise<ImportResult> {
     take('TtkOrderFee', (v) => { s.tiktok.perOrderFee = v })
     take('TtkRefund', (v) => { s.tiktok.refundAdmin = v })
     take('TtkCasesYear', (v) => { s.tiktok.casesPerYear = Math.max(0, Math.round(v)) })
-    take('TtkLogistics', (v) => { s.tiktok.logisticsPerCase = v })
   }
 
   const scenario = mergeScenario(s)

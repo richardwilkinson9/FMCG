@@ -11,6 +11,7 @@ import { gbp, neg, pct, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components
 export default function TikTokShop() {
   const product = useStore((s) => s.getActiveProduct())
   const tiktok = useStore((s) => s.scenario.tiktok)
+  const logistics = useStore((s) => s.scenario.logistics)
   const updateProduct = useStore((s) => s.updateProduct)
   const updateScenario = useStore((s) => s.updateScenario)
 
@@ -43,11 +44,11 @@ export default function TikTokShop() {
             onCommit={(v) => updateScenario('tiktok', { perOrderFee: v })} />
           <Field label="Refund admin" suffix="%" scale={100} value={tiktok.refundAdmin}
             onCommit={(v) => updateScenario('tiktok', { refundAdmin: v })} />
-          <Field label="Inbound logistics / case" prefix="£" value={tiktok.logisticsPerCase}
-            onCommit={(v) => updateScenario('tiktok', { logisticsPerCase: v })} />
+          <Field label="Inbound logistics / case" prefix="£" value={logistics.perCase}
+            onCommit={(v) => updateScenario('logistics', { perCase: v })} />
         </div>
         <div className="font-mono text-[11px] mt-1.5 opacity-65">
-          Inbound logistics is your freight into the TikTok/3PL warehouse, per case — not the shopper's delivery. Set each SKU's annual volume, and toggle SKUs in or out, in THE FULL CHANNEL table on the right.
+          Inbound logistics is the one constant £/case — part of landed cost on every channel. Set each SKU's annual volume, and toggle SKUs in or out, in THE FULL CHANNEL table on the right.
         </div>
         <div className="font-mono text-[11px] mt-1.5 opacity-65">
           Feeds the annual P&L on the receipt. Per-order fee assumes one unit per order — the cautious read.
@@ -58,20 +59,18 @@ export default function TikTokShop() {
 
   const receipt = () => {
     if (!product) return null
-    const result = tiktokShopMargin(product, fees)
+    const logUnit = logisticsPerUnit(logistics.perCase, product.unitsPerCase)
+    const result = tiktokShopMargin(product, fees, logUnit)
     const sp = rspExVat(product)
     const gp = result.grossProfit
     const pctVal = result.grossMarginPercent
-    const logUnit = logisticsPerUnit(tiktok.logisticsPerCase, product.unitsPerCase)
-    const gpAfterLog = gp - logUnit
-    const noMargin = gpAfterLog <= 0
+    const noMargin = gp <= 0
 
     let healthColor = BILE
     let healthLabel = HEALTH.healthy
-    const pctAfter = sp > 0 ? gpAfterLog / sp : 0
     if (noMargin) { healthColor = REDPEN; healthLabel = HEALTH.underwater }
-    else if (pctAfter < 0.12) { healthColor = REDPEN; healthLabel = HEALTH.thin }
-    else if (pctAfter < 0.25) { healthColor = REDUCED; healthLabel = HEALTH.tight }
+    else if (pctVal < 0.12) { healthColor = REDPEN; healthLabel = HEALTH.thin }
+    else if (pctVal < 0.25) { healthColor = REDUCED; healthLabel = HEALTH.tight }
 
     // The verdict names the biggest single fee
     const parts: [string, number][] = [
@@ -103,6 +102,7 @@ export default function TikTokShop() {
           <RLine label="Net revenue / unit" value={gbp(result.netRevenue)} bold color={result.netRevenue < 0 ? REDPEN : INK} />
           <RLine label="Net as % of gross (ex-VAT)" value={pct(result.netPctOfGross)} dim />
           <RLine label="less cost price" value={neg(product.cogsPerUnit)} dim />
+          <RLine label={`less inbound logistics (${gbp(logistics.perCase)}/case)`} value={neg(logUnit)} dim />
 
           <Rule className="mt-3.5 mb-2.5" />
           <RSection label="YOUR MARGIN" health={{ color: healthColor, label: healthLabel }} />
@@ -113,8 +113,6 @@ export default function TikTokShop() {
             ]}
           />
           <RLine label="Margin as % of net revenue" value={result.netRevenue > 0 ? pct(result.grossMarginPctOfNet) : '—'} color={gp <= 0 ? REDPEN : INK} />
-          <RLine label={`less inbound logistics (${gbp(tiktok.logisticsPerCase)}/case)`} value={neg(logUnit)} dim />
-          <RLine label="Profit after logistics / unit" value={gbp(gpAfterLog)} bold color={gpAfterLog <= 0 ? REDPEN : INK} />
           {(() => {
             // The lowest sale price (inc VAT) at which the unit stops losing money, freight included
             const pctFees = fees.platformCommission + fees.affiliateCommission + fees.refundAdminPercent

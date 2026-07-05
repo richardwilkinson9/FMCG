@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useStore } from '../store/useStore'
 import { activeWholesalerMargin, effectiveAmazonFees, effectiveTikTokFees } from '../store/scenario'
-import { crossChannelComparison, rspExVat } from '../utils/calculations'
+import { crossChannelComparison, rspExVat, logisticsPerUnit } from '../utils/calculations'
 import { gbp, pct, BILE, REDUCED, REDPEN, INK } from '../components/gross/format'
 import { receiptStamp } from '../components/gross/Receipt'
 import Barcode from '../components/gross/Barcode'
@@ -60,6 +60,7 @@ export default function Home() {
       effectiveAmazonFees(scenario.amazon, product.unitsPerCase),
       effectiveTikTokFees(scenario.tiktok),
       activeWholesalerMargin(scenario.grocery),
+      logisticsPerUnit(scenario.logistics.perCase, product.unitsPerCase),
     )
     const rsp = rspExVat(product)
     const rows = [

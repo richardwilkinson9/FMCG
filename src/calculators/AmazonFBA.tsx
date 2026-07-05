@@ -12,6 +12,7 @@ import { gbp, neg, pct, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components
 export default function AmazonFBA() {
   const product = useStore((s) => s.getActiveProduct())
   const amazon = useStore((s) => s.scenario.amazon)
+  const logistics = useStore((s) => s.scenario.logistics)
   const updateProduct = useStore((s) => s.updateProduct)
   const updateScenario = useStore((s) => s.updateScenario)
 
@@ -103,11 +104,11 @@ export default function AmazonFBA() {
         <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4 mt-4">
           <Field label={`Storage / ${sellWord} / mo`} prefix="£" value={amazon.storageFee} onCommit={(v) => updateScenario('amazon', { storageFee: v })} />
           <Field label="Fuel surcharge" suffix="%" scale={100} value={amazon.fuelSurcharge} onCommit={(v) => updateScenario('amazon', { fuelSurcharge: v })} />
-          <Field label="Inbound logistics / case" prefix="£" value={amazon.logisticsPerCase} onCommit={(v) => updateScenario('amazon', { logisticsPerCase: v })} />
+          <Field label="Inbound logistics / case" prefix="£" value={logistics.perCase} onCommit={(v) => updateScenario('logistics', { perCase: v })} />
           <Field label="Professional plan / mo" prefix="£" value={amazon.planMonthly} onCommit={(v) => updateScenario('amazon', { planMonthly: v })} />
         </div>
         <div className="font-mono text-[11px] mt-1.5 opacity-65">
-          Professional plan: Amazon's £25/month seller subscription — a fixed cost spread across your monthly volume. Inbound logistics is your freight into Amazon's FC, per case.
+          Professional plan: Amazon's £25/month seller subscription — a fixed cost spread across your monthly volume. Inbound logistics is the one constant £/case, part of landed cost on every channel.
         </div>
 
         <InputSection>PLAN SPREAD (THIS SKU)</InputSection>
@@ -124,7 +125,8 @@ export default function AmazonFBA() {
   const receipt = () => {
     if (!product) return null
     const fees = effectiveAmazonFees(amazon, product.unitsPerCase)
-    const result = amazonFBAMargin(product, fees)
+    const logUnit = logisticsPerUnit(logistics.perCase, product.unitsPerCase)
+    const result = amazonFBAMargin(product, fees, logUnit)
     const sp = rspExVat(product)
     const tierName = amazon.estimatorOn
       ? estimateAmazonFBAFee(amazon.weightG, amazon.longestCm, amazon.medianCm, amazon.shortestCm).tier
@@ -133,24 +135,22 @@ export default function AmazonFBA() {
     // The selling plan spread across monthly CONSUMER units (cases × case size when by case)
     const monthlyUnits = amazonMonthlyUnits(amazon, product.unitsPerCase)
     const planCut = amazon.planMonthly / (monthlyUnits || 1)
-    const logUnit = logisticsPerUnit(amazon.logisticsPerCase, product.unitsPerCase)
     const totalFees = result.totalFees + planCut
     const net = result.netRevenue - planCut
+    // grossProfit already carries landed cost (COGS + logistics); take the plan off too
     const gp = result.grossProfit - planCut
-    const gpAfterLog = gp - logUnit
     const pctVal = sp > 0 ? gp / sp : 0
-    const noMargin = gpAfterLog <= 0
+    const noMargin = gp <= 0
 
     let healthColor = BILE
     let healthLabel = HEALTH.healthy
-    const pctAfter = sp > 0 ? gpAfterLog / sp : 0
     if (noMargin) { healthColor = REDPEN; healthLabel = HEALTH.underwater }
-    else if (pctAfter < 0.12) { healthColor = REDPEN; healthLabel = HEALTH.thin }
-    else if (pctAfter < 0.25) { healthColor = REDUCED; healthLabel = HEALTH.tight }
+    else if (pctVal < 0.12) { healthColor = REDPEN; healthLabel = HEALTH.thin }
+    else if (pctVal < 0.25) { healthColor = REDUCED; healthLabel = HEALTH.tight }
 
     const verdict = noMargin
-      ? `You lose ${gbp(gpAfterLog)} on every unit after freight. The fees are bigger than the price. ${byCase ? 'Even as cases.' : 'A single unit is not an FBA product — sell a multipack.'}`
-      : `FBA keeps ${gbp(totalFees)} of the ${gbp(sp)} sale. After freight you keep ${gbp(gpAfterLog)}. ${byCase ? 'Cases carry their weight.' : 'Thin, but hey, Jeff loves you.'}`
+      ? `You lose ${gbp(gp)} on every unit. The fees are bigger than the price. ${byCase ? 'Even as cases.' : 'A single unit is not an FBA product — sell a multipack.'}`
+      : `FBA keeps ${gbp(totalFees)} of the ${gbp(sp)} sale. You keep ${gbp(gp)}. ${byCase ? 'Cases carry their weight.' : 'Thin, but hey, Jeff loves you.'}`
 
     return (
       <div>
@@ -167,6 +167,7 @@ export default function AmazonFBA() {
           <RLine label="Net revenue / unit" value={gbp(net)} bold color={net < 0 ? REDPEN : INK} />
           <RLine label="Net as % of gross (ex-VAT)" value={pct(sp > 0 ? net / sp : 0)} dim />
           <RLine label="less cost price" value={neg(product.cogsPerUnit)} dim />
+          <RLine label={`less inbound logistics (${gbp(logistics.perCase)}/case)`} value={neg(logUnit)} dim />
 
           <Rule className="mt-3.5 mb-2.5" />
           <RSection label="YOUR MARGIN" health={{ color: healthColor, label: healthLabel }} />
@@ -177,8 +178,6 @@ export default function AmazonFBA() {
             ]}
           />
           <RLine label="Margin as % of net revenue" value={net > 0 ? pct(gp / net) : '—'} color={gp <= 0 ? REDPEN : INK} />
-          <RLine label={`less inbound logistics (${gbp(amazon.logisticsPerCase)}/case)`} value={neg(logUnit)} dim />
-          <RLine label="Profit after logistics / unit" value={gbp(gpAfterLog)} bold color={gpAfterLog <= 0 ? REDPEN : INK} />
           {(() => {
             // The lowest sale price (inc VAT) at which the unit stops losing money, freight included
             const perUnitCosts =

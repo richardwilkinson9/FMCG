@@ -300,11 +300,11 @@ describe('channels — membership + whole-channel P&L', () => {
     expect(ch.gsv).toBeCloseTo(gsv, 6)
     expect(ch.plan).toBe(300) // once, not per SKU
     expect(ch.logistics).toBeCloseTo((250 + 100) * 2, 6)
-    // GM = sum of per-SKU GM (no plan) − channel plan
+    // GM = sum of per-SKU GM (no plan, no freight) − channel plan − freight:
+    // 350 cases × £2 = £700 of landed cost inside the margin
     const yA = amazonAnnualPnL(a, amazonFees, 0, 250)
     const yB = amazonAnnualPnL(b, amazonFees, 0, 100)
-    expect(ch.gm).toBeCloseTo(yA.gm + yB.gm - 300, 6)
-    expect(ch.gmAfterLogistics).toBeCloseTo(ch.gm - 700, 6)
+    expect(ch.gm).toBeCloseTo(yA.gm + yB.gm - 300 - 700, 6)
   })
 
   it('tiktokChannelPnL aggregates listed SKUs', () => {
@@ -317,10 +317,41 @@ describe('channels — membership + whole-channel P&L', () => {
   })
 })
 
-describe('logistics', () => {
+describe('logistics — landed cost inside the margin', () => {
   it('spreads £/case across the units', () => {
     expect(logisticsPerUnit(3, 24)).toBeCloseTo(0.125, 10)
     expect(logisticsPerUnit(3, 0)).toBe(0) // no division by zero
+  })
+
+  it('retailerPnL folds freight into gross margin', () => {
+    // £3/case ÷ 24 units = £0.125/unit. Net revenue 0.8125;
+    // landed cost 0.32 + 0.125 = 0.445; GM = 0.8125 − 0.445 = 0.3675
+    const r = retailerPnL(volt, 0.35, 0, 0.125)
+    expect(r.logisticsPerUnit).toBeCloseTo(0.125, 10)
+    expect(r.landedCostPerUnit).toBeCloseTo(0.445, 10)
+    expect(r.brandGrossMarginPerUnit).toBeCloseTo(0.3675, 10)
+    expect(r.brandGrossMarginPercent).toBeCloseTo(0.3675 / 0.8125, 10)
+  })
+
+  it('solveForCostPrice leaves room for the freight', () => {
+    // landed room = 0.8125 × 0.7 = 0.56875; COGS ceiling = 0.56875 − 0.125 = 0.44375
+    const s = solveForCostPrice(1.5, 0.2, 0.35, 0.3, 0, 0.125)
+    expect(s.requiredCogs).toBeCloseTo(0.44375, 10)
+  })
+
+  it('solveForRrp round-trips with freight in the chain', () => {
+    const s = solveForRrp(0.32, 0.2, 0.35, 0.3, 0.25, 0.125)
+    const back = solveForCostPrice(s.rrpIncVat, 0.2, 0.35, 0.3, 0.25, 0.125)
+    expect(back.requiredCogs).toBeCloseTo(0.32, 10)
+  })
+
+  it('amazonAnnualPnL charges freight per case inside GM', () => {
+    // Same numbers as the 250-case hand-check, plus 250 × £2 = £500 of freight
+    const plain = amazonAnnualPnL(volt, amazonFees, 25, 250)
+    const y = amazonAnnualPnL(volt, amazonFees, 25, 250, 2)
+    expect(y.logistics).toBeCloseTo(500, 6)
+    expect(y.nsv).toBeCloseTo(plain.nsv, 6) // freight is not a fee — NSV holds
+    expect(y.gm).toBeCloseTo(plain.gm - 500, 6)
   })
 })
 

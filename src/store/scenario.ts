@@ -26,8 +26,15 @@ export interface GroceryScenario {
   retailerMargin: number
   wholesalerEnabled: boolean
   wholesalerMargin: number
-  /** Inbound freight to the retailer/wholesaler DC, £ per case (not the shopper) */
-  logisticsPerCase: number
+}
+
+/**
+ * Inbound logistics — freight to the customer's DC/FC, £ per case. A CONSTANT:
+ * one figure for every product and every customer, part of the landed-cost
+ * make-up, folded into gross margin everywhere (not a below-the-line extra).
+ */
+export interface LogisticsScenario {
+  perCase: number
 }
 
 export interface MinMarginScenario {
@@ -137,8 +144,6 @@ export interface AmazonScenario {
   /** Sold as full cases on Amazon (one listing = one case) rather than singles.
    *  Amortises fulfilment/storage across the case, which is why cases win. */
   sellByCase: boolean
-  /** Inbound freight to the Amazon fulfilment centre, £ per case */
-  logisticsPerCase: number
 }
 
 export interface TikTokScenario {
@@ -151,8 +156,6 @@ export interface TikTokScenario {
   refundAdmin: number
   /** Full-year view: cases sold through TikTok Shop per year */
   casesPerYear: number
-  /** Inbound freight to the TikTok/3PL warehouse, £ per case */
-  logisticsPerCase: number
 }
 
 /**
@@ -173,6 +176,7 @@ export interface Buyer {
 
 export interface Scenario {
   grocery: GroceryScenario
+  logistics: LogisticsScenario
   minMargin: MinMarginScenario
   listing: ListingScenario
   tradeSpend: TradeSpendScenario
@@ -189,7 +193,9 @@ export function defaultScenario(): Scenario {
       retailerMargin: GROCERY_DEFAULTS.retailerMarginPercent.value,
       wholesalerEnabled: false,
       wholesalerMargin: GROCERY_DEFAULTS.wholesalerMarginPercent.value,
-      logisticsPerCase: 0,
+    },
+    logistics: {
+      perCase: 0,
     },
     minMargin: {
       targetBrandMargin: 0.3,
@@ -234,7 +240,6 @@ export function defaultScenario(): Scenario {
       planMonthly: AMAZON_FBA_DEFAULTS.professionalPlanMonthly.value,
       monthlyUnits: 500,
       sellByCase: false,
-      logisticsPerCase: 0,
     },
     tiktok: {
       estimatorOn: true,
@@ -244,7 +249,6 @@ export function defaultScenario(): Scenario {
       perOrderFee: TIKTOK_SHOP_DEFAULTS.perOrderFee.value,
       refundAdmin: TIKTOK_SHOP_DEFAULTS.refundAdminPercent.value,
       casesPerYear: 250,
-      logisticsPerCase: 0,
     },
     buyers: [],
   }
@@ -264,6 +268,18 @@ export function mergeScenario(partial: unknown): Scenario {
     } else if (section && typeof section === 'object') {
       base[key] = { ...base[key], ...(section as object) } as never
     }
+  }
+
+  // Back-compat: logistics used to be three per-channel fields. It is now one
+  // constant (§ the landed-cost rule) — take the first non-zero old value.
+  if (!(source.logistics && typeof source.logistics === 'object')) {
+    const old = (section: string) => {
+      const s = source[section]
+      const v = s && typeof s === 'object' ? (s as Record<string, unknown>).logisticsPerCase : undefined
+      return typeof v === 'number' && v > 0 ? v : 0
+    }
+    const legacy = old('grocery') || old('amazon') || old('tiktok')
+    if (legacy > 0) base.logistics.perCase = legacy
   }
 
   // Back-compat: old links/saves carried a single promo as three flat fields.

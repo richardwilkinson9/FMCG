@@ -15,6 +15,7 @@ const DATED_TAG = 'dated default — check the rate card'
 export default function RetailerPnL() {
   const product = useStore((s) => s.getActiveProduct())
   const grocery = useStore((s) => s.scenario.grocery)
+  const logistics = useStore((s) => s.scenario.logistics)
   const updateProduct = useStore((s) => s.updateProduct)
   const updateScenario = useStore((s) => s.updateScenario)
 
@@ -49,10 +50,10 @@ export default function RetailerPnL() {
           </div>
         )}
         <div className="mt-4">
-          <Field label="Inbound logistics / case" prefix="£" value={grocery.logisticsPerCase} onCommit={(v) => updateScenario('grocery', { logisticsPerCase: v })} />
+          <Field label="Inbound logistics / case" prefix="£" value={logistics.perCase} onCommit={(v) => updateScenario('logistics', { perCase: v })} />
         </div>
         <div className="font-mono text-[11px] mt-1.5 opacity-65">
-          {GROCERY_DEFAULTS.retailerMarginPercent.note} Logistics is your freight into the retailer's DC, per case.
+          {GROCERY_DEFAULTS.retailerMarginPercent.note} Logistics is your freight to the customer, per case — one constant, part of your landed cost, applied to every product and every channel.
         </div>
 
         <InputSection>THE BENCHMARK</InputSection>
@@ -83,7 +84,8 @@ export default function RetailerPnL() {
   const receipt = () => {
     if (!product) return null
     const wsOn = grocery.wholesalerEnabled
-    const result = retailerPnL(product, grocery.retailerMargin, activeWholesalerMargin(grocery))
+    const logUnit = logisticsPerUnit(logistics.perCase, product.unitsPerCase)
+    const result = retailerPnL(product, grocery.retailerMargin, activeWholesalerMargin(grocery), logUnit)
     const rsp = rspExVat(product)
     const vatCut = product.rrpIncVat - rsp
     const gmUnit = result.brandGrossMarginPerUnit
@@ -115,6 +117,8 @@ export default function RetailerPnL() {
           <RLine label="You bank / unit" value={gbp(result.brandNetRevenue)} bold />
           <RLine label="Net as % of shelf (gross)" value={pct(rsp > 0 ? result.brandNetRevenue / rsp : 0)} dim />
           <RLine label="less cost price" value={neg(product.cogsPerUnit)} dim />
+          <RLine label={`less inbound logistics (${gbp(logistics.perCase)}/case)`} value={neg(logUnit)} dim />
+          <RLine label="Landed cost / unit" value={neg(result.landedCostPerUnit)} dim />
 
           <Rule className="mt-3.5 mb-2.5" />
           <RSection label="YOUR MARGIN" health={{ color: healthColor, label: healthLabel }} />
@@ -126,19 +130,6 @@ export default function RetailerPnL() {
           />
           <RLine label="Margin / case" value={gbp(result.marginPerCase)} color={noMargin ? REDPEN : INK} />
           <RLine label="Net revenue / case" value={gbp(result.revenuePerCase)} />
-
-          {(() => {
-            const logUnit = logisticsPerUnit(grocery.logisticsPerCase, product.unitsPerCase)
-            if (logUnit <= 0) return null
-            const afterLog = gmUnit - logUnit
-            return (
-              <>
-                <RLine label={`less inbound logistics (${gbp(grocery.logisticsPerCase)}/case)`} value={neg(logUnit)} dim />
-                <RLine label="Margin after logistics / unit" value={gbp(afterLog)} bold color={afterLog <= 0 ? REDPEN : INK} />
-                <RLine label="After logistics as % of net" value={result.brandNetRevenue > 0 ? pct(afterLog / result.brandNetRevenue) : '—'} dim color={afterLog <= 0 ? REDPEN : undefined} />
-              </>
-            )
-          })()}
 
           <Rule dotted className="mt-3 mb-2" />
           {(() => {
@@ -168,7 +159,7 @@ export default function RetailerPnL() {
           <Rule dotted className="mt-3 mb-2" />
           <RSection label="IF THE BUYER PUSHES" />
           {[0.025, 0.05].map((extra) => {
-            const pushed = retailerPnL(product, grocery.retailerMargin + extra, activeWholesalerMargin(grocery))
+            const pushed = retailerPnL(product, grocery.retailerMargin + extra, activeWholesalerMargin(grocery), logUnit)
             return (
               <RLine
                 key={extra}

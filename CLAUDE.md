@@ -171,15 +171,21 @@ totals follow). Per-SKU channel values on that sheet are a snapshot; the primary
 SKU's sheets stay fully live.
 
 ## Inbound logistics & Amazon selling unit
-Each channel carries an **inbound logistics** figure — freight to the customer's
-DC/FC, £ per case, NOT the shopper's delivery: `grocery.logisticsPerCase`,
-`amazon.logisticsPerCase`, `tiktok.logisticsPerCase`. It sits BELOW gross margin
-(a distribution cost, never part of COGS or the sacred gross-margin formula):
-components/deck add a "margin/contribution/profit after logistics" line via
-`logisticsPerUnit(perCase, unitsPerCase)`. Shown on The P&L, Waterfall, Amazon,
-TikTok, Line-Up (ranking is on profit-after-freight), Listing annual plan, The
-Range, The Payback (break-even uses contribution after freight), and the deck
-(named cells GroceryLogistics/AmzLogistics/TtkLogistics).
+**Inbound logistics is ONE constant** — freight to the customer's DC/FC, £ per
+case, NOT the shopper's delivery: `scenario.logistics.perCase`, the same figure
+for every product and every channel. It is part of the **landed cost** (COGS +
+freight) and sits INSIDE gross margin: every margin formula is
+GM = net revenue − (COGS + `logisticsPerUnit(perCase, unitsPerCase)`), spread
+per unit by each product's own case size. Every calculation in calculations.ts
+takes a logistics parameter (per unit for per-unit maths, per case for the
+annual/channel P&Ls, which expose a `logistics` line); there is no
+"after logistics" line anywhere — the margin IS after freight. Shown as a
+"less inbound logistics" deduction on The P&L, Waterfall, Listing, Payback
+(break-even clears landed cost), The Floor (COGS ceiling leaves room for
+freight), Amazon, TikTok, Line-Up, The Range and the deck (single named cell
+`Logistics`; the importer reads it, falling back to the legacy
+GroceryLogistics cell on old decks — mergeScenario migrates old per-channel
+share links the same way).
 **Amazon selling unit**: `amazon.sellByCase` — one listing = one case, so
 fulfilment/storage are charged per case and `effectiveAmazonFees(a, unitsPerCase)`
 divides them per consumer unit (why cases win). `amazon.monthlyUnits` is throughput

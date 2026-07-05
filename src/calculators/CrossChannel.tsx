@@ -19,6 +19,7 @@ export default function CrossChannel() {
   const grocery = useStore((s) => s.scenario.grocery)
   const amazon = useStore((s) => s.scenario.amazon)
   const tiktok = useStore((s) => s.scenario.tiktok)
+  const logistics = useStore((s) => s.scenario.logistics)
   const updateProduct = useStore((s) => s.updateProduct)
   const updateScenario = useStore((s) => s.updateScenario)
 
@@ -72,63 +73,61 @@ export default function CrossChannel() {
 
   const receipt = () => {
     if (!product) return null
+    // The one constant freight figure, folded into every channel's margin
+    const logUnit = logisticsPerUnit(logistics.perCase, product.unitsPerCase)
     const comparison = crossChannelComparison(
       product,
       grocery.retailerMargin,
       amazonFees,
       tiktokFees,
       activeWholesalerMargin(grocery),
+      logUnit,
     )
     const rsp = rspExVat(product)
 
-    // The lowest price (inc VAT) at which each channel stops losing money
+    // The lowest price (inc VAT) at which each channel stops losing money —
+    // landed cost (COGS + freight) has to clear in all three
     const ws = activeWholesalerMargin(grocery)
     const vatUp = 1 + product.vatRate
+    const landed = product.cogsPerUnit + logUnit
     const groceryKeep = (1 - grocery.retailerMargin) * (1 - ws)
     const amazonPerUnit =
-      product.cogsPerUnit +
+      landed +
       amazonFees.fulfilmentFeePerUnit * (1 + amazonFees.fuelLogisticsSurcharge) +
       amazonFees.monthlyStoragePerUnit
     const tiktokPctFees = tiktokFees.platformCommission + tiktokFees.affiliateCommission + tiktokFees.refundAdminPercent
 
-    // Inbound freight per unit, per channel
-    const groceryLog = logisticsPerUnit(grocery.logisticsPerCase, product.unitsPerCase)
-    const amazonLog = logisticsPerUnit(amazon.logisticsPerCase, product.unitsPerCase)
-    const tiktokLog = logisticsPerUnit(tiktok.logisticsPerCase, product.unitsPerCase)
-    const anyLog = groceryLog > 0 || amazonLog > 0 || tiktokLog > 0
-
     const raw = [
       {
         name: 'GROCERY', disp: 'Grocery',
-        net: comparison.grocery.netRevenuePerUnit, gp: comparison.grocery.grossProfitPerUnit, log: groceryLog,
-        breakEven: groceryKeep > 0 ? ((product.cogsPerUnit + groceryLog) / groceryKeep) * vatUp : Infinity,
+        net: comparison.grocery.netRevenuePerUnit, gp: comparison.grocery.grossProfitPerUnit,
+        breakEven: groceryKeep > 0 ? (landed / groceryKeep) * vatUp : Infinity,
       },
       {
         name: 'AMAZON FBA', disp: 'Amazon',
-        net: comparison.amazon.netRevenuePerUnit, gp: comparison.amazon.grossProfitPerUnit, log: amazonLog,
-        breakEven: amazonFees.referralFeePercent < 1 ? ((amazonPerUnit + amazonLog) / (1 - amazonFees.referralFeePercent)) * vatUp : Infinity,
+        net: comparison.amazon.netRevenuePerUnit, gp: comparison.amazon.grossProfitPerUnit,
+        breakEven: amazonFees.referralFeePercent < 1 ? (amazonPerUnit / (1 - amazonFees.referralFeePercent)) * vatUp : Infinity,
       },
       {
         name: 'TIKTOK SHOP', disp: 'TikTok',
-        net: comparison.tiktok.netRevenuePerUnit, gp: comparison.tiktok.grossProfitPerUnit, log: tiktokLog,
-        breakEven: tiktokPctFees < 1 ? ((tiktokFees.perOrderFee + product.cogsPerUnit + tiktokLog) / (1 - tiktokPctFees)) * vatUp : Infinity,
+        net: comparison.tiktok.netRevenuePerUnit, gp: comparison.tiktok.grossProfitPerUnit,
+        breakEven: tiktokPctFees < 1 ? ((tiktokFees.perOrderFee + landed) / (1 - tiktokPctFees)) * vatUp : Infinity,
       },
-    ].map((r) => ({ ...r, afterLog: r.gp - r.log }))
-    // Ranking is on profit after freight — the number you actually keep
-    const bestGP = Math.max(...raw.map((r) => r.afterLog))
-    const winner = raw.reduce((a, b) => (b.afterLog > a.afterLog ? b : a))
-    const losers = raw.filter((r) => r.afterLog < 0)
+    ]
+    const bestGP = Math.max(...raw.map((r) => r.gp))
+    const winner = raw.reduce((a, b) => (b.gp > a.gp ? b : a))
+    const losers = raw.filter((r) => r.gp < 0)
 
     let verdict: string
     let verdictColor = INK
-    if (winner.afterLog <= 0) {
+    if (winner.gp <= 0) {
       verdictColor = REDPEN
       verdict = 'Every channel loses money at this cost price. This product does not work online. Fix the cost price first.'
     } else if (losers.length) {
       const l = losers[0]
-      verdict = `${winner.disp} wins at ${gbp(winner.afterLog)} a unit${anyLog ? ' after freight' : ''}. ${l.disp} loses ${gbp(Math.abs(l.afterLog))} — a ${gbp(product.rrpIncVat)} single unit is not ${l.disp}’s product.`
+      verdict = `${winner.disp} wins at ${gbp(winner.gp)} a unit. ${l.disp} loses ${gbp(Math.abs(l.gp))} — a ${gbp(product.rrpIncVat)} single unit is not ${l.disp}’s product.`
     } else {
-      verdict = `${winner.disp} pays best at ${gbp(winner.afterLog)} a unit${anyLog ? ' after freight' : ''}. The biggest channel is rarely the one that pays.`
+      verdict = `${winner.disp} pays best at ${gbp(winner.gp)} a unit. The biggest channel is rarely the one that pays.`
     }
 
     return (
@@ -143,9 +142,9 @@ export default function CrossChannel() {
         >
           <Rule className="mt-4 mb-3" />
           {raw.map((r) => {
-            const share = rsp > 0 ? r.afterLog / rsp : 0
-            const negative = r.afterLog < 0
-            const isBest = r.afterLog === bestGP && r.afterLog > 0
+            const share = rsp > 0 ? r.gp / rsp : 0
+            const negative = r.gp < 0
+            const isBest = r.gp === bestGP && r.gp > 0
             return (
               <div key={r.name} className="border-2 border-ink mb-3">
                 <div className={`flex items-center justify-between py-2 px-3 border-b-2 border-ink ${isBest ? 'bg-bile' : 'bg-receipt'}`}>
@@ -159,14 +158,9 @@ export default function CrossChannel() {
                 </div>
                 <div className="py-[11px] px-3">
                   <div className="flex justify-between items-baseline">
-                    <span className="text-xs">{r.log > 0 ? 'Profit after freight / unit' : 'Gross profit / unit'}</span>
-                    <span className="text-[23px] font-bold" style={{ color: negative ? REDPEN : INK }}>{gbp(r.afterLog)}</span>
+                    <span className="text-xs">Gross profit / unit{logUnit > 0 ? ' (incl. freight)' : ''}</span>
+                    <span className="text-[23px] font-bold" style={{ color: negative ? REDPEN : INK }}>{gbp(r.gp)}</span>
                   </div>
-                  {r.log > 0 && (
-                    <div className="flex justify-between text-xs mt-[5px]">
-                      <span className="opacity-75">gross profit {gbp(r.gp)} less freight {gbp(r.log)}</span>
-                    </div>
-                  )}
                   <div className="flex justify-between text-xs mt-[5px]">
                     <span className="opacity-75">net revenue {gbp(r.net)}</span>
                     <span className="font-bold" style={{ color: negative ? REDPEN : INK }}>{pct(share)} of shelf</span>

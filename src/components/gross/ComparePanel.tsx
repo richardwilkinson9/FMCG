@@ -1,7 +1,7 @@
 import type { SavedModel } from '../../store/archive'
 import { hydrateSavedModel } from '../../store/archive'
 import { activeWholesalerMargin } from '../../store/scenario'
-import { retailerPnL, listingModel } from '../../utils/calculations'
+import { retailerPnL, listingModel, logisticsPerUnit } from '../../utils/calculations'
 import { Receipt, Rule, RLine, RSection } from './Receipt'
 import { gbp, pct, REDPEN, INK } from './format'
 
@@ -30,7 +30,8 @@ function snapshot(model: SavedModel): { byProduct: Map<string, ProductSnapshot>;
   const byProduct = new Map<string, ProductSnapshot>()
   let periodMargin = 0
   for (const p of products) {
-    const pnl = retailerPnL(p, scenario.grocery.retailerMargin, ws)
+    const logUnit = logisticsPerUnit(scenario.logistics.perCase, p.unitsPerCase)
+    const pnl = retailerPnL(p, scenario.grocery.retailerMargin, ws, logUnit)
     byProduct.set(p.name, {
       cost: p.cogsPerUnit,
       rsp: p.rrpIncVat,
@@ -38,7 +39,7 @@ function snapshot(model: SavedModel): { byProduct: Map<string, ProductSnapshot>;
       marginUnit: pnl.brandGrossMarginPerUnit,
       marginPct: pnl.brandGrossMarginPercent,
     })
-    periodMargin += listingModel(p, scenario.grocery.retailerMargin, listingInputs, ws).totalGrossMargin
+    periodMargin += listingModel(p, scenario.grocery.retailerMargin, listingInputs, ws, logUnit).totalGrossMargin
   }
   return { byProduct, periodMargin }
 }

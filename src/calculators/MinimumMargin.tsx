@@ -1,6 +1,6 @@
 import { useStore } from '../store/useStore'
 import { activeWholesalerMargin } from '../store/scenario'
-import { retailerPnL, solveForCostPrice, solveForRrp } from '../utils/calculations'
+import { retailerPnL, solveForCostPrice, solveForRrp, logisticsPerUnit } from '../utils/calculations'
 import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
 import Field, { TextField, InputSection } from '../components/gross/Field'
 import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
@@ -11,6 +11,7 @@ export default function MinimumMargin() {
   const product = useStore((s) => s.getActiveProduct())
   const grocery = useStore((s) => s.scenario.grocery)
   const minMargin = useStore((s) => s.scenario.minMargin)
+  const logistics = useStore((s) => s.scenario.logistics)
   const updateProduct = useStore((s) => s.updateProduct)
   const updateScenario = useStore((s) => s.updateScenario)
 
@@ -50,6 +51,11 @@ export default function MinimumMargin() {
         <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
           <Field label="Retailer margin" suffix="%" scale={100} tag="dated default" value={grocery.retailerMargin} onCommit={(v) => updateScenario('grocery', { retailerMargin: v })} />
           <Field label="Target brand margin" suffix="%" scale={100} value={minMargin.targetBrandMargin} onCommit={(v) => updateScenario('minMargin', { targetBrandMargin: v })} />
+          <Field label="Units per case" inputMode="numeric" value={product.unitsPerCase} onCommit={(v) => updateProduct(product.id, { unitsPerCase: Math.round(v) })} />
+          <Field label="Inbound logistics / case" prefix="£" value={logistics.perCase} onCommit={(v) => updateScenario('logistics', { perCase: v })} />
+        </div>
+        <div className="font-mono text-[11px] mt-1.5 opacity-65">
+          The margin target has to clear the LANDED cost — the freight comes out of the room for COGS.
         </div>
       </div>
     )
@@ -60,9 +66,10 @@ export default function MinimumMargin() {
     const ws = activeWholesalerMargin(grocery)
     const ret = grocery.retailerMargin
     const target = minMargin.targetBrandMargin
+    const logUnit = logisticsPerUnit(logistics.perCase, product.unitsPerCase)
 
-    // Current margin at today's cost price and RRP
-    const now = retailerPnL(product, ret, ws)
+    // Current margin at today's cost price and RRP (landed)
+    const now = retailerPnL(product, ret, ws, logUnit)
     const curMarginPct = now.brandGrossMarginPercent
 
     let answerLabel: string, answerStr: string, currentLabel: string, currentStr: string
@@ -71,8 +78,8 @@ export default function MinimumMargin() {
     let marginCaseAtTarget: number
 
     if (costMode) {
-      const solved = solveForCostPrice(product.rrpIncVat, product.vatRate, ret, target, ws)
-      marginCaseAtTarget = (solved.costToWholesaler - solved.requiredCogs) * product.unitsPerCase
+      const solved = solveForCostPrice(product.rrpIncVat, product.vatRate, ret, target, ws, logUnit)
+      marginCaseAtTarget = (solved.costToWholesaler - solved.requiredCogs - logUnit) * product.unitsPerCase
       headVal = solved.requiredCogs - product.cogsPerUnit
       ok = product.cogsPerUnit <= solved.requiredCogs
       answerLabel = 'Highest cost price you can pay'
@@ -86,8 +93,8 @@ export default function MinimumMargin() {
         ? `You have ${gbp(headVal)} of headroom on cost price. The maths clears.`
         : `Your cost price is ${gbp(-headVal)} over the ceiling. You cannot hit ${Math.round(target * 100)}% at this RRP. Lift the RRP or cut the cost.`
     } else {
-      const solved = solveForRrp(product.cogsPerUnit, product.vatRate, ret, target, ws)
-      marginCaseAtTarget = (solved.costToWholesaler - product.cogsPerUnit) * product.unitsPerCase
+      const solved = solveForRrp(product.cogsPerUnit, product.vatRate, ret, target, ws, logUnit)
+      marginCaseAtTarget = (solved.costToWholesaler - product.cogsPerUnit - logUnit) * product.unitsPerCase
       headVal = product.rrpIncVat - solved.rrpIncVat
       ok = product.rrpIncVat >= solved.rrpIncVat
       answerLabel = 'Lowest RRP you can list at'

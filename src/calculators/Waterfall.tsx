@@ -17,6 +17,7 @@ export default function Waterfall() {
   const grocery = useStore((s) => s.scenario.grocery)
   const waterfall = useStore((s) => s.scenario.waterfall)
   const listing = useStore((s) => s.scenario.listing)
+  const logistics = useStore((s) => s.scenario.logistics)
   const updateProduct = useStore((s) => s.updateProduct)
   const updateScenario = useStore((s) => s.updateScenario)
 
@@ -80,27 +81,30 @@ export default function Waterfall() {
   const receipt = () => {
     if (!product) return null
     const ws = activeWholesalerMargin(grocery)
+    const logUnit = logisticsPerUnit(logistics.perCase, product.unitsPerCase)
     const pnl = retailerPnL(product, grocery.retailerMargin, ws)
     const rsp = rspExVat(product)
     const list = pnl.brandNetRevenue
+    // Landed cost per unit: COGS + the constant inbound logistics
+    const landed = product.cogsPerUnit + logUnit
 
     const promoCut = list * effectivePromoFunding
     const retroCut = list * waterfall.backMargin
     const otherCut = list * waterfall.otherTrade
     const tradeTotal = promoCut + retroCut + otherCut
     const net = list - tradeTotal
-    const gm = net - product.cogsPerUnit
+    const gm = net - landed
     const gmPct = list > 0 ? gm / list : 0
     const noMargin = gm <= 0
 
-    // Split bar: cost / trade / margin as shares of list price
+    // Split bar: landed cost / trade / margin as shares of list price
     const base = list > 0 ? list : 1
-    let costW = Math.max(0, (product.cogsPerUnit / base) * 100)
+    let costW = Math.max(0, (landed / base) * 100)
     let tradeW = Math.max(0, (tradeTotal / base) * 100)
     let marginW = Math.max(0, (gm / base) * 100)
     if (gm < 0) {
-      const t = product.cogsPerUnit + tradeTotal
-      costW = t > 0 ? (product.cogsPerUnit / t) * 100 : 0
+      const t = landed + tradeTotal
+      costW = t > 0 ? (landed / t) * 100 : 0
       tradeW = t > 0 ? (tradeTotal / t) * 100 : 0
       marginW = 0
     }
@@ -140,6 +144,7 @@ export default function Waterfall() {
           <RLine label="Net as % of list (gross)" value={pct(list > 0 ? net / list : 0)} dim />
           <RLine label="Net as % of shelf ex-VAT" value={pct(rsp > 0 ? net / rsp : 0)} dim />
           <RLine label="less cost price" value={neg(product.cogsPerUnit)} dim />
+          <RLine label={`less inbound logistics (${gbp(logistics.perCase)}/case)`} value={neg(logUnit)} dim />
 
           <Rule className="mt-3.5 mb-2.5" />
           <RSection label="WHAT IS LEFT" health={{ color: healthColor, label: healthLabel }} />
@@ -150,17 +155,6 @@ export default function Waterfall() {
             ]}
           />
           <RLine label="Margin as % of net revenue" value={net > 0 ? pct(gm / net) : '—'} color={noMargin ? REDPEN : INK} />
-          {(() => {
-            const logUnit = logisticsPerUnit(grocery.logisticsPerCase, product.unitsPerCase)
-            if (logUnit <= 0) return null
-            const afterLog = gm - logUnit
-            return (
-              <>
-                <RLine label={`less inbound logistics (${gbp(grocery.logisticsPerCase)}/case)`} value={neg(logUnit)} dim />
-                <RLine label="Contribution after logistics / unit" value={gbp(afterLog)} bold color={afterLog <= 0 ? REDPEN : INK} />
-              </>
-            )
-          })()}
 
           <div className="mt-3.5 mb-1.5 text-[11px] tracking-[0.1em] opacity-60">WHERE YOUR LIST PRICE GOES</div>
           <div className="flex h-[34px] border-2 border-ink overflow-hidden">

@@ -10,6 +10,7 @@ import {
   tiktokShopMargin,
   listingModel,
   channelListed,
+  logisticsPerUnit,
 } from '../utils/calculations'
 import { PageHeader, IntroLine, EmptyState, CalcActions } from '../components/gross/CalcShell'
 import GrossFooter from '../components/gross/GrossFooter'
@@ -44,11 +45,13 @@ export default function Portfolio() {
   }
 
   const rows = products.map((p) => {
-    const grocery = retailerPnL(p, scenario.grocery.retailerMargin, ws)
+    // The constant freight figure, per unit of THIS product's case size
+    const logUnit = logisticsPerUnit(scenario.logistics.perCase, p.unitsPerCase)
+    const grocery = retailerPnL(p, scenario.grocery.retailerMargin, ws, logUnit)
     // Amazon fees resolve per product so sell-by-case amortises on each case size
-    const amazon = amazonFBAMargin(p, effectiveAmazonFees(scenario.amazon, p.unitsPerCase))
-    const tiktok = tiktokShopMargin(p, tiktokFees)
-    const listing = listingModel(p, scenario.grocery.retailerMargin, listingInputs, ws)
+    const amazon = amazonFBAMargin(p, effectiveAmazonFees(scenario.amazon, p.unitsPerCase), logUnit)
+    const tiktok = tiktokShopMargin(p, tiktokFees, logUnit)
+    const listing = listingModel(p, scenario.grocery.retailerMargin, listingInputs, ws, logUnit)
     return { p, grocery, amazon, tiktok, listing, listed: channelListed(p, 'grocery') }
   })
 
@@ -58,9 +61,7 @@ export default function Portfolio() {
   const totalFunding = listedRows.reduce((a, r) => a + r.listing.totalFunding, 0)
   const totalRevenue = listedRows.reduce((a, r) => a + r.listing.totalNsv, 0)
   const totalMargin = listedRows.reduce((a, r) => a + r.listing.totalGrossMargin, 0)
-  // Inbound logistics on the grocery plan, per case across the listed range
-  const totalLogistics = listedRows.reduce((a, r) => a + r.listing.totalCases * scenario.grocery.logisticsPerCase, 0)
-  const marginAfterLogistics = totalMargin - totalLogistics
+  const totalLogistics = listedRows.reduce((a, r) => a + r.listing.totalCases * scenario.logistics.perCase, 0)
   const blended = totalRevenue > 0 ? totalMargin / totalRevenue : 0
   const nsvPctOfGsv = totalGsv > 0 ? totalRevenue / totalGsv : 0
   const carrier = listedRows.length
@@ -201,11 +202,8 @@ export default function Portfolio() {
               <RLine label="NSV as % of GSV" value={pct(nsvPctOfGsv)} dim />
               <RLine label="Gross margin, range" value={gbp(totalMargin)} bold color={totalMargin < 0 ? REDPEN : INK} />
               <RLine label="GM as % of NSV (blended)" value={pct(blended)} dim color={totalMargin < 0 ? REDPEN : INK} />
-              {scenario.grocery.logisticsPerCase > 0 && (
-                <>
-                  <RLine label="less inbound logistics, range" value={`−${gbp(totalLogistics).replace('−', '')}`} dim color={REDPEN} />
-                  <RLine label="Margin after logistics, range" value={gbp(marginAfterLogistics)} bold color={marginAfterLogistics < 0 ? REDPEN : INK} />
-                </>
+              {scenario.logistics.perCase > 0 && (
+                <RLine label={`incl. inbound logistics (${gbp(scenario.logistics.perCase)}/case)`} value={`−${gbp(totalLogistics).replace('−', '')}`} dim />
               )}
             </Receipt>
 

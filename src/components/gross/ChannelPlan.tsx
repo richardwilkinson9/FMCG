@@ -53,8 +53,8 @@ export default function ChannelPlan({ channel }: { channel: 'amazon' | 'tiktok' 
 
   const pnl =
     channel === 'amazon'
-      ? amazonChannelPnL(products, (p) => effectiveAmazonFees(scenario.amazon, p.unitsPerCase), scenario.amazon.planMonthly, scenario.amazon.logisticsPerCase)
-      : tiktokChannelPnL(products, effectiveTikTokFees(scenario.tiktok), scenario.tiktok.logisticsPerCase)
+      ? amazonChannelPnL(products, (p) => effectiveAmazonFees(scenario.amazon, p.unitsPerCase), scenario.amazon.planMonthly, scenario.logistics.perCase)
+      : tiktokChannelPnL(products, effectiveTikTokFees(scenario.tiktok), scenario.logistics.perCase)
 
   const gmById = new Map(pnl.rows.map((r) => [r.product.id, r.year.gm]))
   const hasLogistics = pnl.logistics > 0
@@ -114,14 +114,9 @@ export default function ChannelPlan({ channel }: { channel: 'amazon' | 'tiktok' 
           <RLine label="NSV" value={gbp(pnl.nsv)} bold color={pnl.nsv < 0 ? REDPEN : INK} />
           <RLine label="NSV as % of GSV" value={pct(pnl.nsvPctOfGsv)} dim />
           <RLine label="less COGS" value={neg(pnl.cogs)} dim />
+          {hasLogistics && <RLine label="less inbound logistics" value={neg(pnl.logistics)} dim />}
           <RLine label="Gross margin, channel" value={gbp(pnl.gm)} bold color={pnl.gm < 0 ? REDPEN : INK} />
           <RLine label="GM as % of NSV" value={pct(pnl.gmPctOfNsv)} dim color={pnl.gm < 0 ? REDPEN : undefined} />
-          {hasLogistics && (
-            <>
-              <RLine label="less inbound logistics" value={neg(pnl.logistics)} dim />
-              <RLine label="Profit after logistics, channel" value={gbp(pnl.gmAfterLogistics)} bold color={pnl.gmAfterLogistics < 0 ? REDPEN : INK} />
-            </>
-          )}
         </>
       )}
     </div>
