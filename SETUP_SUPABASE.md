@@ -83,3 +83,51 @@ Email sign-in (magic links) is on by default — no other provider needed.
 Supabase free tier: 500MB database, 50k monthly active users, magic-link
 emails capped at ~2/hour per address (fine for real use; annoying if you
 test sign-in repeatedly — wait an hour or add an SMTP provider later).
+
+## 3. The weekly digest (read your numbers)
+
+The `events` table fills up silently — views, shares, exports, export
+emails, union sign-ups, deck uploads. The site key can only write it, so
+you read it in the dashboard: **SQL Editor → New query**, paste, run.
+Bookmark the queries; each takes seconds.
+
+```sql
+-- This week vs last week, by event
+select
+  name,
+  count(*) filter (where created_at >= date_trunc('week', now()))            as this_week,
+  count(*) filter (where created_at >= date_trunc('week', now()) - interval '7 days'
+                     and created_at <  date_trunc('week', now()))            as last_week
+from events
+group by name
+order by this_week desc;
+
+-- Which tools get used (views by slug, last 30 days)
+select slug, count(*) as views
+from events
+where name = 'view' and created_at > now() - interval '30 days'
+group by slug
+order by views desc;
+
+-- The funnel that matters: views → exports → emails, weekly
+select
+  date_trunc('week', created_at)::date as week,
+  count(*) filter (where name = 'view')         as views,
+  count(*) filter (where name = 'export')       as exports,
+  count(*) filter (where name = 'export_email') as export_emails,
+  count(*) filter (where name = 'union')        as ledger_signups
+from events
+group by 1
+order by 1 desc
+limit 12;
+
+-- The list itself (size + growth this week)
+select
+  count(*)                                                        as total,
+  count(*) filter (where created_at > now() - interval '7 days')  as this_week
+from union_signups;
+```
+
+Optional: save the funnel query as a Supabase **scheduled** query with an
+email destination if you want it landing in your inbox on Mondays — the
+dashboard supports it under Database → Cron (pg_cron).

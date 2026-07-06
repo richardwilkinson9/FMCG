@@ -367,6 +367,32 @@ The maths was not touched — every formula still comes from calculations.ts.
       monthly table live, gate → email → deck, week-104 guards, Monthly P&L
       formulas, SKU-2 Range edits + 26-week period round-tripped to the site.
 
+## The Wait, the Bad Day, the Terms Sheet + the paperwork (July 2026)
+- [x] **The Wait** (`/the-wait`, 12th tool) — cash flow on the same weekly
+      spine: NSV lands debtorDays after invoice, the goods bill leaves
+      creditorDays after, investment instalments in their quarters. Peak cash
+      gap + worst week as the answer block, the year by month in cash, and the
+      terms spelled out plainly. `cashPhasing()` in calculations.ts, three
+      hand-computed tests (39 total). scenario.cash {debtorDays, creditorDays}.
+- [x] **THE BAD DAY** on The Listing — the same model with the buyer at +5pts,
+      ROS 20% light and promos funded but flat; still-standing or underwater.
+- [x] **THE TERMS SHEET** on The P&L — every saved buyer's terms side by side:
+      margin %, GM/unit, period GM.
+- [x] **THE WORKINGS** — per-tool explainer copy (config/explainers.json) as
+      collapsed small print at the foot of every tool, and served statically
+      to crawlers by the prerender (long-tail SEO without changing the look).
+- [x] **The Ledger page** (`/the-ledger`) — the promise, the sign-up (same
+      union_signups list) and the issue archive (config/ledger.ts; add an
+      issue and the page updates). Nav's The Ledger now lands here.
+- [x] **VAT check** on The P&L — category-aware UK VAT expectations
+      (config/vat.ts, HMRC 701/14): red-pen note when a snacks/soft-drinks/
+      confectionery product claims 0% or food claims 20%.
+- [x] **The weekly digest** — ready-made SQL in SETUP_SUPABASE.md: this week
+      vs last by event, views by tool, the views→exports→emails funnel, list
+      growth. Run in the dashboard; optionally schedule with pg_cron.
+- [x] MARKETING.md: cadence settled at monthly; the first five Ledger issues
+      planned; the fixed email skeleton written down.
+
 ## Where we are (05 Jul 2026)
 The product is feature-complete for launch and deploys automatically. The
 remaining work is GO-TO-MARKET, not build:

@@ -20,7 +20,7 @@ import {
   cloudDelete,
   migrateLocalToCloud,
 } from '../store/cloud'
-import { PageHeader } from '../components/gross/CalcShell'
+import { PageHeader, TheWorkings } from '../components/gross/CalcShell'
 import { logEvent } from '../utils/analytics'
 import GrossFooter from '../components/gross/GrossFooter'
 import LedgerRat from '../components/gross/LedgerRat'
@@ -463,6 +463,7 @@ export default function Shelf() {
         </div>
       </div>
 
+      <TheWorkings />
       <GrossFooter />
     </div>
   )

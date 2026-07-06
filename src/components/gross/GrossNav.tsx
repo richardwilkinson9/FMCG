@@ -49,7 +49,7 @@ export default function GrossNav() {
           <button onClick={() => goToSection('calculators')} className={link}>Calculators</button>
           <button onClick={() => { setActiveCalculator('cross-channel'); window.scrollTo(0, 0) }} className={link}>The Line-Up</button>
           <button onClick={() => { setActiveCalculator('methodology'); window.scrollTo(0, 0) }} className={link}>The Rate Card</button>
-          <button onClick={() => goToSection('union')} className={link}>The Ledger</button>
+          <button onClick={() => { setActiveCalculator('ledger'); window.scrollTo(0, 0) }} className={link}>The Ledger</button>
         </nav>
         <button
           onClick={goToArchive}

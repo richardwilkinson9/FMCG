@@ -308,6 +308,56 @@ export function monthlyPhasing(
   return rows
 }
 
+/**
+ * THE WAIT — when the money actually moves, not when the sale happens.
+ * Cash in: a week's NSV arrives `debtorDays` after invoice. Cash out: you pay
+ * your supplier for that week's goods `creditorDays` after their invoice, and
+ * the customer investment instalments leave in their calendar weeks. Days are
+ * rounded to whole weeks. Stock build is The Stock Answer's problem — this is
+ * the trading cash cycle on the sales line.
+ */
+export interface CashWeekRow {
+  week: number
+  cashIn: number
+  cashOut: number
+  net: number
+  cumulative: number
+}
+
+export function cashPhasing(
+  weeks: WeeklyProjectionRow[],
+  product: Product,
+  debtorDays: number,
+  creditorDays: number,
+  logisticsPerUnitCost = 0,
+  annualInvestment = 0,
+): { rows: CashWeekRow[]; peakGap: number; peakGapWeek: number; totalIn: number; totalOut: number } {
+  const lagIn = Math.max(0, Math.round(debtorDays / 7))
+  const lagOut = Math.max(0, Math.round(creditorDays / 7))
+  const landedPerUnit = product.cogsPerUnit + logisticsPerUnitCost
+  const horizon = weeks.length + Math.max(lagIn, lagOut)
+
+  const rows: CashWeekRow[] = []
+  let cumulative = 0
+  let peakGap = 0
+  let peakGapWeek = 0
+  let totalIn = 0
+  let totalOut = 0
+  for (let w = 1; w <= horizon; w++) {
+    const saleInWeek = weeks[w - lagIn - 1]
+    const saleOutWeek = weeks[w - lagOut - 1]
+    const cashIn = saleInWeek ? saleInWeek.nsv : 0
+    const cashOut = (saleOutWeek ? saleOutWeek.volume * landedPerUnit : 0) + investmentForWeek(annualInvestment, w)
+    const net = cashIn - cashOut
+    cumulative += net
+    if (cumulative < peakGap) { peakGap = cumulative; peakGapWeek = w }
+    totalIn += cashIn
+    totalOut += cashOut
+    rows.push({ week: w, cashIn, cashOut, net, cumulative })
+  }
+  return { rows, peakGap, peakGapWeek, totalIn, totalOut }
+}
+
 /** One promo's contribution to the annual plan, over its clamped window. */
 export interface PromoSummary {
   index: number

@@ -26,6 +26,7 @@ import {
   investmentForWeek,
   investmentInPeriod,
   monthlyPhasing,
+  cashPhasing,
   estimateAmazonFBAFee,
   type PromoWindow,
   type AmazonFBAFees,
@@ -420,6 +421,42 @@ describe('monthly phasing — the 4-4-5 calendar', () => {
     expect(months[5].volume).toBeCloseTo(5000 * 5, 6) // M6 = weeks 22–26, still inside
     expect(months[6].volume).toBe(0) // M7 starts at week 27 — past the period
     expect(months[6].investment).toBeCloseTo(2500, 6) // the Q3 instalment still falls there
+  })
+})
+
+describe('the wait — cash phasing', () => {
+  const inputs = { stores: 500, skus: 1, weeksInPeriod: 4, promos: [] }
+  // 4 flat weeks: volume 5,000/wk; NSV/wk = 5,000 × 0.8125 = 4,062.50;
+  // goods cost/wk = 5,000 × 0.32 = 1,600 (no logistics)
+
+  it('lags cash in by debtor weeks and cash out by creditor weeks', () => {
+    const weeks = weeklyProjection(volt, 0.35, inputs, 0, 0)
+    // 28 days in, 7 days out → lagIn 4 weeks, lagOut 1 week
+    const flow = cashPhasing(weeks, volt, 28, 7, 0, 0)
+    expect(flow.rows).toHaveLength(8) // 4 sales weeks + 4-week tail
+    expect(flow.rows[0].cashIn).toBe(0) // week 1: nothing in yet
+    expect(flow.rows[0].cashOut).toBe(0) // week 1: supplier not yet paid
+    expect(flow.rows[1].cashOut).toBeCloseTo(1600, 6) // week 2: pay for week 1 goods
+    expect(flow.rows[4].cashIn).toBeCloseTo(4062.5, 6) // week 5: week 1 NSV lands
+    // Worst point: all four goods bills paid, no cash in yet (end of week 5 the
+    // first NSV has landed, so the trough is week 4–5 boundary)
+    expect(flow.peakGap).toBeCloseTo(-(1600 * 3), 6) // weeks 2–4 paid out, nothing in
+    expect(flow.totalIn).toBeCloseTo(4062.5 * 4, 6)
+    expect(flow.totalOut).toBeCloseTo(1600 * 4, 6)
+  })
+
+  it('same-day terms mean no gap on a profitable line', () => {
+    const weeks = weeklyProjection(volt, 0.35, inputs, 0, 0)
+    const flow = cashPhasing(weeks, volt, 0, 0, 0, 0)
+    expect(flow.peakGap).toBe(0)
+    expect(flow.rows[0].net).toBeCloseTo(4062.5 - 1600, 6)
+  })
+
+  it('investment instalments leave in their calendar weeks', () => {
+    const weeks = weeklyProjection(volt, 0.35, inputs, 0, 0)
+    const flow = cashPhasing(weeks, volt, 0, 0, 0, 10000)
+    expect(flow.rows[0].cashOut).toBeCloseTo(1600 + 2500, 6) // week 1 instalment
+    expect(flow.rows[1].cashOut).toBeCloseTo(1600, 6)
   })
 })
 

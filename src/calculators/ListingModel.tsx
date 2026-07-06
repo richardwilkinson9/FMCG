@@ -310,6 +310,44 @@ export default function ListingModel() {
             bold
             color={result.marginAfterInvestment <= 0 ? REDPEN : INK}
           />
+
+          <Rule dotted className="mt-3 mb-2" />
+          {(() => {
+            // THE BAD DAY — the same model with the year going against you:
+            // the buyer takes 5 more points, ROS lands 20% light, and the
+            // promos still get funded but nobody buys more. Same maths, worse
+            // inputs — if this line still clears, the plan is robust.
+            const stressed = listingModel(
+              { ...product, weeklyRateOfSale: product.weeklyRateOfSale * 0.8 },
+              grocery.retailerMargin + 0.05,
+              { ...listing, promos: listing.promos.map((p) => ({ ...p, uplift: 0 })) },
+              activeWholesalerMargin(grocery),
+              logUnit,
+              listing.annualInvestment,
+            )
+            const survives = stressed.marginAfterInvestment > 0
+            return (
+              <>
+                <RSection label="THE BAD DAY" />
+                <div className="font-mono text-[11px] mb-1.5 opacity-65">
+                  Buyer takes 5 more points. ROS lands 20% light. Promos funded, nobody buys more.
+                </div>
+                <RLine label="Gross margin, period" value={gbp(stressed.totalGrossMargin)} dim color={stressed.totalGrossMargin <= 0 ? REDPEN : undefined} />
+                <RLine
+                  label="Margin after investment"
+                  value={gbp(stressed.marginAfterInvestment)}
+                  bold
+                  color={survives ? INK : REDPEN}
+                />
+                <RLine
+                  label="Read"
+                  value={survives ? 'Still standing. The plan survives a bad year.' : 'Underwater. This plan only works if everything goes right.'}
+                  dim
+                  color={survives ? INK : REDPEN}
+                />
+              </>
+            )
+          })()}
         </Receipt>
         <CalcActions />
       </div>

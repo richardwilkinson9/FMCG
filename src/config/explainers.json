@@ -1,0 +1,61 @@
+{
+  "retailer-pnl": [
+    "Retailer margin in UK grocery is quoted front margin: the gap between what the retailer pays you and the shelf price ex-VAT, as a percentage of the shelf price. At a £1.25 shelf ex-VAT and a 35% margin, the retailer keeps 43.75p and pays you 81.25p. That 81.25p is your invoice price, and everything you spend — cost of goods, freight to their depot — comes out of it.",
+    "Your own gross margin is read against net revenue, not the shelf price. Net revenue less landed cost (cost of goods plus inbound logistics) is gross margin per unit; divide by net revenue for the percentage. Buyers will quote their number and yours in the same breath and they are not the same kind of number. Know which one is being discussed before you agree to anything.",
+    "A wholesaler in the chain takes their margin after the retailer's, off the price the retailer pays. It compounds. Two reasonable-sounding margins stack into one unreasonable one, which is why the wholesale route needs its own maths, not a guess."
+  ],
+  "waterfall": [
+    "Gross-to-net is the paperwork version of the truth. Gross sales value is your volume at full list price — the invoice number, the one that never moves. Then the deductions start: promo funding, back margin, retro payments, range support, whatever this year's letter calls it. What is left is net sales value, and it is the only revenue number that means anything.",
+    "The convention that matters: a supplier-funded promo comes off your invoice, not the retailer's margin. They keep their percentage; you fund the price cut. Back margin is the quiet one — it never shows on a price file, but it comes off your invoice all the same. If your NSV is a mystery to you, it will not be a mystery to the buyer.",
+    "A healthy UK FMCG gross-to-net loses somewhere between 10% and 30% of invoice on the way down. Past that, you are not trading, you are donating."
+  ],
+  "min-margin": [
+    "The Floor works the chain backwards. Everyone else starts with a cost price and finds out the margin at the end; this starts with the margin you need and finds the cost price (or shelf price) that delivers it. The arithmetic is the same chain — VAT off, retailer margin off, wholesaler if there is one — run in reverse.",
+    "The number it returns is a ceiling on landed cost, not on cost of goods. Freight to the customer's depot has to fit inside it too, so the cost price you can actually pay your manufacturer is the ceiling less the freight per unit. Forget that and your target margin quietly loses a point or two in a lorry.",
+    "Use it before a range review, not after. Walking in knowing your floor is the difference between negotiating and being informed."
+  ],
+  "listing-model": [
+    "A listing is a year of maths wearing a handshake. Stores, rate of sale, weeks — that is your base volume. The promo calendar sits on top: each promo has a mechanic, a start week, a length, an uplift and a funding flag, and the weekly projection reprices every week accordingly. GSV at full list, funding off invoice, NSV, then gross margin after landed cost.",
+    "Customer investment — gate fees, marketing support, whatever the buyer called it in the email — is fixed cash, so it lives below gross margin and gets paid in quarterly instalments. The year-by-month table shows the plan on the 4-4-5 calendar, which is the shape your buyer's finance team sees it in. If the monthly line goes red in M1, that is a conversation worth having before the launch, not after.",
+    "Rate of sale is where listings die. Model the case where it lands 20% light before you sign anything — this page does it for you at the bottom of the receipt."
+  ],
+  "trade-spend": [
+    "Every promo is a loan you make to your own volume. The investment goes out; the payback arrives, or does not, as incremental margin on incremental units. This page divides one by the other and tells you the volume the promo has to shift before it has paid for itself.",
+    "The margin used for payback is contribution after landed cost during the promo — not your everyday margin, because during the deal you are usually funding a price cut too. Uplift assumptions are the soft spot: a buyer's uplift forecast is a sales aid, not a measurement. If the payback only works at the top of the uplift range, it does not work.",
+    "The rule of thumb the trade actually uses: if a promo cannot pay back inside the deal period plus one buying cycle, it is brand investment, and brand investment should be a decision, not an accident."
+  ],
+  "stock-forecast": [
+    "Service level is a supply question wearing a sales costume. This page runs the same weekly demand as The Listing — promos included — against your opening stock, your order lead time and your cover target, week by week. Orders placed in week one arrive after the lead time; anything demand takes that stock cannot supply is an unmet week, printed in red.",
+    "The promo calendar is where availability plans go wrong. An uplift you modelled on The Listing is stock you need weeks earlier here, because the lead time does not care about your launch date. Edit the order column until the red disappears; that column is the plan.",
+    "Out-of-stock in week three of a new listing is how you turn one difficult range review into two."
+  ],
+  "amazon-fba": [
+    "Amazon FBA charges you a referral fee on the sale price, fulfilment per unit shipped, storage per unit per month, and a monthly selling plan whether you sell or not. Each fee is small. Together they routinely take 35–50% of the sale price before your cost of goods enters the conversation. This page lines them up in fee order so you can see which one is doing the damage.",
+    "Selling by the case rather than the unit changes the answer more than any fee negotiation will: fulfilment and storage are charged per shipment, so a case of 24 spreads them 24 ways. It is the difference between a listing that works and one that pays Amazon for the privilege.",
+    "The full-year block prices a year of your stated volume, selling plan included. Fees here are dated defaults — check the rate card, then check Amazon's own fee schedule, in that order."
+  ],
+  "tiktok-shop": [
+    "TikTok Shop takes a platform commission on the sale, a per-order fee, and — if you use creators, which is the point of the platform — an affiliate commission on top. Refund admin takes its slice too. The percentages look gentler than Amazon's until the affiliate line lands; then they are usually not.",
+    "The affiliate rate is a real commercial decision, not a setting. Set it high and creators push your product; set it low and the algorithm meets your content with silence. Model both ends here before you promise anyone a margin.",
+    "The full-year block prices your stated annual volume through the channel. Fees are dated defaults — the rate card records when they were last checked and where they came from."
+  ],
+  "cross-channel": [
+    "The same product earns a different margin in every channel, and the ranking is rarely the one the revenue suggests. Grocery pays less per unit and moves volume; marketplaces pay more per unit and take fees that grow with every service you lean on. This page prices one unit through each channel with the same cost of goods and the same freight, and ranks what is left.",
+    "The number to watch is gross profit per unit after landed cost, not revenue and not percentage margin. A channel that pays you £0.40 a unit on 200,000 units beats one that pays £0.90 on 20,000 — but only if you have the cash to fund the volume, which is a different page (The Wait).",
+    "Break-even sale price per channel is printed at the bottom: the shelf price below which the channel pays you nothing. Everything above it is negotiation."
+  ],
+  "portfolio": [
+    "A range is a portfolio, and portfolios have passengers. This page puts every product on one till roll — grocery, Amazon and TikTok margin side by side, plus the period margin from your listing settings — and names the SKU that carries the rest. Blended margin is the number a buyer reads; the spread inside it is the number you should.",
+    "The in/out toggles are the range review, rehearsed. Delist a passenger on paper and watch the blended margin move before anyone makes it awkward in a meeting.",
+    "One product losing money in a range of six is a strategy question. Three is a maths question, and the maths is on this page."
+  ],
+  "products": [
+    "Everything on GROSS. reads from one product spine: cost price, RSP, units per case, VAT, rate of sale, defined once on this shelf. Change a cost price here and every calculator, the share link and the Excel deck reprice together. There is no per-page setup and nothing to keep in sync.",
+    "The archive keeps named snapshots of the whole model — every product plus every assumption. Save one before a negotiation and one after, and The Audit will tell you exactly what the meeting cost you."
+  ],
+  "cash-flow": [
+    "Profit is an opinion formed at invoice; cash is what your bank balance says while you wait. UK grocery standard terms run 30 to 90 days from invoice, and your supplier usually wants paying sooner than that. The gap between those two dates, multiplied by your weekly sales, is working capital you are lending to the listing.",
+    "This page phases the same weekly plan as The Listing into cash: NSV arrives when the customer actually pays; the goods bill leaves when you actually pay it; the customer investment instalments leave in their quarters. The running line at the right is your exposure, and its lowest point is the funding the listing needs — the number to take to whoever funds you, before they find it themselves.",
+    "Growth makes this worse, not better. Every extra store is more cash out today against more cash in two months from now. Brands do not usually die of bad margins; they die of good margins with long terms."
+  ]
+}

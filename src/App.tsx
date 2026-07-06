@@ -30,6 +30,8 @@ const PAGES: Record<string, ComponentType | LazyExoticComponent<ComponentType>> 
   'amazon-fba': lazy(() => import('./calculators/AmazonFBA')),
   'tiktok-shop': lazy(() => import('./calculators/TikTokShop')),
   'cross-channel': lazy(() => import('./calculators/CrossChannel')),
+  'cash-flow': lazy(() => import('./calculators/CashFlow')),
+  'ledger': lazy(() => import('./pages/Ledger')),
   'methodology': lazy(() => import('./pages/Methodology')),
 }
 

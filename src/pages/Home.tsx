@@ -15,10 +15,11 @@ const CARDS = [
   { id: 'listing-model', name: 'The Listing', sub: 'Model the range review first.', sku: '50 04405', group: 'GROCERY' },
   { id: 'trade-spend', name: 'The Payback', sub: 'How much volume pays the promo back.', sku: '50 05512', group: 'GROCERY' },
   { id: 'stock-forecast', name: 'The Stock Answer', sub: 'What to order. When. Before you run out.', sku: '50 06629', group: 'GROCERY' },
+  { id: 'cash-flow', name: 'The Wait', sub: 'Margin is an opinion. Cash is a fact.', sku: '50 12134', group: 'GROCERY', isNew: true },
   { id: 'amazon-fba', name: 'The Amazon Cut', sub: 'What Bezos takes before you see a penny.', sku: '50 07706', group: 'MARKETPLACE' },
   { id: 'tiktok-shop', name: 'The TikTok Cut', sub: 'Not as bad as Bezos (but not far off it)', sku: '50 08813', group: 'MARKETPLACE' },
   { id: 'cross-channel', name: 'The Line-Up', sub: 'Net margin, every channel, side by side.', sku: '50 09920', group: 'COMPARE' },
-  { id: 'portfolio', name: 'The Range', sub: 'The whole portfolio on one till roll.', sku: '50 11027', group: 'COMPARE', isNew: true },
+  { id: 'portfolio', name: 'The Range', sub: 'The whole portfolio on one till roll.', sku: '50 11027', group: 'COMPARE' },
 ]
 
 /** Traffic light for the mock receipt, on gp as a share of shelf ex-VAT. */
@@ -124,7 +125,7 @@ export default function Home() {
         <div className="max-w-[1200px] mx-auto">
           <div className="flex items-baseline justify-between flex-wrap gap-3 mb-[34px]">
             <h2 className="font-display text-[clamp(28px,3.6vw,48px)] tracking-[-0.02em] m-0">The calculators</h2>
-            <div className="font-mono text-xs tracking-[0.08em] opacity-60">11 TOOLS · ONE SPINE · NO SIGN-UP</div>
+            <div className="font-mono text-xs tracking-[0.08em] opacity-60">12 TOOLS · ONE SPINE · NO SIGN-UP</div>
           </div>
           <div className="grid grid-cols-1 min-[821px]:grid-cols-3">
             {CARDS.map((card) => (
@@ -152,14 +153,6 @@ export default function Home() {
                 )}
               </button>
             ))}
-            {/* Filler cell — keeps the 3-column grid square */}
-            <div className="hidden min-[821px]:flex flex-col justify-between min-h-[210px] border-2 border-ink -m-px bg-ink text-bile p-[22px]" aria-hidden="true">
-              <div className="font-mono text-[11px] tracking-[0.1em]">SKU PENDING</div>
-              <div>
-                <Barcode height={34} />
-                <div className="font-mono text-xs mt-4">Space reserved. Range review in progress.</div>
-              </div>
-            </div>
           </div>
         </div>
       </div>

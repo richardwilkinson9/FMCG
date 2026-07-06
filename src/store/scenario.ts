@@ -176,9 +176,17 @@ export interface Buyer {
   otherTrade: number
 }
 
+export interface CashScenario {
+  /** Days from your invoice to the customer's cash landing (payment terms) */
+  debtorDays: number
+  /** Days from your supplier's invoice to you paying it */
+  creditorDays: number
+}
+
 export interface Scenario {
   grocery: GroceryScenario
   logistics: LogisticsScenario
+  cash: CashScenario
   minMargin: MinMarginScenario
   listing: ListingScenario
   tradeSpend: TradeSpendScenario
@@ -198,6 +206,10 @@ export function defaultScenario(): Scenario {
     },
     logistics: {
       perCase: 0,
+    },
+    cash: {
+      debtorDays: 60,
+      creditorDays: 30,
     },
     minMargin: {
       targetBrandMargin: 0.3,

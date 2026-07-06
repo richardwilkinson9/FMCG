@@ -6,6 +6,7 @@ import { downloadExcelModel } from '../../utils/excelExport'
 import { logEvent } from '../../utils/analytics'
 import { useSession } from '../../store/session'
 import { pageById } from '../../config/pages'
+import EXPLAINERS from '../../config/explainers.json'
 import GrossFooter from './GrossFooter'
 import LedgerRat from './LedgerRat'
 
@@ -336,7 +337,35 @@ export default function CalcShell({
         <EmptyState />
       )}
 
+      <TheWorkings />
       <GrossFooter />
+    </div>
+  )
+}
+
+/**
+ * THE WORKINGS — the small print at the bottom of each tool. Collapsed by
+ * default; there for the people who go looking. The same copy is served
+ * statically to crawlers by the prerender.
+ */
+export function TheWorkings() {
+  const activeCalculator = useStore((s) => s.activeCalculator)
+  const paras = (EXPLAINERS as Record<string, string[]>)[activeCalculator]
+  if (!paras?.length) return null
+  return (
+    <div className="px-[clamp(20px,4vw,44px)] pb-10">
+      <div className="max-w-[1180px] mx-auto">
+        <details className="border-t-2 border-dotted border-ink pt-4 group">
+          <summary className="font-mono text-[11px] tracking-[0.1em] opacity-50 cursor-pointer list-none select-none hover:opacity-100">
+            THE WORKINGS — the small print, for people who read the small print ▾
+          </summary>
+          <div className="mt-4 max-w-[64ch]">
+            {paras.map((p, i) => (
+              <p key={i} className="text-[13.5px] leading-relaxed mb-3 opacity-80">{p}</p>
+            ))}
+          </div>
+        </details>
+      </div>
     </div>
   )
 }

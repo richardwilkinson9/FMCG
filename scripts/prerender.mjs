@@ -38,6 +38,9 @@ const PAGES = [...pagesTs.matchAll(/\{\s*id:\s*'[^']*'[\s\S]*?indexed:\s*(?:true
   indexed: bool(m[0], 'indexed'),
 }))
 
+// THE WORKINGS — per-tool explainer copy, shared with the React app.
+const EXPLAINERS = JSON.parse(readFileSync(resolve(ROOT, 'src/config/explainers.json'), 'utf8'))
+
 // Fail the build if the registry parse looks wrong — never ship broken SEO silently.
 if (PAGES.length < 10) {
   throw new Error(`prerender: parsed only ${PAGES.length} pages from config/pages.ts — the registry format changed; fix the parser before shipping.`)
@@ -120,6 +123,7 @@ function staticBody(page) {
       <h1 style="font-size:2.4em;line-height:1;margin:16px 0 8px">${h1}</h1>
       <p>${esc(page.description)}</p>
       ${page.intro ? `<p>${esc(page.intro)}</p>` : ''}
+      ${(EXPLAINERS[page.id] || []).length ? `<h2 style="font-size:1.1em;margin-top:24px">The workings</h2>\n      ${EXPLAINERS[page.id].map((p) => `<p>${esc(p)}</p>`).join('\n      ')}` : ''}
       <h2 style="font-size:1.1em;margin-top:24px">The other calculators</h2>
       <ul style="padding-left:18px">
         ${links}

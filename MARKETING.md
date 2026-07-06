@@ -71,8 +71,10 @@ Hard rule: one scroll, one idea, under two minutes.
 **The promise** (already live on the site): *the rate card, kept current — when
 Amazon or a multiple moves a fee, you get the email before your buyer does.*
 
-**Cadence:** weekly, same day/time forever (Tue or Wed morning). Consistency
-beats frequency; never go daily.
+**Cadence:** monthly, same day forever (first Tuesday). Consistency beats
+frequency; monthly is what the site now promises ("one email a month") and
+what one person can sustain without the quality slipping. Go to fortnightly
+only when there is a backlog of finished issues, never on hope.
 
 **Guardrails:** every number dated + sourced; no selling in the first ~10
 issues; max one clearly-labelled sponsor; sponsors never touch the Rate Card;
@@ -95,6 +97,51 @@ dead subscribers; small-and-engaged beats big-and-cold.
 
 **Quarterly flagship:** one big dated piece (e.g. "The 2026 UK FMCG rate card",
 "What promos actually cost this year") for backlinks and PR.
+
+### The first five issues (planned)
+
+Each issue = one commercial subject with the working shown, one pre-loaded
+share link, one deadpan close. Publish to the site archive (/the-ledger) the
+same day it sends.
+
+1. **No. 001 — The 35% is not your 35%.** Front margin vs your margin: the
+   same percentage measured off two different bases. The worked example: a
+   £1.50 RSP product at 35% retailer margin, walked from shelf to bank.
+   Share link: The P&L pre-loaded with the example. Close: "Two people can
+   both be on 35% and one of them is lying."
+2. **No. 002 — What a promo actually costs.** The gross-to-net of one
+   supplier-funded 25%-off: funding off invoice, the uplift you were promised,
+   the uplift you got, and the payback volume. Share link: The Payback.
+   Close: "The buyer calls it investment because you are the one investing."
+3. **No. 003 — The 60-day wait.** Payment terms as working capital: the cash
+   curve of a healthy listing that still needs £40k of funding before it pays
+   for itself. Share link: The Wait. Close: "Brands do not die of bad margins.
+   They die of good margins with long terms."
+4. **No. 004 — Amazon's forty per cent.** Every FBA fee on one receipt, why
+   selling by the case changes the answer, and the break-even price nobody
+   checks. Share link: The Amazon Cut with a real category preset.
+   Close: "Jeff does not negotiate. Your case size does."
+5. **No. 005 — The VAT you forgot.** Zero-rated food vs the standard-rated
+   exceptions (crisps, confectionery, soft drinks), and the margin point it
+   silently costs when the model has it wrong. Share link: The P&L with the
+   VAT check tripping. Close: "HMRC has opinions about your flapjack."
+
+### The email structure (fixed skeleton, every issue)
+
+- **Subject:** `THE LEDGER No. 00X — [the claim, under 8 words]`
+  (e.g. "No. 001 — Their 35% is not your 35%").
+- **Preheader:** one deadpan sentence extending the subject, not repeating it.
+- **1. THE NUMBER** (top, bold, huge): the single figure of the issue with its
+  date and source line underneath, exactly like a Rate Card row.
+- **2. THE WORKING** (the body): 150–250 words, receipt-style — short lines,
+  the arithmetic visible, no adjectives doing the work numbers should do.
+- **3. THE RECEIPT** (one button): "Run it with your numbers" → share link
+  opening the relevant tool pre-loaded with the example.
+- **4. THE MARGIN NOTE** (footer): one closing line, then the fixed small
+  print: "You get this because you asked for it. Unsubscribe below — no
+  guilt trip. VAT number: not applicable. This is an email."
+- Plain HTML, receipt-white background, Ink text, one Bile rule. No images
+  that matter (assume images off). No tracking pixels beyond opens.
 
 ---
 

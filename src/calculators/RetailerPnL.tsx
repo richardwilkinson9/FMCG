@@ -3,6 +3,7 @@ import { activeWholesalerMargin } from '../store/scenario'
 import { retailerPnL, rspExVat, logisticsPerUnit, listingModel } from '../utils/calculations'
 import { GROCERY_DEFAULTS } from '../config/fees'
 import { BENCHMARK_CATEGORIES, BENCHMARK_CHECKED, benchmarkFor } from '../config/benchmarks'
+import { vatMismatch } from '../config/vat'
 import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
 import BuyerStrip from '../components/gross/BuyerStrip'
 import Field, { TextField, InputSection, MonoToggle } from '../components/gross/Field'
@@ -17,6 +18,7 @@ export default function RetailerPnL() {
   const grocery = useStore((s) => s.scenario.grocery)
   const logistics = useStore((s) => s.scenario.logistics)
   const listing = useStore((s) => s.scenario.listing)
+  const buyers = useStore((s) => s.scenario.buyers)
   const updateProduct = useStore((s) => s.updateProduct)
   const updateScenario = useStore((s) => s.updateScenario)
 
@@ -78,6 +80,11 @@ export default function RetailerPnL() {
         <div className="font-mono text-[11px] mt-1.5 opacity-65">
           Indicative ranges only — a sense-check, not a target. Sourced on The Rate Card.
         </div>
+        {vatMismatch(product.category, product.vatRate) && (
+          <div className="font-mono text-[11px] mt-2 border-2 border-ink bg-white p-2.5" style={{ color: '#E4002B' }}>
+            VAT check: {vatMismatch(product.category, product.vatRate)}
+          </div>
+        )}
         <BuyerStrip />
       </div>
     )
@@ -185,6 +192,47 @@ export default function RetailerPnL() {
               </>
             )
           })()}
+
+          {buyers.length > 0 && (
+            <>
+              <Rule dotted className="mt-3 mb-2" />
+              <RSection label="THE TERMS SHEET" />
+              <div className="font-mono text-[11px] mb-1.5 opacity-65">
+                The same product under every buyer's saved terms — margin and the period, side by side.
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[12px] font-mono border-collapse min-w-[440px]">
+                  <thead>
+                    <tr className="border-b-2 border-ink text-[10px] tracking-[0.08em] opacity-60">
+                      <th scope="col" className="text-left py-1.5 pr-2 font-normal">BUYER</th>
+                      <th scope="col" className="text-right py-1.5 px-2 font-normal">MARGIN %</th>
+                      <th scope="col" className="text-right py-1.5 px-2 font-normal">GM / UNIT</th>
+                      <th scope="col" className="text-right py-1.5 pl-2 font-normal">PERIOD GM</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {buyers.map((b) => {
+                      const ws2 = b.wholesalerEnabled ? b.wholesalerMargin : 0
+                      const pnl2 = retailerPnL(product, b.retailerMargin, ws2, logUnit)
+                      const period = listingModel(product, b.retailerMargin, { stores: listing.stores, skus: listing.skus, weeksInPeriod: listing.weeksInPeriod, promos: listing.promos }, ws2, logUnit).totalGrossMargin
+                      const under = pnl2.brandGrossMarginPerUnit <= 0
+                      return (
+                        <tr key={b.id} className="border-b border-dotted border-ink">
+                          <td className="py-1 pr-2 font-bold">{b.name}</td>
+                          <td className="text-right py-1 px-2">{Math.round(b.retailerMargin * 100)}%{b.wholesalerEnabled ? ' +ws' : ''}</td>
+                          <td className="text-right py-1 px-2" style={{ color: under ? REDPEN : INK }}>{gbp(pnl2.brandGrossMarginPerUnit)}</td>
+                          <td className="text-right py-1 pl-2 font-bold" style={{ color: period <= 0 ? REDPEN : INK }}>{gbp(period)}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="font-mono text-[10px] mt-1.5 opacity-55">
+                Period GM uses your Listing settings. Save or edit buyers in THE BUYERS above.
+              </div>
+            </>
+          )}
 
           <Rule dotted className="mt-3 mb-2" />
           <RSection label="IF THE BUYER PUSHES" />

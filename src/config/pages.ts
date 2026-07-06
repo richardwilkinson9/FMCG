@@ -161,6 +161,28 @@ export const PAGE_META: PageMeta[] = [
     indexed: true,
   },
   {
+    id: 'cash-flow',
+    slug: 'the-wait',
+    navTitle: 'The Wait',
+    seoTitle: `The Wait — FMCG cash flow & payment terms | ${SUFFIX}`,
+    description:
+      'Margin is an opinion; cash is a fact. When the retailer actually pays you, when you pay your supplier, and the gap your bank account has to survive.',
+    intro:
+      'Margin is an opinion; cash is a fact. When the money actually moves — and the gap your bank account has to survive.',
+    indexed: true,
+  },
+  {
+    id: 'ledger',
+    slug: 'the-ledger',
+    navTitle: 'The Ledger',
+    seoTitle: `The Ledger — the GROSS. monthly letter | ${SUFFIX}`,
+    description:
+      'One email a month on the commercial maths of UK FMCG: margins, trade spend, fees and the numbers behind the shelf. No selling. Unsubscribe any time.',
+    intro:
+      'One email a month on the commercial maths of UK FMCG. No selling. The archive lives here.',
+    indexed: true,
+  },
+  {
     id: 'methodology',
     slug: 'the-rate-card',
     navTitle: 'The Rate Card',
