@@ -1,6 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useStore } from '../store/useStore'
-import { PageHeader, IntroLine } from '../components/gross/CalcShell'
 import GrossFooter from '../components/gross/GrossFooter'
 import Barcode from '../components/gross/Barcode'
 import { LEDGER_ISSUES } from '../config/ledger'
@@ -14,6 +13,9 @@ export default function Ledger() {
   const [email, setEmail] = useState('')
   const [state, setState] = useState<'idle' | 'sending' | 'signed' | 'failed'>('idle')
 
+  // Warm the issue chunk so opening a card is instant, not a spinner
+  useEffect(() => { void import('./LedgerIssue') }, [])
+
   const join = async () => {
     if (!/.+@.+\..+/.test(email) || state === 'sending') return
     setState('sending')
@@ -26,15 +28,16 @@ export default function Ledger() {
 
   return (
     <div className="bg-receipt text-ink font-body min-h-screen">
-      <PageHeader
-        sku="50 13241"
-        group="PAPERWORK"
-        type="MONTHLY LETTER"
-        title="The Ledger"
-        subtitle="One email a month on the maths of the shelf."
-        stampNote="no selling · unsubscribe any time"
-      />
-      <IntroLine />
+      <header className="border-b-2 border-ink px-[clamp(20px,4vw,44px)] pt-[clamp(28px,4vw,52px)] pb-[clamp(20px,3vw,32px)]">
+        <div className="max-w-[720px] mx-auto">
+          <div className="flex items-center justify-between font-mono text-[11px] tracking-[0.1em] opacity-60">
+            <span>SKU 50 13241 · PAPERWORK</span>
+            <span>MONTHLY LETTER</span>
+          </div>
+          <h1 className="font-display text-[clamp(40px,7vw,72px)] leading-[0.92] tracking-[-0.01em] mt-3">The Ledger</h1>
+          <p className="font-body text-[15px] mt-2 max-w-[54ch]">One email a month on the maths of the shelf. No selling. Unsubscribe any time.</p>
+        </div>
+      </header>
 
       <div className="py-[clamp(26px,4vw,52px)] px-[clamp(20px,4vw,44px)]">
         <div className="max-w-[720px] mx-auto">

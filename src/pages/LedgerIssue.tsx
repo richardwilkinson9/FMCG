@@ -4,7 +4,6 @@ import { encodeStateToUrl } from '../utils/urlState'
 import type { Product } from '../types/product'
 import type { LedgerLine, LedgerShareScenario } from '../config/ledger'
 import { ledgerIssue } from '../config/ledger'
-import { PageHeader } from '../components/gross/CalcShell'
 import GrossFooter from '../components/gross/GrossFooter'
 import Barcode from '../components/gross/Barcode'
 import { RSection, RLine, Rule, AnswerBlock } from '../components/gross/Receipt'
@@ -63,8 +62,8 @@ export default function LedgerIssue() {
   if (!issue) {
     return (
       <div className="bg-receipt text-ink font-body min-h-screen">
-        <PageHeader sku="50 13241" group="PAPERWORK" type="MONTHLY LETTER" title="The Ledger" subtitle="Issue not found." />
         <div className="py-16 px-6 text-center font-mono text-[13px]">
+          Issue not found.{' '}
           <button onClick={() => { setActiveCalculator('ledger'); window.scrollTo(0, 0) }} className="underline">
             Back to the archive
           </button>
