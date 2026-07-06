@@ -334,6 +334,18 @@ The maths was not touched — every formula still comes from calculations.ts.
       end-to-end: P&L shows landed GM, export carries `Logistics`=3, deck
       edited to 5 in node-Excel, uploaded, value live on the site.
 
+## Customer investment (July 2026)
+- [x] **Annual customer investment, quarterly instalments** — a fixed £/year
+      behind the listing (`scenario.listing.annualInvestment`), paid in four
+      even instalments at weeks 1, 14, 27, 40. Below gross margin (it does not
+      move with volume): The Listing shows the instalments and "Margin after
+      investment, period" (verdict flips red-pen when the investment sinks the
+      listing); The P&L spreads it per unit over the annual volume from the
+      shared Listing settings. Deck: named `Investment` cell + formula-live
+      after-investment lines in the annual plan; importer reads it back. Three
+      new hand-computed test groups (34 total). Verified end-to-end including
+      the Excel round-trip (10000 exported, edited to 20000, uploaded, live).
+
 ## Where we are (05 Jul 2026)
 The product is feature-complete for launch and deploys automatically. The
 remaining work is GO-TO-MARKET, not build:

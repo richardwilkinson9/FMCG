@@ -74,7 +74,13 @@ GM = NSV − COGS. Weekly rows carry gsv/funding/nsv; helpers `promoUpliftForWee
 slots are named column ranges (PromoStarts/PromoLens/PromoUplifts/PromoDiscs/PromoFunded)
 consumed by SUMPRODUCT — overlapping promos stack in both engines. Old share links with
 the single-promo fields (promoStartWeek/promoWeeks/promoUplift) are migrated in
-`mergeScenario`. Full-year marketplace P&L: `amazonAnnualPnL` / `tiktokAnnualPnL` read
+`mergeScenario`. **Customer investment**: `scenario.listing.annualInvestment` —
+fixed annual cash behind the listing, paid in four even quarterly instalments
+(weeks 1, 14, 27, 40; `investmentForWeek`/`investmentInPeriod`). It sits BELOW
+gross margin (fixed cash, not a unit cost): The Listing shows "Margin after
+investment, period"; The P&L spreads it per unit over the 52-week annual volume
+from the Listing settings; the deck has a named `Investment` cell and
+after-investment lines in the annual plan block; the importer reads it back. Full-year marketplace P&L: `amazonAnnualPnL` / `tiktokAnnualPnL` read
 `scenario.amazon.casesPerYear` / `scenario.tiktok.casesPerYear` (named cells AmzCasesYear /
 TtkCasesYear in the deck); NSV always shown as % of GSV, GM as % of NSV.
 

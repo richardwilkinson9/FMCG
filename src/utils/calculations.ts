@@ -144,6 +144,24 @@ export interface ListingModelInputs {
   promos: PromoWindow[]
 }
 
+/**
+ * Annual customer investment — a fixed cash amount supporting the listing,
+ * paid in four even quarterly instalments: weeks 1, 14, 27 and 40 of each
+ * 52-week year (the pattern repeats past week 52).
+ */
+export function investmentForWeek(annualInvestment: number, week: number): number {
+  if (annualInvestment <= 0 || week < 1) return 0
+  return (week - 1) % 13 === 0 ? annualInvestment / 4 : 0
+}
+
+/** Quarterly instalments falling inside a period of N weeks. */
+export function investmentInPeriod(annualInvestment: number, weeksInPeriod: number): number {
+  if (annualInvestment <= 0 || weeksInPeriod < 1) return 0
+  // Payments land every 13 weeks starting at week 1
+  const payments = Math.floor((weeksInPeriod - 1) / 13) + 1
+  return (annualInvestment / 4) * payments
+}
+
 /** Does any promo cover this week? */
 export function promosCoveringWeek(promos: PromoWindow[], week: number): PromoWindow[] {
   return promos.filter((p) => week >= p.startWeek && week < p.startWeek + p.weeks)
@@ -249,6 +267,7 @@ export function listingModel(
   inputs: ListingModelInputs,
   wholesalerMarginPercent = 0,
   logisticsPerUnitCost = 0,
+  annualInvestment = 0,
 ) {
   const weeks = weeklyProjection(product, retailerMarginPercent, inputs, wholesalerMarginPercent, logisticsPerUnitCost)
   const last = weeks[weeks.length - 1]
@@ -280,8 +299,13 @@ export function listingModel(
   const totalFunding = last?.cumulativeFunding ?? 0
   const totalNsv = last?.cumulativeNsv ?? 0
   const totalGrossMargin = last?.cumulativeMargin ?? 0
+  // Fixed cash supporting the listing, in even quarterly instalments —
+  // below gross margin (it does not move with volume)
+  const totalInvestment = investmentInPeriod(annualInvestment, inputs.weeksInPeriod)
 
   return {
+    totalInvestment,
+    marginAfterInvestment: totalGrossMargin - totalInvestment,
     totalVolume: last?.cumulativeVolume ?? 0,
     totalGsv,
     totalFunding,

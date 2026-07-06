@@ -23,6 +23,8 @@ import {
   channelListed,
   skuCasesPerYear,
   logisticsPerUnit,
+  investmentForWeek,
+  investmentInPeriod,
   estimateAmazonFBAFee,
   type PromoWindow,
   type AmazonFBAFees,
@@ -352,6 +354,36 @@ describe('logistics — landed cost inside the margin', () => {
     expect(y.logistics).toBeCloseTo(500, 6)
     expect(y.nsv).toBeCloseTo(plain.nsv, 6) // freight is not a fee — NSV holds
     expect(y.gm).toBeCloseTo(plain.gm - 500, 6)
+  })
+})
+
+describe('customer investment — fixed cash, quarterly instalments', () => {
+  it('pays £/4 at weeks 1, 14, 27, 40 and nothing between', () => {
+    expect(investmentForWeek(10000, 1)).toBeCloseTo(2500, 10)
+    expect(investmentForWeek(10000, 2)).toBe(0)
+    expect(investmentForWeek(10000, 13)).toBe(0)
+    expect(investmentForWeek(10000, 14)).toBeCloseTo(2500, 10)
+    expect(investmentForWeek(10000, 27)).toBeCloseTo(2500, 10)
+    expect(investmentForWeek(10000, 40)).toBeCloseTo(2500, 10)
+    expect(investmentForWeek(10000, 52)).toBe(0)
+    expect(investmentForWeek(10000, 53)).toBeCloseTo(2500, 10) // year 2, Q1
+    expect(investmentForWeek(0, 1)).toBe(0)
+  })
+
+  it('counts the instalments inside the period', () => {
+    expect(investmentInPeriod(10000, 52)).toBeCloseTo(10000, 10) // 4 payments
+    expect(investmentInPeriod(10000, 26)).toBeCloseTo(5000, 10) // weeks 1 and 14
+    expect(investmentInPeriod(10000, 13)).toBeCloseTo(2500, 10) // week 1 only
+    expect(investmentInPeriod(10000, 104)).toBeCloseTo(20000, 10) // 8 payments over 2 years
+  })
+
+  it('listingModel deducts it below gross margin', () => {
+    const inputs = { stores: 500, skus: 1, weeksInPeriod: 52, promos: [] }
+    const plain = listingModel(volt, 0.35, inputs, 0, 0)
+    const withInv = listingModel(volt, 0.35, inputs, 0, 0, 10000)
+    expect(withInv.totalGrossMargin).toBeCloseTo(plain.totalGrossMargin, 6) // GM untouched
+    expect(withInv.totalInvestment).toBeCloseTo(10000, 6)
+    expect(withInv.marginAfterInvestment).toBeCloseTo(plain.totalGrossMargin - 10000, 6)
   })
 })
 

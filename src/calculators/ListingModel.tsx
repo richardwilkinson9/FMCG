@@ -49,6 +49,10 @@ export default function ListingModel() {
           <Field label="Units per case" inputMode="numeric" value={product.unitsPerCase} onCommit={(v) => updateProduct(product.id, { unitsPerCase: Math.round(v) })} />
           <Field label="Retailer margin" suffix="%" scale={100} tag="default" value={grocery.retailerMargin} onCommit={(v) => updateScenario('grocery', { retailerMargin: v })} />
           <Field label="Inbound logistics / case" prefix="£" value={logistics.perCase} onCommit={(v) => updateScenario('logistics', { perCase: v })} />
+          <Field label="Customer investment / year" prefix="£" value={listing.annualInvestment} onCommit={(v) => updateScenario('listing', { annualInvestment: Math.max(0, v) })} />
+        </div>
+        <div className="font-mono text-[11px] mt-1.5 opacity-65">
+          Customer investment is fixed cash behind the listing — gate fees, marketing support, whatever the buyer called it. Paid in four even quarterly instalments (weeks 1, 14, 27, 40).
         </div>
 
         <InputSection>THE DISTRIBUTION</InputSection>
@@ -150,7 +154,8 @@ export default function ListingModel() {
   const receipt = () => {
     if (!product) return null
     const logUnit = logisticsPerUnit(logistics.perCase, product.unitsPerCase)
-    const result = listingModel(product, grocery.retailerMargin, listing, activeWholesalerMargin(grocery), logUnit)
+    const result = listingModel(product, grocery.retailerMargin, listing, activeWholesalerMargin(grocery), logUnit, listing.annualInvestment)
+    const instalments = Math.floor((listing.weeksInPeriod - 1) / 13) + 1
 
     const pnl = retailerPnL(product, grocery.retailerMargin, activeWholesalerMargin(grocery), logUnit)
     const gmUnit = pnl.brandGrossMarginPerUnit
@@ -163,9 +168,12 @@ export default function ListingModel() {
     else if (result.gmPctOfNsv < 0.15) { healthColor = REDUCED; healthLabel = HEALTH.thin }
 
     const totalIncremental = result.promoSummaries.reduce((a, p) => a + p.incrementalUnits, 0)
+    const investmentSinksIt = !noMargin && result.totalInvestment > 0 && result.marginAfterInvestment <= 0
     const verdict = noMargin
       ? `Every unit loses money - don't be an idiot. ${gbp(-result.totalGrossMargin)} lost across the period.`
-      : `The listing makes ${gbp(result.totalGrossMargin)} of gross margin. The promos add ${n0(totalIncremental)} units and cost ${gbp(result.totalFunding)} in funding - whether they pay is The Payback's problem.`
+      : investmentSinksIt
+        ? `The listing makes ${gbp(result.totalGrossMargin)} of margin and hands back ${gbp(result.totalInvestment)} in customer investment. You are paying to be on the shelf.`
+        : `The listing makes ${gbp(result.totalGrossMargin)} of gross margin. The promos add ${n0(totalIncremental)} units and cost ${gbp(result.totalFunding)} in funding - whether they pay is The Payback's problem.`
 
     return (
       <div>
@@ -174,7 +182,7 @@ export default function ListingModel() {
           name={product.name}
           subline={`${listing.weeksInPeriod}-week projection · ${listing.stores} stores · ${listing.promos.length} promo${listing.promos.length === 1 ? '' : 's'}`}
           verdict={verdict}
-          verdictColor={noMargin ? REDPEN : INK}
+          verdictColor={noMargin || investmentSinksIt ? REDPEN : INK}
         >
           <Rule className="mt-4 mb-2.5" />
           <RSection label="WEEKLY VOLUME" />
@@ -248,6 +256,18 @@ export default function ListingModel() {
             ]}
           />
           <RLine label="Margin / unit (off promo)" value={gbp(gmUnit)} color={gmUnit <= 0 ? REDPEN : INK} />
+          <RLine
+            label={`less customer investment (${instalments} quarterly instalment${instalments === 1 ? '' : 's'} of ${gbp(listing.annualInvestment / 4)})`}
+            value={neg(result.totalInvestment)}
+            dim
+            color={result.totalInvestment > 0 ? REDPEN : undefined}
+          />
+          <RLine
+            label="Margin after investment, period"
+            value={gbp(result.marginAfterInvestment)}
+            bold
+            color={result.marginAfterInvestment <= 0 ? REDPEN : INK}
+          />
         </Receipt>
         <CalcActions />
       </div>

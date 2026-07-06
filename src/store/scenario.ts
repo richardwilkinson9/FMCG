@@ -78,6 +78,8 @@ export interface ListingScenario {
   skus: number
   weeksInPeriod: number
   promos: Promo[]
+  /** Fixed annual cash supporting the listing (£/year), paid in even quarterly instalments */
+  annualInvestment: number
 }
 
 /**
@@ -209,6 +211,7 @@ export function defaultScenario(): Scenario {
         { id: 'p1', startWeek: 9, weeks: 6, mechanic: '25% off', discount: 0.25, uplift: 0.65, supplierFunded: true },
         { id: 'p2', startWeek: 35, weeks: 6, mechanic: '20% off', discount: 0.20, uplift: 0.5, supplierFunded: true },
       ],
+      annualInvestment: 0,
     },
     tradeSpend: {
       investment: 10000,

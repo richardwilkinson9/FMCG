@@ -1,6 +1,6 @@
 import { useStore } from '../store/useStore'
 import { activeWholesalerMargin } from '../store/scenario'
-import { retailerPnL, rspExVat, logisticsPerUnit } from '../utils/calculations'
+import { retailerPnL, rspExVat, logisticsPerUnit, listingModel } from '../utils/calculations'
 import { GROCERY_DEFAULTS } from '../config/fees'
 import { BENCHMARK_CATEGORIES, BENCHMARK_CHECKED, benchmarkFor } from '../config/benchmarks'
 import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
@@ -16,6 +16,7 @@ export default function RetailerPnL() {
   const product = useStore((s) => s.getActiveProduct())
   const grocery = useStore((s) => s.scenario.grocery)
   const logistics = useStore((s) => s.scenario.logistics)
+  const listing = useStore((s) => s.scenario.listing)
   const updateProduct = useStore((s) => s.updateProduct)
   const updateScenario = useStore((s) => s.updateScenario)
 
@@ -49,11 +50,12 @@ export default function RetailerPnL() {
             <Field label="Wholesaler margin" suffix="%" scale={100} tag={DATED_TAG} value={grocery.wholesalerMargin} onCommit={(v) => updateScenario('grocery', { wholesalerMargin: v })} />
           </div>
         )}
-        <div className="mt-4">
+        <div className="mt-4 grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
           <Field label="Inbound logistics / case" prefix="£" value={logistics.perCase} onCommit={(v) => updateScenario('logistics', { perCase: v })} />
+          <Field label="Customer investment / year" prefix="£" value={listing.annualInvestment} onCommit={(v) => updateScenario('listing', { annualInvestment: Math.max(0, v) })} />
         </div>
         <div className="font-mono text-[11px] mt-1.5 opacity-65">
-          {GROCERY_DEFAULTS.retailerMarginPercent.note} Logistics is your freight to the customer, per case — one constant, part of your landed cost, applied to every product and every channel.
+          {GROCERY_DEFAULTS.retailerMarginPercent.note} Logistics is your freight to the customer, per case — one constant, part of your landed cost. Customer investment is fixed annual cash behind the listing, paid quarterly — shared with The Listing.
         </div>
 
         <InputSection>THE BENCHMARK</InputSection>
@@ -130,6 +132,34 @@ export default function RetailerPnL() {
           />
           <RLine label="Margin / case" value={gbp(result.marginPerCase)} color={noMargin ? REDPEN : INK} />
           <RLine label="Net revenue / case" value={gbp(result.revenuePerCase)} />
+
+          <Rule dotted className="mt-3 mb-2" />
+          {(() => {
+            // Fixed annual cash behind the listing (four quarterly instalments),
+            // spread per unit over the annual volume from your Listing settings
+            const annual = listingModel(
+              product,
+              grocery.retailerMargin,
+              { stores: listing.stores, skus: listing.skus, weeksInPeriod: 52, promos: listing.promos },
+              activeWholesalerMargin(grocery),
+              logUnit,
+            )
+            const invPerUnit = annual.totalVolume > 0 ? listing.annualInvestment / annual.totalVolume : 0
+            const afterInv = gmUnit - invPerUnit
+            return (
+              <>
+                <RSection label="CUSTOMER INVESTMENT" />
+                <RLine label={`Annual investment (${gbp(listing.annualInvestment / 4)} × 4, quarterly)`} value={gbp(listing.annualInvestment)} dim />
+                <RLine
+                  label={`spread per unit (annual volume ${Math.round(annual.totalVolume).toLocaleString('en-GB')} units)`}
+                  value={neg(invPerUnit)}
+                  dim
+                  color={invPerUnit > 0 ? REDPEN : undefined}
+                />
+                <RLine label="Margin after investment / unit" value={gbp(afterInv)} bold color={afterInv <= 0 ? REDPEN : INK} />
+              </>
+            )
+          })()}
 
           <Rule dotted className="mt-3 mb-2" />
           {(() => {

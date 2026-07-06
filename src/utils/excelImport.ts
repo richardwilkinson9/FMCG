@@ -163,6 +163,7 @@ export async function importExcelModel(file: File): Promise<ImportResult> {
   take('OtherTrade', (v) => { s.waterfall.otherTrade = v })
   take('Stores', (v) => { s.listing.stores = Math.max(1, Math.round(v)) })
   take('SKUs', (v) => { s.listing.skus = Math.max(1, Math.round(v)) })
+  take('Investment', (v) => { s.listing.annualInvestment = Math.max(0, v) })
   take('StartStock', (v) => { s.stock.startingStockUnits = Math.max(0, Math.round(v)) })
   take('LeadWeeks', (v) => { s.stock.leadWeeks = Math.max(0, Math.round(v)) })
   take('CoverWeeks', (v) => { s.stock.weeksOfCover = Math.max(0, Math.round(v)) })

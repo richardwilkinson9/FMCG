@@ -91,7 +91,9 @@ export async function downloadExcelModel(
     promos: scenario.listing.promos,
   }
   const weeks = weeklyProjection(product, scenario.grocery.retailerMargin, listingInputs, ws, logUnit)
-  const listing = listingModel(product, scenario.grocery.retailerMargin, listingInputs, ws, logUnit)
+  const listing = listingModel(product, scenario.grocery.retailerMargin, listingInputs, ws, logUnit, scenario.listing.annualInvestment)
+  // Quarterly instalments (weeks 1, 14, 27, 40…) inside the projection period
+  const invInstalments = Math.floor((scenario.listing.weeksInPeriod - 1) / 13) + 1
   const amzCasesYear = amazonCasesPerYear(scenario.amazon, product.unitsPerCase)
   const amazonYear = amazonAnnualPnL(product, amazonFees, scenario.amazon.planMonthly, amzCasesYear, logPerCase)
   const tiktokYear = tiktokAnnualPnL(product, tiktokFees, scenario.tiktok.casesPerYear, logPerCase)
@@ -329,6 +331,7 @@ export async function downloadExcelModel(
   assumption('Stores', scenario.listing.stores, 'Stores', INT)
   assumption('SKUs listed', scenario.listing.skus, 'SKUs', INT)
   assumption('Weeks in period', scenario.listing.weeksInPeriod, null, INT, 'Add rows on Weekly Projection if you extend this')
+  assumption('Customer investment / year', scenario.listing.annualInvestment, 'Investment', GBP, 'Fixed cash behind the listing — paid in four even quarterly instalments')
   ar++
 
   heading('THE PROMO CALENDAR (up to six a year)')
@@ -556,6 +559,8 @@ export async function downloadExcelModel(
   apLine('NSV as % of GSV', `IF($E$${wpTot}=0,0,$G$${wpTot}/$E$${wpTot})`, listing.nsvPctOfGsv, PCT)
   apLine('Gross margin (NSV less landed cost)', `$H$${wpTot}`, listing.totalGrossMargin, GBP, true)
   apLine('GM as % of NSV', `IF($G$${wpTot}=0,0,$H$${wpTot}/$G$${wpTot})`, listing.gmPctOfNsv, PCT)
+  apLine(`less customer investment (${invInstalments} quarterly instalments)`, `-Investment/4*${invInstalments}`, -listing.totalInvestment, GBP)
+  apLine('Margin after investment', `$H$${wpTot}-Investment/4*${invInstalments}`, listing.marginAfterInvestment, GBP, true)
 
   // ── STOCK PLAN ─────────────────────────────────────────────────────────────
   const sp = wb.addWorksheet('Stock Plan', { properties: { tabColor: { argb: INK } } })
