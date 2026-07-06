@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useStore } from '../store/useStore'
 import { PageHeader, IntroLine } from '../components/gross/CalcShell'
 import GrossFooter from '../components/gross/GrossFooter'
 import Barcode from '../components/gross/Barcode'
@@ -9,6 +10,7 @@ import { LEDGER_ISSUES } from '../config/ledger'
  * archive (which is also the proof it exists).
  */
 export default function Ledger() {
+  const setActiveCalculator = useStore((s) => s.setActiveCalculator)
   const [email, setEmail] = useState('')
   const [state, setState] = useState<'idle' | 'sending' | 'signed' | 'failed'>('idle')
 
@@ -82,18 +84,22 @@ export default function Ledger() {
             </div>
           ) : (
             LEDGER_ISSUES.map((issue) => (
-              <article key={issue.id} id={issue.id} className="border-2 border-ink bg-white p-[clamp(20px,3vw,32px)] mb-5">
-                <div className="font-mono text-[11px] tracking-[0.1em] opacity-60">
-                  NO. {String(issue.number).padStart(3, '0')} · {issue.date.toUpperCase()}
+              <button
+                key={issue.slug}
+                onClick={() => { setActiveCalculator(`ledger-${issue.slug}`); window.scrollTo(0, 0) }}
+                className="block w-full text-left border-2 border-ink bg-white p-[clamp(20px,3vw,32px)] mb-5 cursor-pointer hover:bg-bile"
+              >
+                <div className="flex items-baseline justify-between font-mono text-[11px] tracking-[0.1em] opacity-60">
+                  <span>NO. {String(issue.number).padStart(3, '0')} · {issue.date.toUpperCase()}</span>
+                  <span aria-hidden="true">→</span>
                 </div>
                 <h2 className="font-display text-[clamp(24px,3vw,34px)] leading-[0.98] mt-2">{issue.title}</h2>
                 <p className="text-[14px] mt-2 opacity-80">{issue.standfirst}</p>
-                <div className="mt-4 border-t-2 border-dotted border-ink pt-4">
-                  {issue.body.map((para, i) => (
-                    <p key={i} className="text-[14.5px] leading-relaxed mb-3 max-w-[62ch]">{para}</p>
-                  ))}
+                <div className="mt-3 flex items-baseline gap-2 border-t-2 border-dotted border-ink pt-3">
+                  <span className="font-mono text-[11px] tracking-[0.1em] opacity-60">THE NUMBER</span>
+                  <span className="font-mono text-2xl font-bold">{issue.theNumber}</span>
                 </div>
-              </article>
+              </button>
             ))
           )}
         </div>

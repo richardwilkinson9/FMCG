@@ -50,7 +50,41 @@ const TAGLINE = {
   'the-tiktok-cut': 'What TikTok takes on every sale.',
   'the-line-up': 'Every channel, side by side.',
   'the-range': 'The whole portfolio on one till roll.',
+  'the-wait': 'Margin is an opinion. Cash is a fact.',
+  'the-ledger': 'One receipt a week. No selling.',
   'the-rate-card': 'Every fee, dated and sourced.',
+}
+
+// Custom Ledger issue cards — the masthead, the title and THE NUMBER, huge.
+const LEDGER_CARDS = {
+  'the-ledger/001': { no: 'No. 001', title: 'How wrong can you be', number: '48p' },
+}
+
+// A slug can contain a slash (nested route); flatten it for the PNG filename.
+const ogFile = (slug) => (slug || 'home').replace(/\//g, '-')
+
+function ledgerCardHtml({ no, title, number }) {
+  return `<!doctype html><html><head><meta charset="utf-8"><style>
+    @font-face{font-family:'Anton';src:url(data:font/woff2;base64,${anton}) format('woff2');}
+    @font-face{font-family:'Space Mono';src:url(data:font/woff2;base64,${mono}) format('woff2');}
+    *{margin:0;padding:0;box-sizing:border-box}
+    html,body{width:1200px;height:630px}
+    body{background:#C6F215;color:#0A0A0A;font-family:'Space Mono',monospace;
+      border:16px solid #0A0A0A;display:flex;flex-direction:column;justify-content:space-between;padding:60px 72px}
+    .top{display:flex;justify-content:space-between;align-items:baseline;border-bottom:3px solid #0A0A0A;padding-bottom:16px}
+    .mast{font-family:'Anton';font-size:52px;letter-spacing:-.02em}
+    .no{font-size:30px}
+    .title{font-family:'Anton';font-size:92px;line-height:.92;letter-spacing:-.01em;margin-top:30px;max-width:16ch}
+    .num{display:flex;align-items:baseline;gap:22px}
+    .numval{font-family:'Anton';font-size:150px;line-height:.8}
+    .numlbl{font-size:26px;max-width:14ch}
+    .foot{display:flex;justify-content:space-between;align-items:center;font-size:24px}
+  </style></head><body>
+    <div class="top"><span class="mast">THE LEDGER</span><span class="no">${no}</span></div>
+    <div class="title">${title}</div>
+    <div class="num"><span class="numval">${number}</span><span class="numlbl">survives a halved rate of sale</span></div>
+    <div class="foot"><span>getgross.co.uk/the-ledger</span><span>DO THE GROSS MATHS</span></div>
+  </body></html>`
 }
 
 function cardHtml({ slug, navTitle }) {
@@ -85,10 +119,12 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 1200, height: 630 } })
 for (const entry of entries) {
   await page.goto(pathToFileURL(resolve(OUT, '..')).href) // set a base
-  await page.setContent(cardHtml(entry), { waitUntil: 'load' })
+  const ledger = LEDGER_CARDS[entry.slug]
+  await page.setContent(ledger ? ledgerCardHtml(ledger) : cardHtml(entry), { waitUntil: 'load' })
   await page.evaluate(() => document.fonts.ready)
-  await page.screenshot({ path: resolve(OUT, `${entry.slug}.png`) })
-  console.log('og:', entry.slug + '.png')
+  const file = ogFile(entry.slug)
+  await page.screenshot({ path: resolve(OUT, `${file}.png`) })
+  console.log('og:', file + '.png')
 }
 await browser.close()
 console.log('done —', entries.length, 'cards')

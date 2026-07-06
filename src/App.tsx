@@ -32,6 +32,7 @@ const PAGES: Record<string, ComponentType | LazyExoticComponent<ComponentType>> 
   'cross-channel': lazy(() => import('./calculators/CrossChannel')),
   'cash-flow': lazy(() => import('./calculators/CashFlow')),
   'ledger': lazy(() => import('./pages/Ledger')),
+  'ledger-001': lazy(() => import('./pages/LedgerIssue')),
   'methodology': lazy(() => import('./pages/Methodology')),
 }
 

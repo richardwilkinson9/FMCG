@@ -393,6 +393,25 @@ The maths was not touched — every formula still comes from calculations.ts.
 - [x] MARKETING.md: cadence settled at monthly; the first five Ledger issues
       planned; the fixed email skeleton written down.
 
+## The Ledger No. 001 (July 2026)
+- [x] **"How wrong can you be"** — the first issue, live at `/the-ledger/001`.
+      Thesis: margin is the insurance on a bad forecast. Receipt-styled, all
+      figures a declared worked example with the working shown; THE NUMBER is
+      48p (the margin that survives a halved rate of sale). The "run it with
+      your numbers" button opens The Floor pre-loaded (link built through the
+      app's own encoder; round-trip verified — requiredCogs returns £0.90, the
+      declared COGS). Issues are DATA (config/ledger.ts) rendered by one
+      LedgerIssue component; the archive lists them and links through.
+- [x] Route /the-ledger/001 (nested slug) in pages.ts + App PAGES; prerender
+      writes it with Article JSON-LD; custom OG card (masthead + 48p) via the
+      existing pipeline; og filenames flatten the slash. 4 hand-computed §7
+      tests (43 total).
+- [ ] OPEN (flagged, owner to decide): cadence wording — the issue masthead
+      carries the ratified "One receipt a week." while /the-ledger and this log
+      say monthly; issue numbering vs the MARKETING plan (see the OPEN note
+      there); the £15,000 launch-investment input (declared assumption, no
+      external source); email shell still unratified so the email is NOT built.
+
 ## Where we are (05 Jul 2026)
 The product is feature-complete for launch and deploys automatically. The
 remaining work is GO-TO-MARKET, not build:

@@ -460,6 +460,26 @@ describe('the wait — cash phasing', () => {
   })
 })
 
+describe('Ledger 001 — published figures', () => {
+  it('break-even margin at the downside is 48p', () => {
+    expect((15000 / 52) / (2 * 300)).toBeCloseTo(0.48077, 5)
+  })
+
+  it('The Floor round-trips the declared COGS', () => {
+    const { requiredCogs } = solveForCostPrice(2.50, 0, 0.448, 0.348)
+    expect(requiredCogs).toBeCloseTo(0.89976, 4)
+  })
+
+  it('45% retailer margin fails the 48p floor', () => {
+    expect(2.50 * 0.55 - 0.90).toBeLessThan(0.48077)
+  })
+
+  it('the doubling law is exactly inverse', () => {
+    const be = (m: number) => (15000 / 52) / (m * 300)
+    expect(be(0.30) / be(0.60)).toBeCloseTo(2, 10)
+  })
+})
+
 describe('Amazon fee estimator', () => {
   it('picks the smallest tier that fits and falls through to oversize', () => {
     expect(estimateAmazonFBAFee(50, 20, 10, 2).tier).toBe('Small envelope')

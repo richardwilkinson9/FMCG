@@ -61,9 +61,34 @@ try {
   LASTMOD = execSync('git log -1 --format=%cd --date=short', { cwd: ROOT }).toString().trim() || LASTMOD
 } catch { /* not a git checkout (fine) */ }
 
-/** JSON-LD: the site + org on home; each tool as a free WebApplication. */
+/** JSON-LD: the site + org on home; each tool as a free WebApplication;
+ *  a Ledger issue as an Article. */
 function jsonLd(page) {
   const url = page.slug ? `${SITE}/${page.slug}` : SITE
+  if (page.id.startsWith('ledger-')) {
+    return [
+      {
+        '@context': 'https://schema.org',
+        '@type': 'Article',
+        headline: page.navTitle,
+        description: page.description,
+        url,
+        isPartOf: { '@type': 'PublicationIssue', name: 'The Ledger' },
+        publisher: { '@type': 'Organization', name: 'GROSS.', url: SITE, logo: `${SITE}/og/home.png` },
+        datePublished: LASTMOD,
+        dateModified: LASTMOD,
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'GROSS.', item: SITE },
+          { '@type': 'ListItem', position: 2, name: 'The Ledger', item: `${SITE}/the-ledger` },
+          { '@type': 'ListItem', position: 3, name: page.navTitle, item: url },
+        ],
+      },
+    ]
+  }
   if (!page.slug) {
     return [
       {
@@ -134,7 +159,7 @@ function staticBody(page) {
 
 function rewrite(base, page) {
   const url = page.slug ? `${SITE}/${page.slug}` : SITE
-  const img = `${SITE}/og/${page.slug || 'home'}.png`
+  const img = `${SITE}/og/${(page.slug || 'home').replace(/\//g, '-')}.png`
   const t = esc(page.seoTitle)
   const d = esc(page.description)
   const ld = `<script type="application/ld+json">${JSON.stringify(jsonLd(page))}</script>`

@@ -183,6 +183,17 @@ export const PAGE_META: PageMeta[] = [
     indexed: true,
   },
   {
+    id: 'ledger-001',
+    slug: 'the-ledger/001',
+    navTitle: 'The Ledger No. 001',
+    seoTitle: `The Ledger No. 001 — how wrong can you be | ${SUFFIX}`,
+    description:
+      'Margin is the insurance on a bad forecast. A worked example: the minimum margin that survives a halved rate of sale, solved backwards with The Floor.',
+    intro:
+      'Your margin is your insurance. The minimum margin that survives a halved rate of sale, worked in full.',
+    indexed: true,
+  },
+  {
     id: 'methodology',
     slug: 'the-rate-card',
     navTitle: 'The Rate Card',

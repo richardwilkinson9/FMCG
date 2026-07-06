@@ -100,6 +100,12 @@ dead subscribers; small-and-engaged beats big-and-cold.
 
 ### The first five issues (planned)
 
+> OPEN DECISION (do not resolve silently): issue **No. 001 shipped as "How
+> wrong can you be"** (the margin-as-insurance piece, live at /the-ledger/001).
+> The five topics below were the original plan with "The 35% is not your 35%"
+> as 001. They now need renumbering — either 35% becomes 002 and the rest
+> shift, or it merges into the shipped 001. Owner to decide before issue 002.
+
 Each issue = one commercial subject with the working shown, one pre-loaded
 share link, one deadpan close. Publish to the site archive (/the-ledger) the
 same day it sends.
