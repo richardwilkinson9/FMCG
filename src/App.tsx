@@ -1,4 +1,4 @@
-import { useEffect, useRef, lazy, Suspense, type ComponentType, type LazyExoticComponent } from 'react'
+import { useEffect, useRef, lazy, Suspense, Component, type ComponentType, type LazyExoticComponent, type ReactNode } from 'react'
 import { useStore } from './store/useStore'
 import { decodeStateFromUrl, encodeStateToUrl } from './utils/urlState'
 import { pageIdFromPath, pathForPageId } from './config/pages'
@@ -40,6 +40,39 @@ function PageLoading() {
       <span className="font-mono text-[13px] tracking-[0.1em] opacity-50">TOTTING UP…</span>
     </div>
   )
+}
+
+/**
+ * Backstop for a lazy chunk that fails to load (a tab from before a redeploy
+ * asking for chunks that no longer exist). main.tsx reloads once automatically;
+ * if the page still cannot load, show a way out instead of TOTTING UP… forever.
+ * The model survives the refresh because it lives in the URL.
+ */
+class ChunkBoundary extends Component<{ children: ReactNode; pageId: string }, { failed: boolean }> {
+  state = { failed: false }
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+  componentDidUpdate(prev: { pageId: string }) {
+    // A different page may load fine — clear the error when navigating away
+    if (prev.pageId !== this.props.pageId && this.state.failed) this.setState({ failed: false })
+  }
+  render() {
+    if (!this.state.failed) return this.props.children
+    return (
+      <div className="min-h-[60vh] bg-receipt flex flex-col items-center justify-start pt-24 gap-5 px-6 text-center">
+        <span className="font-mono text-[13px] tracking-[0.1em]">
+          This page did not load. The site has been restocked since you opened this tab.
+        </span>
+        <button
+          onClick={() => window.location.reload()}
+          className="border-2 border-ink bg-ink text-bile font-mono text-[13px] tracking-[0.1em] px-6 py-3 cursor-pointer hover:bg-bile hover:text-ink"
+        >
+          REFRESH — YOUR NUMBERS ARE SAFE
+        </button>
+      </div>
+    )
+  }
 }
 
 function App() {
@@ -144,9 +177,11 @@ function App() {
       <Ticker />
       <GrossNav />
       <main>
-        <Suspense fallback={<PageLoading />}>
-          <Page />
-        </Suspense>
+        <ChunkBoundary pageId={activeCalculator}>
+          <Suspense fallback={<PageLoading />}>
+            <Page />
+          </Suspense>
+        </ChunkBoundary>
       </main>
     </div>
   )
