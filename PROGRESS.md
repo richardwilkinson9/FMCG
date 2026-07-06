@@ -363,7 +363,7 @@ The maths was not touched — every formula still comes from calculations.ts.
       VAT%, UPC, ROS, flags, cases/year) reprice every channel value and the
       SUMPRODUCT totals; the importer now maps Range columns by header name
       (old decks still read) and brings VAT/ROS/WeeksInPeriod back.
-- [x] Two new hand-computed test groups (38 tests). Verified end-to-end:
+- [x] Two new hand-computed monthly-phasing tests (36 total). Verified end-to-end:
       monthly table live, gate → email → deck, week-104 guards, Monthly P&L
       formulas, SKU-2 Range edits + 26-week period round-tripped to the site.
 
