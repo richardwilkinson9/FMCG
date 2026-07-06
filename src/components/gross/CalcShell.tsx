@@ -78,12 +78,25 @@ export function InputsHeader() {
   )
 }
 
+/** The deck costs an email — once per browser, and the export never fails on it. */
+const EXPORT_EMAIL_KEY = 'gross-export-email'
+
+function exportEmailOnFile(): boolean {
+  try {
+    return /.+@.+\..+/.test(localStorage.getItem(EXPORT_EMAIL_KEY) ?? '')
+  } catch {
+    return true // storage blocked — don't punish the user for their browser
+  }
+}
+
 /** Copy share link + Export, beneath the receipt. */
 export function CalcActions() {
   // No store subscription — state is read at click time, so this button row
   // doesn't re-render on every keystroke elsewhere on the page.
   const [copied, setCopied] = useState(false)
-  const [exportState, setExportState] = useState<'idle' | 'building' | 'failed'>('idle')
+  const [exportState, setExportState] = useState<'idle' | 'email' | 'building' | 'failed'>('idle')
+  const [email, setEmail] = useState('')
+  const emailValid = /.+@.+\..+/.test(email)
 
   const copyLink = () => {
     const { products, activeProductId, activeCalculator, scenario } = useStore.getState()
@@ -94,10 +107,10 @@ export function CalcActions() {
     setTimeout(() => setCopied(false), 1800)
   }
 
-  const doExport = async () => {
+  const runExport = async () => {
     const { products, activeCalculator, scenario, getActiveProduct } = useStore.getState()
     const product = getActiveProduct()
-    if (!product || exportState === 'building') return
+    if (!product) return
     setExportState('building')
     try {
       await downloadExcelModel(product, scenario, products)
@@ -110,6 +123,28 @@ export function CalcActions() {
     }
   }
 
+  const doExport = () => {
+    if (exportState === 'building') return
+    if (!exportEmailOnFile()) {
+      setExportState('email')
+      return
+    }
+    void runExport()
+  }
+
+  const submitEmailAndExport = () => {
+    if (!emailValid) return
+    try {
+      localStorage.setItem(EXPORT_EMAIL_KEY, email.trim())
+    } catch {
+      // storage blocked — carry on, the export matters more than the list
+    }
+    logEvent('export_email', useStore.getState().activeCalculator)
+    // Fire-and-forget onto the Ledger list — the export must never wait on it
+    import('../../store/cloud').then(({ unionSignup }) => void unionSignup(email)).catch(() => {})
+    void runExport()
+  }
+
   const exportLabel =
     exportState === 'building' ? 'Building…'
       : exportState === 'failed' ? 'Failed — refresh the page'
@@ -118,19 +153,48 @@ export function CalcActions() {
   const base = 'flex-1 border-2 border-ink p-[15px] text-sm font-semibold cursor-pointer hover:bg-bile hover:text-ink'
   return (
     <div className="no-print">
-      <div className="flex gap-3 mt-4">
-        <button onClick={copyLink} className={`${base} bg-ink text-receipt`}>
-          {copied ? 'Link copied' : 'Copy share link'}
-        </button>
-        <button
-          onClick={doExport}
-          className={`${base} bg-receipt text-ink`}
-          disabled={exportState === 'building'}
-          style={exportState === 'failed' ? { color: '#E4002B' } : undefined}
-        >
-          {exportLabel}
-        </button>
-      </div>
+      {exportState === 'email' ? (
+        <div className="border-2 border-ink bg-receipt mt-4 p-[15px]">
+          <div className="font-mono text-[12px] mb-2.5">
+            The deck is free. The price is an email — you get The Ledger, monthly. No selling.
+          </div>
+          <form
+            className="flex gap-3 flex-col min-[560px]:flex-row"
+            onSubmit={(e) => { e.preventDefault(); submitEmailAndExport() }}
+          >
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@brand.co.uk"
+              aria-label="Email address for the export"
+              autoFocus
+              className="flex-1 border-2 border-ink bg-white h-[48px] px-3.5 font-mono text-[14px] text-ink outline-none"
+            />
+            <button
+              type="submit"
+              disabled={!emailValid}
+              className="border-2 border-ink bg-ink text-bile p-[13px] px-5 text-sm font-semibold cursor-pointer hover:bg-bile hover:text-ink disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Take it — export the deck
+            </button>
+          </form>
+        </div>
+      ) : (
+        <div className="flex gap-3 mt-4">
+          <button onClick={copyLink} className={`${base} bg-ink text-receipt`}>
+            {copied ? 'Link copied' : 'Copy share link'}
+          </button>
+          <button
+            onClick={doExport}
+            className={`${base} bg-receipt text-ink`}
+            disabled={exportState === 'building'}
+            style={exportState === 'failed' ? { color: '#E4002B' } : undefined}
+          >
+            {exportLabel}
+          </button>
+        </div>
+      )}
       <SaveStrip />
     </div>
   )

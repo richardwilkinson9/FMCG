@@ -1,6 +1,6 @@
 import { useStore, generateId } from '../store/useStore'
 import { activeWholesalerMargin, suggestPromoTiming, PROMO_MECHANICS, MAX_PROMOS, type Promo } from '../store/scenario'
-import { listingModel, retailerPnL, logisticsPerUnit } from '../utils/calculations'
+import { listingModel, retailerPnL, logisticsPerUnit, monthlyPhasing } from '../utils/calculations'
 import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
 import Field, { TextField, InputSection, MonoToggle } from '../components/gross/Field'
 import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
@@ -248,6 +248,48 @@ export default function ListingModel() {
           )}
 
           <Rule className="mt-3.5 mb-2.5" />
+          {(() => {
+            // The year on the 4-4-5 calendar — how a buyer or FD reads the plan
+            const months = monthlyPhasing(result.weeks, listing.annualInvestment)
+            const shown = months.filter((m) => m.weekStart <= listing.weeksInPeriod || m.investment > 0)
+            return (
+              <>
+                <RSection label="THE YEAR BY MONTH (4-4-5)" />
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[12px] font-mono border-collapse min-w-[520px]">
+                    <thead>
+                      <tr className="border-b-2 border-ink text-[10px] tracking-[0.08em] opacity-60">
+                        <th scope="col" className="text-left py-1.5 pr-2 font-normal">M</th>
+                        <th scope="col" className="text-left py-1.5 pr-2 font-normal">WKS</th>
+                        <th scope="col" className="text-right py-1.5 px-2 font-normal">VOLUME</th>
+                        <th scope="col" className="text-right py-1.5 px-2 font-normal">NSV</th>
+                        <th scope="col" className="text-right py-1.5 px-2 font-normal">GM</th>
+                        <th scope="col" className="text-right py-1.5 px-2 font-normal">INVEST</th>
+                        <th scope="col" className="text-right py-1.5 pl-2 font-normal">NET</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {shown.map((m) => (
+                        <tr key={m.month} className="border-b border-dotted border-ink">
+                          <td className="py-1 pr-2 font-bold">M{m.month}</td>
+                          <td className="py-1 pr-2 opacity-60">{m.weekStart}–{m.weekEnd}</td>
+                          <td className="text-right py-1 px-2">{n0(m.volume)}</td>
+                          <td className="text-right py-1 px-2">{gbp(m.nsv)}</td>
+                          <td className="text-right py-1 px-2" style={{ color: m.grossMargin < 0 ? REDPEN : INK }}>{gbp(m.grossMargin)}</td>
+                          <td className="text-right py-1 px-2" style={{ color: m.investment > 0 ? REDPEN : INK }}>{m.investment > 0 ? `−${gbp(m.investment).replace('−', '')}` : '—'}</td>
+                          <td className="text-right py-1 pl-2 font-bold" style={{ color: m.netOfInvestment < 0 ? REDPEN : INK }}>{gbp(m.netOfInvestment)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="font-mono text-[10px] mt-1.5 opacity-55">
+                  4-4-5 retail calendar. Investment instalments land in M1, M4, M7, M10. NET = gross margin less investment.
+                </div>
+                <Rule className="mt-3.5 mb-2.5" />
+              </>
+            )
+          })()}
           <RSection label="THE PRIZE" health={{ color: healthColor, label: healthLabel }} />
           <AnswerBlock
             rows={[

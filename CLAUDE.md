@@ -51,7 +51,9 @@ rounding rule, or any wording that explains the maths. All calculation logic liv
 - `CalcShell` — the shared calculator template: bile header band (SKU eyebrow, Anton title,
   best-before stamp), inputs-left / receipt-right split (stacks < 901px), rat empty state
   ("No product yet." — one line only), footer. `CalcActions` = Copy share link + Export
-  (Export = the Excel model via `excelExport.ts`).
+  (Export = the Excel model via `excelExport.ts`; Export asks for an email
+  once per browser — localStorage `gross-export-email`, fire-and-forget onto
+  `union_signups`, ALWAYS fail-soft: the export never blocks on the list).
 - `Receipt` + `RLine`/`RSection`/`Rule`/`AnswerBlock` — the till receipt with dashed
   tear-lines, health traffic-lights, inverted Ink answer block, deadpan verdict, and the
   fixed footer "VAT number: not applicable. This is a website."
@@ -61,7 +63,11 @@ rounding rule, or any wording that explains the maths. All calculation logic liv
 ## The weekly spine
 `weeklyProjection()` in calculations.ts is the single demand engine: The Listing sums it,
 The Stock Answer (stockLedger) consumes its promo shape, and the Excel export rebuilds it
-as formulas. If you change phasing logic, change it there only.
+as formulas. If you change phasing logic, change it there only. `monthlyPhasing()` rolls
+the weekly rows onto the 4-4-5 retail calendar (12 months = 52 weeks; investment
+instalments land in M1/M4/M7/M10) — shown as THE YEAR BY MONTH on The Listing and the
+deck's Monthly P&L sheet. `scenario.waterfall.promoFromCalendar` defaults TRUE — the
+Waterfall derives promo funding from the Listing calendar; the manual field is the override.
 
 ## The promo calendar (multi-promo model)
 `scenario.listing.promos` is an array of up to six `Promo` windows (start week, length,
@@ -90,7 +96,12 @@ main bundle). Branded as "the GROSS deck": Ink/Bile cover, receipt-styled sheets
 blocks as inverted Ink rows, conditional formatting for promo weeks and stockouts. Every
 input is a NAMED cell on the Assumptions sheet; every derived cell is a formula with a
 cached result. The Stock Plan order column is plain editable values. Verdict sentences are
-printed at export (numbers recalculate; sentences do not).
+printed at export (numbers recalculate; sentences do not). The Weekly Projection pre-builds
+104 rows guarded by the named `WeeksInPeriod` cell (edit the period in Excel, the year
+reprices — no row surgery); a Monthly P&L sheet (4-4-5) is formula-live over those rows.
+The Range sheet is fully formula-live: white cells per SKU (cost, RSP, VAT%, UPC, ROS,
+flags, cases/year) reprice every per-SKU channel value — grocery GM scales the Weekly
+Projection by each SKU's ROS; marketplace fees apply the per-unit Assumptions values.
 exceljs pins `uuid` via package.json `overrides` to clear an npm audit advisory.
 
 ## Excel round-trip (upload the deck back)

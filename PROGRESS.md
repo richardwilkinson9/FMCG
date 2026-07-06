@@ -346,6 +346,27 @@ The maths was not touched — every formula still comes from calculations.ts.
       new hand-computed test groups (34 total). Verified end-to-end including
       the Excel round-trip (10000 exported, edited to 20000, uploaded, live).
 
+## The monthly view + the gated deck (July 2026)
+- [x] **THE YEAR BY MONTH (4-4-5)** — `monthlyPhasing()` rolls the weekly spine
+      onto the retail calendar; The Listing shows the 12-month table (volume,
+      NSV, GM, investment instalments in M1/4/7/10, net) and the deck gains a
+      formula-live Monthly P&L sheet that sums the Weekly Projection rows.
+- [x] **The deck costs an email** — Export asks once per browser (localStorage),
+      posts to the Ledger list fire-and-forget and NEVER blocks the download on
+      it. Share links stay ungated.
+- [x] **Waterfall reconciles by default** — promoFromCalendar defaults true;
+      the manual funding % is now the override.
+- [x] **104-week deck** — Weekly Projection pre-builds 104 guarded rows and
+      names `WeeksInPeriod`; change the period in Excel and the whole year
+      (weeks, annual plan, monthly sheet, investment count) reprices.
+- [x] **The Range sheet is formula-live** — per-SKU white cells (cost, RSP,
+      VAT%, UPC, ROS, flags, cases/year) reprice every channel value and the
+      SUMPRODUCT totals; the importer now maps Range columns by header name
+      (old decks still read) and brings VAT/ROS/WeeksInPeriod back.
+- [x] Two new hand-computed test groups (38 tests). Verified end-to-end:
+      monthly table live, gate → email → deck, week-104 guards, Monthly P&L
+      formulas, SKU-2 Range edits + 26-week period round-tripped to the site.
+
 ## Where we are (05 Jul 2026)
 The product is feature-complete for launch and deploys automatically. The
 remaining work is GO-TO-MARKET, not build:

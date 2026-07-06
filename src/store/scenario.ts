@@ -227,7 +227,9 @@ export function defaultScenario(): Scenario {
       promoFunding: 0.15,
       backMargin: 0.05,
       otherTrade: 0.03,
-      promoFromCalendar: false,
+      // Reconciled with the Listing promo calendar by default — the manual
+      // field is the override, not the other way round
+      promoFromCalendar: true,
     },
     amazon: {
       estimatorOn: true,

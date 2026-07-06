@@ -107,26 +107,38 @@ export async function importExcelModel(file: File): Promise<ImportResult> {
       if (rng.getCell(r, 2).value === 'SKU') headerRow = r
     }
     if (headerRow) {
+      // Map columns by header text so old decks (no VAT%/ROS columns) and new
+      // ones both read correctly
+      const cols: Record<string, number> = {}
+      for (let c = 2; c <= 20; c++) {
+        const h = rng.getCell(headerRow, c).value
+        if (typeof h === 'string' && h.trim()) cols[h.trim()] = c
+      }
       for (let i = 0; i < products.length; i++) {
         const r = headerRow + 1 + i
         const label = rng.getCell(r, 2).value
         if (label === 'TOTAL (listed)' || label == null) break
         const p = products[i]
         if (typeof label === 'string' && label.trim()) p.name = label.trim()
-        const num = (col: number) => {
-          const v = rng.getCell(r, col).value
+        const num = (header: string) => {
+          const col = cols[header]
+          if (!col) return null
+          const cell = rng.getCell(r, col)
+          const v = typeof cell.value === 'object' && cell.value && 'result' in cell.value ? cell.value.result : cell.value
           return typeof v === 'number' && Number.isFinite(v) ? v : null
         }
-        p.cogsPerUnit = num(3) ?? p.cogsPerUnit
-        p.rrpIncVat = num(4) ?? p.rrpIncVat
-        p.unitsPerCase = num(5) != null ? Math.max(1, Math.round(num(5)!)) : p.unitsPerCase
+        p.cogsPerUnit = num('COST') ?? p.cogsPerUnit
+        p.rrpIncVat = num('RSP') ?? p.rrpIncVat
+        p.vatRate = num('VAT%') ?? p.vatRate
+        p.unitsPerCase = num('UPC') != null ? Math.max(1, Math.round(num('UPC')!)) : p.unitsPerCase
+        p.weeklyRateOfSale = num('ROS') ?? p.weeklyRateOfSale
         p.channels = {
           ...p.channels,
-          grocery: (num(6) ?? 1) >= 1,
-          amazon: (num(7) ?? 1) >= 1,
-          amazonCasesPerYear: num(8) != null ? Math.max(0, Math.round(num(8)!)) : p.channels?.amazonCasesPerYear,
-          tiktok: (num(9) ?? 1) >= 1,
-          tiktokCasesPerYear: num(10) != null ? Math.max(0, Math.round(num(10)!)) : p.channels?.tiktokCasesPerYear,
+          grocery: (num('GROC') ?? 1) >= 1,
+          amazon: (num('AMZ') ?? 1) >= 1,
+          amazonCasesPerYear: num('AMZ CS/YR') != null ? Math.max(0, Math.round(num('AMZ CS/YR')!)) : p.channels?.amazonCasesPerYear,
+          tiktok: (num('TTK') ?? 1) >= 1,
+          tiktokCasesPerYear: num('TTK CS/YR') != null ? Math.max(0, Math.round(num('TTK CS/YR')!)) : p.channels?.tiktokCasesPerYear,
         }
       }
     }
@@ -163,6 +175,7 @@ export async function importExcelModel(file: File): Promise<ImportResult> {
   take('OtherTrade', (v) => { s.waterfall.otherTrade = v })
   take('Stores', (v) => { s.listing.stores = Math.max(1, Math.round(v)) })
   take('SKUs', (v) => { s.listing.skus = Math.max(1, Math.round(v)) })
+  take('WeeksInPeriod', (v) => { s.listing.weeksInPeriod = Math.max(1, Math.min(104, Math.round(v))) })
   take('Investment', (v) => { s.listing.annualInvestment = Math.max(0, v) })
   take('StartStock', (v) => { s.stock.startingStockUnits = Math.max(0, Math.round(v)) })
   take('LeadWeeks', (v) => { s.stock.leadWeeks = Math.max(0, Math.round(v)) })

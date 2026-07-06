@@ -16,6 +16,7 @@ import {
   tiktokAnnualPnL,
   weeklyProjection,
   listingModel,
+  monthlyPhasing,
   stockLedger,
   promoUpliftForWeek,
   channelListed,
@@ -330,7 +331,7 @@ export async function downloadExcelModel(
   heading('THE LISTING')
   assumption('Stores', scenario.listing.stores, 'Stores', INT)
   assumption('SKUs listed', scenario.listing.skus, 'SKUs', INT)
-  assumption('Weeks in period', scenario.listing.weeksInPeriod, null, INT, 'Add rows on Weekly Projection if you extend this')
+  assumption('Weeks in period', scenario.listing.weeksInPeriod, 'WeeksInPeriod', INT, '104 weekly rows are pre-built — set anything up to 104 and the year reprices')
   assumption('Customer investment / year', scenario.listing.annualInvestment, 'Investment', GBP, 'Fixed cash behind the listing — paid in four even quarterly instalments')
   ar++
 
@@ -503,25 +504,29 @@ export async function downloadExcelModel(
     c.font = { name: MONO, size: 9, bold: true, color: { argb: BILE } }
   })
   const inPromo = (rr: number) => `($B${rr}>=PromoStarts)*($B${rr}<PromoStarts+PromoLens)`
-  weeks.forEach((wk, i) => {
-    const rr = i + 3
-    const a = wp.getCell(rr, 2); a.value = wk.week; mono(a)
-    setF(wp.getCell(rr, 3), `IF(SUMPRODUCT(${inPromo(rr)})>0,1,0)`, wk.onPromo ? 1 : 0, '0')
-    setF(wp.getCell(rr, 4), `Stores*SKUs*ROS*(1+SUMPRODUCT(${inPromo(rr)}*PromoUplifts))`, wk.volume, INT)
-    setF(wp.getCell(rr, 5), `$D${rr}*NetRevPerUnit`, wk.gsv, GBP)
-    setF(wp.getCell(rr, 6), `$E${rr}*SUMPRODUCT(${inPromo(rr)}*PromoDiscs*PromoFunded)`, wk.funding, GBP)
-    setF(wp.getCell(rr, 7), `$E${rr}-$F${rr}`, wk.nsv, GBP)
-    setF(wp.getCell(rr, 8), `$G${rr}-$D${rr}*(COGS+Logistics/UnitsPerCase)`, wk.grossMargin, GBP)
-    setF(wp.getCell(rr, 9), `SUM($G$3:G${rr})`, wk.cumulativeNsv, GBP)
-    setF(wp.getCell(rr, 10), `SUM($H$3:H${rr})`, wk.cumulativeMargin, GBP)
+  // 104 rows are always built, guarded by WeeksInPeriod — extend or shorten the
+  // period on Assumptions and the whole year reprices without touching rows
+  const WP_ROWS = 104
+  for (let wkNum = 1; wkNum <= WP_ROWS; wkNum++) {
+    const wk = weeks[wkNum - 1]
+    const rr = wkNum + 2
+    const a = wp.getCell(rr, 2); a.value = wkNum; mono(a)
+    setF(wp.getCell(rr, 3), `IF($B${rr}>WeeksInPeriod,0,IF(SUMPRODUCT(${inPromo(rr)})>0,1,0))`, wk?.onPromo ? 1 : 0, '0')
+    setF(wp.getCell(rr, 4), `IF($B${rr}>WeeksInPeriod,0,Stores*SKUs*ROS*(1+SUMPRODUCT(${inPromo(rr)}*PromoUplifts)))`, wk?.volume ?? 0, INT)
+    setF(wp.getCell(rr, 5), `$D${rr}*NetRevPerUnit`, wk?.gsv ?? 0, GBP)
+    setF(wp.getCell(rr, 6), `$E${rr}*SUMPRODUCT(${inPromo(rr)}*PromoDiscs*PromoFunded)`, wk?.funding ?? 0, GBP)
+    setF(wp.getCell(rr, 7), `$E${rr}-$F${rr}`, wk?.nsv ?? 0, GBP)
+    setF(wp.getCell(rr, 8), `$G${rr}-$D${rr}*(COGS+Logistics/UnitsPerCase)`, wk?.grossMargin ?? 0, GBP)
+    setF(wp.getCell(rr, 9), `SUM($G$3:G${rr})`, wk?.cumulativeNsv ?? weeks[weeks.length - 1]?.cumulativeNsv ?? 0, GBP)
+    setF(wp.getCell(rr, 10), `SUM($H$3:H${rr})`, wk?.cumulativeMargin ?? weeks[weeks.length - 1]?.cumulativeMargin ?? 0, GBP)
     for (let c = 3; c <= 10; c++) mono(wp.getCell(rr, c))
-  })
+  }
   // Promo weeks turn bile — live with the promo calendar
   wp.addConditionalFormatting({
-    ref: `B3:J${weeks.length + 2}`,
+    ref: `B3:J${WP_ROWS + 2}`,
     rules: [{ type: 'expression', formulae: ['$C3=1'], priority: 1, style: { fill: fill(BILE) } }],
   })
-  const wpTot = weeks.length + 3
+  const wpTot = WP_ROWS + 3
   const totLabel = wp.getCell(wpTot, 2)
   totLabel.value = 'TOTAL'
   mono(totLabel, { bold: true })
@@ -559,8 +564,63 @@ export async function downloadExcelModel(
   apLine('NSV as % of GSV', `IF($E$${wpTot}=0,0,$G$${wpTot}/$E$${wpTot})`, listing.nsvPctOfGsv, PCT)
   apLine('Gross margin (NSV less landed cost)', `$H$${wpTot}`, listing.totalGrossMargin, GBP, true)
   apLine('GM as % of NSV', `IF($G$${wpTot}=0,0,$H$${wpTot}/$G$${wpTot})`, listing.gmPctOfNsv, PCT)
-  apLine(`less customer investment (${invInstalments} quarterly instalments)`, `-Investment/4*${invInstalments}`, -listing.totalInvestment, GBP)
-  apLine('Margin after investment', `$H$${wpTot}-Investment/4*${invInstalments}`, listing.marginAfterInvestment, GBP, true)
+  const invCountF = '(FLOOR((WeeksInPeriod-1)/13)+1)'
+  apLine(`less customer investment (${invInstalments} quarterly instalments)`, `-Investment/4*${invCountF}`, -listing.totalInvestment, GBP)
+  apLine('Margin after investment', `$H$${wpTot}-Investment/4*${invCountF}`, listing.marginAfterInvestment, GBP, true)
+
+  // ── MONTHLY P&L (4-4-5) ────────────────────────────────────────────────────
+  // The year the way finance reads it: 12 months on the 4-4-5 retail calendar,
+  // formula-live over the Weekly Projection rows; the quarterly investment
+  // instalments land in M1, M4, M7 and M10.
+  const months = monthlyPhasing(weeks, scenario.listing.annualInvestment)
+  const mo = wb.addWorksheet('Monthly P&L', { properties: { tabColor: { argb: INK } } })
+  mo.views = [{ showGridLines: false, state: 'frozen', ySplit: 2 }]
+  for (let i = 1; i <= 10; i++) mo.getColumn(i).fill = fill(RECEIPT)
+  mo.getColumn(1).width = 2
+  ;[8, 9, 12, 14, 14, 14, 15, 14, 15].forEach((wdt, i) => { mo.getColumn(i + 2).width = wdt })
+  const moHeaders = ['MONTH', 'WKS', 'VOLUME', 'GSV', 'FUNDING', 'NSV', 'GROSS MARGIN', 'INVESTMENT', 'NET']
+  moHeaders.forEach((h, i) => {
+    const c = mo.getCell(2, i + 2)
+    c.value = h
+    c.fill = fill(INK)
+    c.font = { name: MONO, size: 9, bold: true, color: { argb: BILE } }
+  })
+  const wpRef = (col: string, a: number, b: number) => `SUM('Weekly Projection'!$${col}$${a + 2}:$${col}$${b + 2})`
+  months.forEach((m, i) => {
+    const rr = i + 3
+    const a = mo.getCell(rr, 2); a.value = `M${m.month}`; mono(a, { bold: true })
+    const w = mo.getCell(rr, 3); w.value = `${m.weekStart}–${m.weekEnd}`; mono(w)
+    setF(mo.getCell(rr, 4), wpRef('D', m.weekStart, m.weekEnd), m.volume, INT)
+    setF(mo.getCell(rr, 5), wpRef('E', m.weekStart, m.weekEnd), m.gsv, GBP)
+    setF(mo.getCell(rr, 6), wpRef('F', m.weekStart, m.weekEnd), m.funding, GBP)
+    setF(mo.getCell(rr, 7), wpRef('G', m.weekStart, m.weekEnd), m.nsv, GBP)
+    setF(mo.getCell(rr, 8), wpRef('H', m.weekStart, m.weekEnd), m.grossMargin, GBP)
+    const instalment = m.investment > 0 || [1, 4, 7, 10].includes(m.month)
+    setF(mo.getCell(rr, 9), instalment ? 'Investment/4' : '0', m.investment, GBP)
+    setF(mo.getCell(rr, 10), `$H${rr}-$I${rr}`, m.netOfInvestment, GBP)
+    for (let c = 4; c <= 10; c++) mono(mo.getCell(rr, c))
+  })
+  const moTot = months.length + 3
+  const moLabel = mo.getCell(moTot, 2)
+  moLabel.value = 'TOTAL'
+  mono(moLabel, { bold: true })
+  const moSum = (col: string, result: number, fmt: string) => setF(mo.getCell(moTot, col.charCodeAt(0) - 64), `SUM(${col}3:${col}${moTot - 1})`, result, fmt)
+  moSum('D', months.reduce((a, m) => a + m.volume, 0), INT)
+  moSum('E', months.reduce((a, m) => a + m.gsv, 0), GBP)
+  moSum('F', months.reduce((a, m) => a + m.funding, 0), GBP)
+  moSum('G', months.reduce((a, m) => a + m.nsv, 0), GBP)
+  moSum('H', months.reduce((a, m) => a + m.grossMargin, 0), GBP)
+  moSum('I', months.reduce((a, m) => a + m.investment, 0), GBP)
+  moSum('J', months.reduce((a, m) => a + m.netOfInvestment, 0), GBP)
+  for (let c = 2; c <= 10; c++) {
+    const cc = mo.getCell(moTot, c)
+    cc.border = { top: { style: 'medium', color: { argb: INK } } }
+    mono(cc, { bold: true })
+  }
+  const moNote = mo.getCell(moTot + 2, 2)
+  moNote.value = '4-4-5 retail calendar, formula-live over the Weekly Projection. Months past your Weeks in period sum to zero; the investment instalments stay on their calendar.'
+  mono(moNote, { size: 8, color: 'FF666666' })
+  mo.mergeCells(moTot + 2, 2, moTot + 2, 10)
 
   // ── STOCK PLAN ─────────────────────────────────────────────────────────────
   const sp = wb.addWorksheet('Stock Plan', { properties: { tabColor: { argb: INK } } })
@@ -730,11 +790,11 @@ export async function downloadExcelModel(
   // ── THE RANGE (all products, per channel) ──────────────────────────────────
   const rng = wb.addWorksheet('The Range', { properties: { tabColor: { argb: BILE } } })
   rng.views = [{ showGridLines: false }]
-  for (let i = 1; i <= 16; i++) rng.getColumn(i).fill = fill(RECEIPT)
+  for (let i = 1; i <= 18; i++) rng.getColumn(i).fill = fill(RECEIPT)
   rng.getColumn(1).width = 2
-  ;[24, 9, 9, 9, 8, 8, 11, 8, 11, 14, 14, 14, 14, 14].forEach((wdt, i) => { rng.getColumn(i + 2).width = wdt })
-  let rr = toolHeader(rng, 'THE RANGE', 'every product, in or out per channel · 1 = listed, 0 = out')
-  const headers = ['SKU', 'COST', 'RSP', 'UPC', 'GROC', 'AMZ', 'AMZ CS/YR', 'TTK', 'TTK CS/YR', 'GROCERY GM', 'AMAZON GSV', 'AMAZON GM', 'TIKTOK GSV', 'TIKTOK GM']
+  ;[24, 9, 9, 8, 8, 8, 8, 8, 11, 8, 11, 14, 14, 14, 14, 14].forEach((wdt, i) => { rng.getColumn(i + 2).width = wdt })
+  let rr = toolHeader(rng, 'THE RANGE', 'every product, in or out per channel · 1 = listed, 0 = out · white cells reprice the sheet')
+  const headers = ['SKU', 'COST', 'RSP', 'VAT%', 'UPC', 'ROS', 'GROC', 'AMZ', 'AMZ CS/YR', 'TTK', 'TTK CS/YR', 'GROCERY GM', 'AMAZON GSV', 'AMAZON GM', 'TIKTOK GSV', 'TIKTOK GM']
   headers.forEach((h, i) => {
     const c = rng.getCell(rr, i + 2)
     c.value = h
@@ -748,30 +808,51 @@ export async function downloadExcelModel(
     top: { style: 'thin' as const, color: { argb: INK } }, bottom: { style: 'thin' as const, color: { argb: INK } },
     left: { style: 'thin' as const, color: { argb: INK } }, right: { style: 'thin' as const, color: { argb: INK } },
   }
+  // Every per-SKU value is a FORMULA over this row's white cells + the named
+  // fee cells, so editing a cost, RSP, ROS or flag reprices the whole range.
+  // The grocery column scales the Weekly Projection (which runs on the primary
+  // SKU's ROS) by this row's ROS; marketplace fees are the per-unit values on
+  // Assumptions, applied to every SKU.
+  const wpVolTot = `'Weekly Projection'!$D$${wpTot}`
+  const wpFundTot = `'Weekly Projection'!$F$${wpTot}`
   for (const row of rangeRows) {
-    const cells: [number, number | string, string | null, boolean][] = [
-      [2, row.p.name, null, false],
-      [3, row.p.cogsPerUnit, GBP, false],
-      [4, row.p.rrpIncVat, GBP, false],
-      [5, row.p.unitsPerCase, INT, false],
-      [6, row.grocIn, '0', true],
-      [7, row.amzIn, '0', true],
-      [8, row.amzCases, INT, true],
-      [9, row.ttkIn, '0', true],
-      [10, row.ttkCases, INT, true],
-      [11, row.grocGm, GBP, false],
-      [12, row.amzGsv, GBP, false],
-      [13, row.amzGm, GBP, false],
-      [14, row.ttkGsv, GBP, false],
-      [15, row.ttkGm, GBP, false],
+    const netRev = (r: number) => `($D${r}/(1+$E${r}))*(1-RetailerMargin)*(1-WholesalerMargin)`
+    const landed = (r: number) => `($C${r}+Logistics/MAX($F${r},1))`
+    const inputs: [number, number | string, string, boolean][] = [
+      [3, row.p.cogsPerUnit, GBP, true],
+      [4, row.p.rrpIncVat, GBP, true],
+      [5, row.p.vatRate, PCT, true],
+      [6, row.p.unitsPerCase, INT, true],
+      [7, row.p.weeklyRateOfSale, '0.0', true],
+      [8, row.grocIn, '0', true],
+      [9, row.amzIn, '0', true],
+      [10, row.amzCases, INT, true],
+      [11, row.ttkIn, '0', true],
+      [12, row.ttkCases, INT, true],
     ]
-    for (const [col, value, fmt, editable] of cells) {
+    const name = rng.getCell(rr, 2)
+    name.value = row.p.name
+    mono(name, { bold: true })
+    for (const [col, value, fmt, editable] of inputs) {
       const c = rng.getCell(rr, col)
       c.value = value
-      if (fmt) c.numFmt = fmt
-      mono(c, { bold: col === 2 })
-      c.alignment = { horizontal: col === 2 ? 'left' : 'right' }
+      c.numFmt = fmt
+      mono(c)
+      c.alignment = { horizontal: 'right' }
       if (editable) { c.fill = fill(WHITE); c.border = inputBorder; c.protection = { locked: false } }
+    }
+    const derived: [number, string, number][] = [
+      [13, `IF(ROS=0,0,${wpVolTot}*($G${rr}/ROS)*(${netRev(rr)}-${landed(rr)})-IF(NetRevPerUnit=0,0,${wpFundTot}*$G${rr}*${netRev(rr)}/(ROS*NetRevPerUnit)))`, row.grocGm],
+      [14, `$J${rr}*$F${rr}*($D${rr}/(1+$E${rr}))`, row.amzGsv],
+      [15, `$N${rr}*(1-AmzReferral)-$J${rr}*$F${rr}*(AmzFulfil*(1+AmzFuel)+AmzStorage+$C${rr})-$J${rr}*Logistics`, row.amzGm],
+      [16, `$L${rr}*$F${rr}*($D${rr}/(1+$E${rr}))`, row.ttkGsv],
+      [17, `$P${rr}*(1-TtkCommission-TtkAffiliate-TtkRefund)-$L${rr}*$F${rr}*(TtkOrderFee+$C${rr})-$L${rr}*Logistics`, row.ttkGm],
+    ]
+    for (const [col, formula, cached] of derived) {
+      const c = rng.getCell(rr, col)
+      setF(c, formula, cached, GBP)
+      mono(c)
+      c.alignment = { horizontal: 'right' }
     }
     rr++
   }
@@ -788,8 +869,8 @@ export async function downloadExcelModel(
   const ttkGsvTot = rangeRows.reduce((a, x) => a + x.ttkIn * x.ttkGsv, 0)
   const ttkGmTot = rangeRows.reduce((a, x) => a + x.ttkIn * x.ttkGm, 0)
   const totals: [number, ReturnType<typeof sp2>][] = [
-    [11, sp2('F', 'K', grocGmTot)], [12, sp2('G', 'L', amzGsvTot)], [13, sp2('G', 'M', amzGmTot)],
-    [14, sp2('I', 'N', ttkGsvTot)], [15, sp2('I', 'O', ttkGmTot)],
+    [13, sp2('H', 'M', grocGmTot)], [14, sp2('I', 'N', amzGsvTot)], [15, sp2('I', 'O', amzGmTot)],
+    [16, sp2('K', 'P', ttkGsvTot)], [17, sp2('K', 'Q', ttkGmTot)],
   ]
   for (const [col, f] of totals) {
     const c = rng.getCell(rr, col)
@@ -797,7 +878,7 @@ export async function downloadExcelModel(
     mono(c, { bold: true })
     c.alignment = { horizontal: 'right' }
   }
-  for (let i = 2; i <= 15; i++) rng.getCell(rr, i).border = { top: { style: 'medium', color: { argb: INK } } }
+  for (let i = 2; i <= 17; i++) rng.getCell(rr, i).border = { top: { style: 'medium', color: { argb: INK } } }
   rr += 2
 
   // Channel P&L summary
@@ -810,21 +891,21 @@ export async function downloadExcelModel(
   }
   const sec = (t: string) => { const c = rng.getCell(rr, 2); c.value = t; mono(c, { size: 8, color: 'FF666666' }); rr++ }
   sec('THE GROCERY CHANNEL, PERIOD')
-  csum('Gross margin, listed SKUs', `$K$${drL + 1}`, grocGmTot, true)
+  csum('Gross margin, listed SKUs', `$M$${drL + 1}`, grocGmTot, true)
   rr++
   sec('THE AMAZON CHANNEL, FULL YEAR')
-  csum('GSV', `$L$${drL + 1}`, amzGsvTot, true)
-  csum('Gross margin (before plan)', `$M$${drL + 1}`, amzGmTot)
+  csum('GSV', `$N$${drL + 1}`, amzGsvTot, true)
+  csum('Gross margin (before plan)', `$O$${drL + 1}`, amzGmTot)
   csum('less selling plan (12 months)', `-AmzPlan*12`, -amzChannelPlan)
-  csum('Gross margin, channel', `$M$${drL + 1}-AmzPlan*12`, amzGmTot - amzChannelPlan, true)
+  csum('Gross margin, channel', `$O$${drL + 1}-AmzPlan*12`, amzGmTot - amzChannelPlan, true)
   rr++
   sec('THE TIKTOK CHANNEL, FULL YEAR')
-  csum('GSV', `$N$${drL + 1}`, ttkGsvTot, true)
-  csum('Gross margin, channel', `$O$${drL + 1}`, ttkGmTot, true)
+  csum('GSV', `$P$${drL + 1}`, ttkGsvTot, true)
+  csum('Gross margin, channel', `$Q$${drL + 1}`, ttkGmTot, true)
   const rngNote = rng.getCell(rr + 1, 2)
-  rngNote.value = 'Toggle a SKU in/out with the GROC/AMZ/TTK 1-0 cells; the totals follow. Per-SKU channel values are a snapshot — the primary SKU’s sheets stay fully live.'
+  rngNote.value = 'Every white cell reprices the sheet — cost, RSP, VAT, case size, ROS, flags and cases/year. Grocery GM scales the Weekly Projection by each SKU’s ROS; marketplace fees are the per-unit values on Assumptions.'
   mono(rngNote, { size: 8, color: 'FF666666' })
-  rng.mergeCells(rr + 1, 2, rr + 1, 9)
+  rng.mergeCells(rr + 1, 2, rr + 1, 12)
 
   // ── ROUND-TRIP META + LOCKING ─────────────────────────────────────────────
   // A very-hidden sheet carries the complete model, so an edited deck can be
@@ -839,7 +920,7 @@ export async function downloadExcelModel(
 
   // Lock everything except the white input cells — the formulas stay honest.
   // The password is printed on the cover (guardrail, not a padlock): gross
-  for (const sheet of [aws, pnl, wf, wp, sp, cuts, lu, rng]) {
+  for (const sheet of [aws, pnl, wf, wp, mo, sp, cuts, lu, rng]) {
     await sheet.protect('gross', {
       selectLockedCells: true,
       selectUnlockedCells: true,

@@ -25,6 +25,7 @@ import {
   logisticsPerUnit,
   investmentForWeek,
   investmentInPeriod,
+  monthlyPhasing,
   estimateAmazonFBAFee,
   type PromoWindow,
   type AmazonFBAFees,
@@ -384,6 +385,41 @@ describe('customer investment — fixed cash, quarterly instalments', () => {
     expect(withInv.totalGrossMargin).toBeCloseTo(plain.totalGrossMargin, 6) // GM untouched
     expect(withInv.totalInvestment).toBeCloseTo(10000, 6)
     expect(withInv.marginAfterInvestment).toBeCloseTo(plain.totalGrossMargin - 10000, 6)
+  })
+})
+
+describe('monthly phasing — the 4-4-5 calendar', () => {
+  const inputs = { stores: 500, skus: 1, weeksInPeriod: 52, promos: [] }
+
+  it('rolls 52 weeks into 12 months of 4-4-5 and reconciles to the year', () => {
+    // Base weekly volume 500 × 10 = 5,000; GM/unit (no logistics) = 0.4925
+    const weeks = weeklyProjection(volt, 0.35, inputs, 0, 0)
+    const months = monthlyPhasing(weeks, 10000)
+    expect(months).toHaveLength(12)
+    // M1 = weeks 1–4: 20,000 units; M3 = weeks 9–13 (5 weeks): 25,000 units
+    expect(months[0].weekStart).toBe(1); expect(months[0].weekEnd).toBe(4)
+    expect(months[2].weekStart).toBe(9); expect(months[2].weekEnd).toBe(13)
+    expect(months[11].weekEnd).toBe(52)
+    expect(months[0].volume).toBeCloseTo(20000, 6)
+    expect(months[2].volume).toBeCloseTo(25000, 6)
+    expect(months[0].grossMargin).toBeCloseTo(20000 * 0.4925, 6) // 9,850
+    // Quarterly instalments land in M1, M4, M7, M10 (weeks 1, 14, 27, 40)
+    const invByMonth = months.map((m) => m.investment)
+    expect(invByMonth).toEqual([2500, 0, 0, 2500, 0, 0, 2500, 0, 0, 2500, 0, 0])
+    expect(months[0].netOfInvestment).toBeCloseTo(9850 - 2500, 6)
+    // The 12 months must sum exactly to the annual plan
+    const lm = listingModel(volt, 0.35, inputs, 0, 0, 10000)
+    expect(months.reduce((a, m) => a + m.gsv, 0)).toBeCloseTo(lm.totalGsv, 6)
+    expect(months.reduce((a, m) => a + m.grossMargin, 0)).toBeCloseTo(lm.totalGrossMargin, 6)
+    expect(months.reduce((a, m) => a + m.investment, 0)).toBeCloseTo(lm.totalInvestment, 6)
+  })
+
+  it('a short projection leaves the tail months empty but keeps the instalment calendar', () => {
+    const weeks = weeklyProjection(volt, 0.35, { ...inputs, weeksInPeriod: 26 }, 0, 0)
+    const months = monthlyPhasing(weeks, 10000)
+    expect(months[5].volume).toBeCloseTo(5000 * 5, 6) // M6 = weeks 22–26, still inside
+    expect(months[6].volume).toBe(0) // M7 starts at week 27 — past the period
+    expect(months[6].investment).toBeCloseTo(2500, 6) // the Q3 instalment still falls there
   })
 })
 

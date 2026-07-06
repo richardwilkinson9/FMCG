@@ -249,6 +249,65 @@ export function weeklyProjection(
   return rows
 }
 
+/**
+ * The year by month — the weekly spine rolled up on the FMCG 4-4-5 calendar
+ * (quarters of 4+4+5 weeks; 12 months = 52 weeks). Fixed cash (customer
+ * investment) lands in the month its quarterly instalment falls: M1, M4,
+ * M7, M10. Months past the projection simply sum fewer (or zero) weeks.
+ */
+export interface MonthlyPhasingRow {
+  month: number
+  /** First and last week of the month on the 4-4-5 calendar */
+  weekStart: number
+  weekEnd: number
+  volume: number
+  gsv: number
+  funding: number
+  nsv: number
+  grossMargin: number
+  investment: number
+  /** Gross margin less the investment instalments landing this month */
+  netOfInvestment: number
+}
+
+const MONTH_WEEKS_445 = [4, 4, 5, 4, 4, 5, 4, 4, 5, 4, 4, 5]
+
+export function monthlyPhasing(
+  weeks: WeeklyProjectionRow[],
+  annualInvestment = 0,
+): MonthlyPhasingRow[] {
+  const rows: MonthlyPhasingRow[] = []
+  let weekStart = 1
+  MONTH_WEEKS_445.forEach((len, i) => {
+    const weekEnd = weekStart + len - 1
+    let volume = 0, gsv = 0, funding = 0, nsv = 0, grossMargin = 0, investment = 0
+    for (let w = weekStart; w <= weekEnd; w++) {
+      investment += investmentForWeek(annualInvestment, w)
+      const row = weeks[w - 1]
+      if (!row) continue
+      volume += row.volume
+      gsv += row.gsv
+      funding += row.funding
+      nsv += row.nsv
+      grossMargin += row.grossMargin
+    }
+    rows.push({
+      month: i + 1,
+      weekStart,
+      weekEnd,
+      volume,
+      gsv,
+      funding,
+      nsv,
+      grossMargin,
+      investment,
+      netOfInvestment: grossMargin - investment,
+    })
+    weekStart = weekEnd + 1
+  })
+  return rows
+}
+
 /** One promo's contribution to the annual plan, over its clamped window. */
 export interface PromoSummary {
   index: number
