@@ -458,6 +458,23 @@ describe('the wait — cash phasing', () => {
     expect(flow.rows[0].cashOut).toBeCloseTo(1600 + 2500, 6) // week 1 instalment
     expect(flow.rows[1].cashOut).toBeCloseTo(1600, 6)
   })
+
+  it('shelf fill lands in week 1 on same-day terms', () => {
+    const weeks = weeklyProjection(volt, 0.35, inputs, 0, 0)
+    const flow = cashPhasing(weeks, volt, 0, 0, 0, 0, { nsv: 1000, cost: 400 })
+    expect(flow.rows[0].cashIn).toBeCloseTo(4062.5 + 1000, 6)
+    expect(flow.rows[0].cashOut).toBeCloseTo(1600 + 400, 6)
+    expect(flow.totalIn).toBeCloseTo(4062.5 * 4 + 1000, 6)
+    expect(flow.totalOut).toBeCloseTo(1600 * 4 + 400, 6)
+  })
+
+  it('shelf fill respects the payment lags', () => {
+    const weeks = weeklyProjection(volt, 0.35, inputs, 0, 0)
+    // debtor 28d = 4 weeks (fill cash in week 5); creditor 7d = 1 week (fill paid week 2)
+    const flow = cashPhasing(weeks, volt, 28, 7, 0, 0, { nsv: 1000, cost: 400 })
+    expect(flow.rows[4].cashIn).toBeCloseTo(4062.5 + 1000, 6)
+    expect(flow.rows[1].cashOut).toBeCloseTo(1600 + 400, 6)
+  })
 })
 
 describe('Ledger 001 — published figures', () => {

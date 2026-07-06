@@ -181,6 +181,8 @@ export interface CashScenario {
   debtorDays: number
   /** Days from your supplier's invoice to you paying it */
   creditorDays: number
+  /** One-off shelf fill to go live: cases shipped per store in week 1 */
+  shelfFillCasesPerStore: number
 }
 
 export interface Scenario {
@@ -210,6 +212,7 @@ export function defaultScenario(): Scenario {
     cash: {
       debtorDays: 60,
       creditorDays: 30,
+      shelfFillCasesPerStore: 0,
     },
     minMargin: {
       targetBrandMargin: 0.3,

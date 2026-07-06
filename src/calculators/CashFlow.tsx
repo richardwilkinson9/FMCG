@@ -1,10 +1,10 @@
 import { useStore } from '../store/useStore'
 import { activeWholesalerMargin } from '../store/scenario'
-import { weeklyProjection, cashPhasing, monthlyPhasing, logisticsPerUnit } from '../utils/calculations'
+import { weeklyProjection, cashPhasing, monthlyPhasing, retailerPnL, logisticsPerUnit } from '../utils/calculations'
 import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
 import Field, { TextField, InputSection } from '../components/gross/Field'
 import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
-import { gbp, n0, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components/gross/format'
+import { gbp, neg, n0, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components/gross/format'
 
 /**
  * The Wait — when the money actually moves. Reads the same weekly spine as
@@ -18,6 +18,7 @@ export default function CashFlow() {
   const cash = useStore((s) => s.scenario.cash)
   const updateProduct = useStore((s) => s.updateProduct)
   const updateScenario = useStore((s) => s.updateScenario)
+  const setActiveCalculator = useStore((s) => s.setActiveCalculator)
 
   const inputs = () => {
     if (!product) return null
@@ -30,7 +31,9 @@ export default function CashFlow() {
         </div>
         <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
           <Field label="Cost price / unit" prefix="£" value={product.cogsPerUnit} onCommit={(v) => updateProduct(product.id, { cogsPerUnit: v })} />
-          <Field label="RSP" prefix="£" value={product.rrpIncVat} onCommit={(v) => updateProduct(product.id, { rrpIncVat: v })} />
+          <Field label="Selling price (RSP inc VAT)" prefix="£" value={product.rrpIncVat} onCommit={(v) => updateProduct(product.id, { rrpIncVat: v })} />
+          <Field label="VAT rate" suffix="%" scale={100} value={product.vatRate} onCommit={(v) => updateProduct(product.id, { vatRate: v })} />
+          <Field label="Units per case" inputMode="numeric" value={product.unitsPerCase} onCommit={(v) => updateProduct(product.id, { unitsPerCase: Math.round(v) })} />
           <Field label="Rate of sale / store / wk" value={product.weeklyRateOfSale} onCommit={(v) => updateProduct(product.id, { weeklyRateOfSale: v })} />
           <Field label="Stores" inputMode="numeric" value={listing.stores} onCommit={(v) => updateScenario('listing', { stores: Math.round(v) })} />
         </div>
@@ -39,11 +42,27 @@ export default function CashFlow() {
         <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
           <Field label="Customer pays you in" suffix="days" inputMode="numeric" value={cash.debtorDays} onCommit={(v) => updateScenario('cash', { debtorDays: Math.max(0, Math.round(v)) })} />
           <Field label="You pay your supplier in" suffix="days" inputMode="numeric" value={cash.creditorDays} onCommit={(v) => updateScenario('cash', { creditorDays: Math.max(0, Math.round(v)) })} />
+          <Field label="Shelf fill / store" suffix="cases" value={cash.shelfFillCasesPerStore} onCommit={(v) => updateScenario('cash', { shelfFillCasesPerStore: Math.max(0, v) })} />
           <Field label="Inbound logistics / case" prefix="£" value={logistics.perCase} onCommit={(v) => updateScenario('logistics', { perCase: v })} />
           <Field label="Customer investment / year" prefix="£" value={listing.annualInvestment} onCommit={(v) => updateScenario('listing', { annualInvestment: Math.max(0, v) })} />
         </div>
         <div className="font-mono text-[11px] mt-1.5 opacity-65">
-          Days round to whole weeks. Uses the same weekly plan as The Listing — promos, period, investment, the lot.
+          Shelf fill is the one-off order to stock every store on day one — bought and invoiced in week 1, so it hits your cash on the same terms. Days round to whole weeks.
+        </div>
+
+        <div className="mt-4 border-2 border-ink bg-white p-3">
+          <div className="font-mono text-[11px] tracking-[0.08em] opacity-60 mb-1.5">READS YOUR LISTING PLAN</div>
+          <div className="font-mono text-[12px] leading-relaxed">
+            The weekly demand — {listing.stores} stores, {listing.weeksInPeriod} weeks,{' '}
+            {listing.promos.length} promo{listing.promos.length === 1 ? '' : 's'} — comes straight from The Listing.
+            Change the promos, period or investment there and the cash curve follows.
+          </div>
+          <button
+            onClick={() => { setActiveCalculator('listing-model'); window.scrollTo(0, 0) }}
+            className="mt-2.5 font-mono text-[11px] tracking-[0.05em] border-2 border-ink bg-receipt py-1.5 px-2.5 cursor-pointer hover:bg-bile"
+          >
+            EDIT THE LISTING →
+          </button>
         </div>
       </div>
     )
@@ -54,7 +73,14 @@ export default function CashFlow() {
     const logUnit = logisticsPerUnit(logistics.perCase, product.unitsPerCase)
     const listingInputs = { stores: listing.stores, skus: listing.skus, weeksInPeriod: listing.weeksInPeriod, promos: listing.promos }
     const weeks = weeklyProjection(product, grocery.retailerMargin, listingInputs, activeWholesalerMargin(grocery), logUnit)
-    const flow = cashPhasing(weeks, product, cash.debtorDays, cash.creditorDays, logUnit, listing.annualInvestment)
+    // Shelf fill: cases/store × stores × units/case, invoiced and bought in week 1
+    const pnl = retailerPnL(product, grocery.retailerMargin, activeWholesalerMargin(grocery), logUnit)
+    const shelfFillUnits = cash.shelfFillCasesPerStore * listing.stores * product.unitsPerCase
+    const shelfFill = {
+      nsv: shelfFillUnits * pnl.brandNetRevenue,
+      cost: shelfFillUnits * (product.cogsPerUnit + logUnit),
+    }
+    const flow = cashPhasing(weeks, product, cash.debtorDays, cash.creditorDays, logUnit, listing.annualInvestment, shelfFill)
 
     // Roll the cash rows onto the same 4-4-5 months as everything else, with a
     // spill row for money still landing after M12
@@ -139,6 +165,16 @@ export default function CashFlow() {
           <div className="font-mono text-[10px] mt-1.5 opacity-55">
             M12+ is money still moving after the year ends — the tail of your payment terms.
           </div>
+
+          {shelfFillUnits > 0 && (
+            <>
+              <Rule className="mt-3.5 mb-2.5" />
+              <RSection label="THE SHELF FILL (WEEK 1)" />
+              <RLine label={`${n0(shelfFillUnits)} units to stock ${n0(listing.stores)} stores`} value={`${n0(cash.shelfFillCasesPerStore * listing.stores)} cases`} dim />
+              <RLine label="Invoiced (cash in, later)" value={gbp(shelfFill.nsv)} dim />
+              <RLine label="Goods to buy (cash out, sooner)" value={neg(shelfFill.cost)} dim color={REDPEN} />
+            </>
+          )}
 
           <Rule className="mt-3.5 mb-2.5" />
           <RSection label="THE TERMS, PLAINLY" />

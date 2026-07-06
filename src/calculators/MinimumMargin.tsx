@@ -40,11 +40,16 @@ export default function MinimumMargin() {
         </div>
         <div className="grid grid-cols-1 min-[901px]:grid-cols-2 gap-4">
           {costMode ? (
-            <Field label="RSP" prefix="£" value={product.rrpIncVat} onCommit={(v) => updateProduct(product.id, { rrpIncVat: v })} />
+            <Field label="RSP (inc VAT)" prefix="£" value={product.rrpIncVat} onCommit={(v) => updateProduct(product.id, { rrpIncVat: v })} />
           ) : (
             <Field label="Cost price / unit" prefix="£" value={product.cogsPerUnit} onCommit={(v) => updateProduct(product.id, { cogsPerUnit: v })} />
           )}
           <Field label="VAT rate" suffix="%" scale={100} value={product.vatRate} onCommit={(v) => updateProduct(product.id, { vatRate: v })} />
+        </div>
+        <div className="font-mono text-[11px] mt-1.5 opacity-65">
+          {costMode
+            ? 'Set the RSP here and The Floor solves the highest cost price that clears your margin. Switch to RRP FLOOR to fix the cost and solve the lowest RSP instead.'
+            : 'Set the cost price here and The Floor solves the lowest RSP that clears your margin. Switch to COST PRICE CEILING to fix the RSP and solve the cost instead.'}
         </div>
 
         <InputSection>THE TARGETS</InputSection>

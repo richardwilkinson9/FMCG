@@ -55,7 +55,8 @@
   ],
   "cash-flow": [
     "Profit is an opinion formed at invoice; cash is what your bank balance says while you wait. UK grocery standard terms run 30 to 90 days from invoice, and your supplier usually wants paying sooner than that. The gap between those two dates, multiplied by your weekly sales, is working capital you are lending to the listing.",
-    "This page phases the same weekly plan as The Listing into cash: NSV arrives when the customer actually pays; the goods bill leaves when you actually pay it; the customer investment instalments leave in their quarters. The running line at the right is your exposure, and its lowest point is the funding the listing needs — the number to take to whoever funds you, before they find it themselves.",
+    "This page phases the same weekly plan as The Listing — the stores, the promo calendar, the period, the investment — into cash: NSV arrives when the customer actually pays; the goods bill leaves when you actually pay it; the customer investment instalments leave in their quarters. Change the plan on The Listing and the cash curve here follows. The running line at the right is your exposure, and its lowest point is the funding the listing needs — the number to take to whoever funds you, before they find it themselves.",
+    "The shelf fill is the one-off that catches brands out: to go live you ship enough stock to fill every store — cases per store times stores — and you buy and invoice all of it in week one. It front-loads both sides of the cash line, and on long payment terms the goods leave your account weeks before the fill sells through. Model it here before it is a surprise.",
     "Growth makes this worse, not better. Every extra store is more cash out today against more cash in two months from now. Brands do not usually die of bad margins; they die of good margins with long terms."
   ]
 }

@@ -331,11 +331,18 @@ export function cashPhasing(
   creditorDays: number,
   logisticsPerUnitCost = 0,
   annualInvestment = 0,
+  /** One-off shelf fill (pipefill) landing in week 1: the NSV invoiced and the
+   *  landed goods cost of stocking every store to go live. */
+  shelfFill: { nsv: number; cost: number } = { nsv: 0, cost: 0 },
 ): { rows: CashWeekRow[]; peakGap: number; peakGapWeek: number; totalIn: number; totalOut: number } {
   const lagIn = Math.max(0, Math.round(debtorDays / 7))
   const lagOut = Math.max(0, Math.round(creditorDays / 7))
   const landedPerUnit = product.cogsPerUnit + logisticsPerUnitCost
   const horizon = weeks.length + Math.max(lagIn, lagOut)
+  // The shelf fill is invoiced and bought in week 1, so its cash lands on the
+  // same terms as any week-1 sale
+  const fillInWeek = 1 + lagIn
+  const fillOutWeek = 1 + lagOut
 
   const rows: CashWeekRow[] = []
   let cumulative = 0
@@ -346,8 +353,11 @@ export function cashPhasing(
   for (let w = 1; w <= horizon; w++) {
     const saleInWeek = weeks[w - lagIn - 1]
     const saleOutWeek = weeks[w - lagOut - 1]
-    const cashIn = saleInWeek ? saleInWeek.nsv : 0
-    const cashOut = (saleOutWeek ? saleOutWeek.volume * landedPerUnit : 0) + investmentForWeek(annualInvestment, w)
+    const cashIn = (saleInWeek ? saleInWeek.nsv : 0) + (w === fillInWeek ? shelfFill.nsv : 0)
+    const cashOut =
+      (saleOutWeek ? saleOutWeek.volume * landedPerUnit : 0) +
+      investmentForWeek(annualInvestment, w) +
+      (w === fillOutWeek ? shelfFill.cost : 0)
     const net = cashIn - cashOut
     cumulative += net
     if (cumulative < peakGap) { peakGap = cumulative; peakGapWeek = w }
