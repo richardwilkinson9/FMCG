@@ -36,6 +36,13 @@ const ENTRIES = [
     translation: 'you’re investing in our price.',
     size: 128,
   },
+  {
+    n: 3,
+    slug: 'rationalising-the-range',
+    phrase: 'we’re rationalising the range',
+    translation: 'you’re delisted.',
+    size: 116,
+  },
 ]
 
 // EAN-style bar widths (ink bars on bile), same rhythm as the site's Barcode.
