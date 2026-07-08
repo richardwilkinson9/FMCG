@@ -137,10 +137,14 @@ dashboard supports it under Database → Cron (pg_cron).
 Short share links (`getgross.co.uk/s/abc1234`) and the owner-only stats view
 behind `/the-till`. Paste into the SQL Editor and run.
 
+Safe to run more than once (everything is `if not exists` / `or replace`).
+Run ONLY this block — §1 will error with "relation already exists" because
+those tables are already live, and that error is harmless but confusing.
+
 ```sql
 -- SHORT SHARE LINKS — the site writes and reads them; nobody can update or
 -- delete through the public key. Opens are counted via the events table.
-create table public.share_links (
+create table if not exists public.share_links (
   id text primary key,
   blob text not null,
   tool text not null default '',
@@ -150,16 +154,18 @@ create table public.share_links (
 
 alter table public.share_links enable row level security;
 
+drop policy if exists "anyone can create a share link" on public.share_links;
 create policy "anyone can create a share link" on public.share_links
   for insert with check (true);
 
+drop policy if exists "anyone can resolve a share link" on public.share_links;
 create policy "anyone can resolve a share link" on public.share_links
   for select using (true);
 
 -- THE TILL — weekly stats, readable ONLY when signed in as the owner. The
 -- view runs as its creator (so it can read the write-only events table) and
 -- filters on the caller's JWT email; anyone else gets zero rows.
-create view public.weekly_stats
+create or replace view public.weekly_stats
 with (security_invoker = off, security_barrier = on) as
 select
   date_trunc('week', created_at)::date::text as week,
