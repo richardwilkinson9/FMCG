@@ -137,11 +137,36 @@ dashboard supports it under Database → Cron (pg_cron).
 Short share links (`getgross.co.uk/s/abc1234`) and the owner-only stats view
 behind `/the-till`. Paste into the SQL Editor and run.
 
-Safe to run more than once (everything is `if not exists` / `or replace`).
-Run ONLY this block — §1 will error with "relation already exists" because
-those tables are already live, and that error is harmless but confusing.
+Safe to run more than once (everything is `if not exists` / `or replace`),
+and it also back-fills the `events` and `union_signups` tables if an earlier
+setup never created them — the SQL editor runs a script as one transaction,
+so a script that errors partway leaves NOTHING behind. This block is the
+complete catch-up.
 
 ```sql
+-- USAGE COUNTS (in case §1's later additions never ran)
+create table if not exists public.events (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  slug text,
+  created_at timestamptz not null default now()
+);
+alter table public.events enable row level security;
+drop policy if exists "anyone can log an event" on public.events;
+create policy "anyone can log an event" on public.events
+  for insert with check (true);
+create index if not exists events_name_created on public.events (name, created_at desc);
+
+-- THE LEDGER LIST (same insurance)
+create table if not exists public.union_signups (
+  email text primary key,
+  created_at timestamptz not null default now()
+);
+alter table public.union_signups enable row level security;
+drop policy if exists "anyone can sign up" on public.union_signups;
+create policy "anyone can sign up" on public.union_signups
+  for insert with check (true);
+
 -- SHORT SHARE LINKS — the site writes and reads them; nobody can update or
 -- delete through the public key. Opens are counted via the events table.
 create table if not exists public.share_links (
