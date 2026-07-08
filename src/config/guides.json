@@ -1,0 +1,189 @@
+[
+  {
+    "key": "retailer-margin",
+    "title": "How retailer margin actually works",
+    "standfirst": "The most argued-about number in UK grocery, taken apart line by line.",
+    "toolId": "retailer-pnl",
+    "toolLabel": "Run your own numbers on The P&L",
+    "sections": [
+      {
+        "paras": [
+          "Retailer margin in UK grocery is quoted as front margin: the gap between what the retailer pays you and the shelf price ex-VAT, expressed as a percentage of the shelf price. If your product retails at £1.50 with 20% VAT, the shelf price ex-VAT is £1.25. At a 35% retailer margin, the retailer keeps 43.75p of that and pays you 81.25p. That 81.25p is your invoice price, and every cost you have — cost of goods, freight to their depot, promo funding — comes out of it.",
+          "The percentage is measured off the shelf price, not off your price. This matters because your own margin is measured the other way: off your net revenue. The same trading relationship produces two different percentages that sound comparable and are not."
+        ]
+      },
+      {
+        "heading": "Front margin and back margin",
+        "paras": [
+          "Front margin is the visible gap above. Back margin is everything else the retailer earns from you that never appears on a price file: retrospective discounts, range support, marketing contributions, settlement terms. A buyer who concedes on front margin and recovers it in back margin has not conceded anything — the money leaves your invoice either way.",
+          "When you model a listing, the honest number is the total: front margin plus every back-margin commitment, as a share of your gross sales value. In the trade this full picture is the gross-to-net waterfall, and it routinely takes 10–30% of invoice value before you get to your own costs."
+        ]
+      },
+      {
+        "heading": "Your margin is not their margin",
+        "paras": [
+          "Your gross margin is net revenue less landed cost (cost of goods plus inbound freight), divided by net revenue. On the £1.50 example: you bank 81.25p, and if your product costs 32p to make and 2.5p to ship per unit, your gross margin is 46.75p — 57.5% of net revenue. The retailer is on 35%; you are on 57.5%; nobody is lying, but the two numbers are measured off different bases and move differently when prices change.",
+          "This is why a buyer asking for \"just two more points\" costs you more than two points: their percentage comes off the shelf price, which is bigger than your net revenue. Two points of retailer margin on £1.25 is 2.5p — which is more than 5% of your 46.75p margin."
+        ]
+      },
+      {
+        "heading": "The wholesaler layer",
+        "paras": [
+          "Selling through a wholesaler or cash-and-carry adds a second margin taken after the retailer's, off the price the retailer pays. Margins stack multiplicatively: a 35% retailer margin and a 25% wholesaler margin leave you 48.75% of the shelf price ex-VAT, not 40%. Route-to-market decisions deserve their own arithmetic, not an estimate."
+        ]
+      }
+    ],
+    "faq": [
+      {
+        "q": "What retailer margin do UK supermarkets expect?",
+        "a": "It varies by category and by retailer, but 30–45% front margin on the shelf price ex-VAT is the broad range for branded grocery, with health, beauty and premium categories at the higher end. Treat any single figure as a starting assumption to be tested, not a rule."
+      },
+      {
+        "q": "Is retailer margin calculated on the price including VAT?",
+        "a": "No. Margin is calculated on the shelf price excluding VAT. On a £1.50 retail price at 20% VAT, the margin base is £1.25. Zero-rated food uses the full shelf price because there is no VAT to strip."
+      },
+      {
+        "q": "What is the difference between margin and mark-up?",
+        "a": "Margin is the gap as a percentage of the selling price; mark-up is the same gap as a percentage of the buying price. A 35% margin equals a 54% mark-up. UK grocery quotes margin. If someone quotes you a mark-up, convert before you agree to anything."
+      },
+      {
+        "q": "What is back margin?",
+        "a": "Retailer income from you that is not the front price gap: retros, range support, marketing funds, promotional funding, settlement discounts. It is still margin — it comes off your invoice — it is just harder to see."
+      }
+    ]
+  },
+  {
+    "key": "gross-to-net",
+    "title": "Gross-to-net: where your revenue actually goes",
+    "standfirst": "GSV, NSV, trade spend and the waterfall between your invoice and your bank.",
+    "toolId": "waterfall",
+    "toolLabel": "Build your own waterfall",
+    "sections": [
+      {
+        "paras": [
+          "Gross sales value (GSV) is your volume at full list price — the number on the invoice, and the one that never moves. Net sales value (NSV) is what survives after trade deductions: promotional funding, back margin, retro payments, range support. The journey between the two is the gross-to-net waterfall, and it is where FMCG businesses quietly lose track of their own economics.",
+          "The convention that matters most: when a promotion is supplier-funded, the price cut comes off your invoice, not the retailer's margin. The retailer keeps their percentage; you fund the discount. A 25%-off promotion on a supplier-funded deal deducts GSV × 25% from your line, week after week, for as long as the deal runs."
+        ]
+      },
+      {
+        "heading": "What a healthy waterfall looks like",
+        "paras": [
+          "For a UK branded grocery business, total trade spend between 10% and 30% of GSV is the broad norm — promotional funding usually the largest slice, then back margin commitments, then everything else. Below 10% usually means early-stage and under-promoted; above 30% means the trading relationship is consuming the brand.",
+          "The discipline is to model every deduction as a percentage of GSV and read NSV as a percentage of GSV — \"we keep 78 pence in the invoice pound\" — because that ratio is comparable across customers, categories and years in a way absolute numbers are not."
+        ]
+      },
+      {
+        "heading": "Gross margin sits below NSV",
+        "paras": [
+          "Your gross margin is NSV less landed cost: cost of goods plus inbound logistics to the customer's depot. Freight is part of the cost of goods make-up, not an afterthought below the line — a £2-per-case inbound cost on a 24-unit case is 8.3p a unit that has to come out of the same pound as everything else.",
+          "Fixed cash commitments — a customer investment behind a listing, gate fees, launch support — sit below gross margin because they do not move with volume. A listing can carry a healthy percentage margin and still hand the whole thing back through one annual cash commitment."
+        ]
+      }
+    ],
+    "faq": [
+      {
+        "q": "What is the difference between GSV and NSV?",
+        "a": "GSV (gross sales value) is volume at full list price — the invoice value. NSV (net sales value) is GSV minus trade deductions: promo funding, back margin, retros. NSV is the only revenue number that reflects what you actually earn."
+      },
+      {
+        "q": "What percentage of revenue is normal for trade spend in UK grocery?",
+        "a": "Broadly 10–30% of GSV for branded FMCG, with promotional funding the largest component. The right answer depends on category, maturity and how promotional the retailer is — but if you cannot state your own percentage, that is the first problem to fix."
+      },
+      {
+        "q": "Who pays for supermarket promotions?",
+        "a": "Usually the brand, through supplier funding: the retailer keeps their margin percentage and the discount comes off the supplier's invoice. Retailer-funded promotions exist but are the exception, not the default."
+      },
+      {
+        "q": "Is trade spend the same as marketing spend?",
+        "a": "No. Trade spend goes to the retailer (funding, retros, range support) and nets off revenue. Marketing spend goes to media and shoppers and sits in your cost base. Mixing the two is how brands convince themselves a loss-making promotion was brand-building."
+      }
+    ]
+  },
+  {
+    "key": "amazon-fba-fees-uk",
+    "title": "Amazon FBA fees in the UK, added up honestly",
+    "standfirst": "Referral, fulfilment, storage, the plan — and the break-even price nobody checks.",
+    "toolId": "amazon-fba",
+    "toolLabel": "Price your product on The Amazon Cut",
+    "sections": [
+      {
+        "paras": [
+          "Amazon FBA charges a referral fee as a percentage of the sale price (typically 8–15% by category for grocery-adjacent products), a fulfilment fee per unit shipped based on size and weight, monthly storage per unit, and a monthly selling plan whether you sell or not. Individually each fee looks survivable. Together they routinely take 35–50% of the consumer price before your own cost of goods enters the conversation.",
+          "The arithmetic order matters: VAT comes off the sale price first, then the referral fee is charged, then fulfilment and storage are deducted per unit, then the plan amortises across your monthly volume. What is left has to cover cost of goods, inbound freight, and margin — in that order."
+        ]
+      },
+      {
+        "heading": "Why case size changes everything",
+        "paras": [
+          "If one listing is one consumer unit, fulfilment and storage are charged on every unit. If one listing is a case of 24, the same fees are charged once per case and spread 24 ways. For low-priced FMCG this is frequently the difference between a channel that works and one that pays Amazon for the privilege — a £3.15 fulfilment fee is unsurvivable on a £1.50 single and trivial on a £30 case.",
+          "The corollary: your case configuration is a bigger pricing lever on Amazon than any fee negotiation you will ever have there, because there is no fee negotiation. Amazon does not negotiate. Your case size does."
+        ]
+      },
+      {
+        "heading": "The break-even price",
+        "paras": [
+          "Every product has a floor price on Amazon below which the listing pays you nothing: (cost of goods + inbound freight + fulfilment + storage + plan-per-unit) ÷ (1 − referral rate), grossed back up for VAT. Price below it and every sale loses money — volume just makes it worse. Compute it before you list, and again every time Amazon updates its fee schedule, which it does at least annually."
+        ]
+      }
+    ],
+    "faq": [
+      {
+        "q": "How much does Amazon FBA take in the UK?",
+        "a": "Typically 35–50% of the consumer price for low-priced FMCG once referral, fulfilment, storage and the selling plan are added together — before your cost of goods. Exact fees depend on category, size tier and weight; check Amazon's current fee schedule and re-check it yearly."
+      },
+      {
+        "q": "What is the Amazon referral fee for grocery?",
+        "a": "Grocery & Gourmet referral fees in the UK have generally been in the 8–15% band depending on price, but the schedule changes — treat any published figure as dated and verify against Amazon's own fee page before pricing."
+      },
+      {
+        "q": "Is it better to sell singles or multipacks on FBA?",
+        "a": "For low-priced FMCG, multipacks or cases almost always work better: fulfilment and storage are charged per shipment, so a 24-unit case spreads them 24 ways. Selling £1.50 singles through FBA rarely survives the fulfilment fee."
+      },
+      {
+        "q": "Do I pay VAT on Amazon fees?",
+        "a": "Amazon's fees are subject to VAT treatment that depends on your registration status, and the sale price itself includes VAT that is not yours to keep. Model the sale price ex-VAT and treat fee VAT as a cash-flow question for your accountant — but never read the headline consumer price as revenue."
+      }
+    ]
+  },
+  {
+    "key": "fmcg-margin-benchmarks",
+    "title": "FMCG margin benchmarks: what brands actually make",
+    "standfirst": "Indicative UK gross-margin ranges by category — broad, dated, and honest about both.",
+    "toolId": "retailer-pnl",
+    "toolLabel": "See your margin against the benchmark",
+    "sections": [
+      {
+        "paras": [
+          "Every founder asks the same question before a range review: what margin should I be making? The honest answer is a range, not a number — and anyone who gives you a point figure is selling something. The ranges below are indicative UK brand gross margins measured as a share of net revenue (what you bank, not the shelf price), collected from published accounts, industry commentary and practitioner experience. They are maintained on The Rate Card with their dates and sources.",
+          "Broad UK brand gross-margin ranges by category: general FMCG 25–45%; confectionery 30–50%; soft drinks 25–45%; snacks 30–48%; ambient grocery 20–40%; chilled and fresh 18–35%; health and wellness 35–55%; beauty and personal care 45–65%."
+        ]
+      },
+      {
+        "heading": "How to read a benchmark",
+        "paras": [
+          "A benchmark is a sense-check, not a target. Sitting below the range for your category tells you to look for the leak — cost of goods, trade spend, route to market — before a buyer looks for it. Sitting above it tells you to enjoy it while it lasts, and to ask whether the number survives a promotion-heavy year.",
+          "Measure on the right base. These ranges are gross margin as a share of net revenue after trade deductions and after landed cost (cost of goods plus inbound freight). Measuring off the shelf price, or before promo funding, flatters the number and ruins the comparison.",
+          "Scale changes everything. A challenger brand carries co-packing premiums, small production runs and full-price freight that an established brand does not. Being five points below the category range at year two is normal; the question is the trajectory."
+        ]
+      }
+    ],
+    "faq": [
+      {
+        "q": "What is a good gross margin for an FMCG brand in the UK?",
+        "a": "For most grocery categories, 25–45% of net revenue is the broad healthy band, with beauty and wellness higher and chilled/fresh lower. Below 20% there is usually no room for trade spend and growth; the specific answer depends on category — see the ranges above."
+      },
+      {
+        "q": "Are these margins before or after trade spend?",
+        "a": "After. The ranges are gross margin measured against net revenue — the money that survives promo funding and back margin — less landed cost of goods. Measuring before trade deductions produces a flattering number that no investor or buyer will accept."
+      },
+      {
+        "q": "Why is my margin below the benchmark?",
+        "a": "The usual suspects, in order: cost of goods at challenger scale, trade spend above 30% of invoice, freight not priced into the unit economics, or a wholesaler layer stacking a second margin. Work through them in that order with real numbers before concluding the category does not work."
+      },
+      {
+        "q": "Where do these numbers come from?",
+        "a": "Published accounts, industry commentary and practitioner experience, held as ranges precisely because point figures in this territory are false precision. Each range is dated and sourced on The Rate Card, and corrected when someone shows us better data."
+      }
+    ]
+  }
+]

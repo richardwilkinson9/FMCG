@@ -177,6 +177,22 @@ export default function Methodology() {
             </button>
           </div>
 
+          <div className="mt-8 border-2 border-ink bg-white p-4 font-mono">
+            <div className="text-[11px] tracking-[0.1em] opacity-60 mb-2">CITE THIS PAGE</div>
+            <div className="text-[13px] leading-relaxed">
+              This page is maintained as a working reference for UK FMCG fee
+              defaults — every figure dated, every source named. Link to it as:
+            </div>
+            <div className="text-[13px] font-bold mt-2 select-all">
+              The Rate Card, GROSS. — getgross.co.uk/the-rate-card (fees as
+              dated per line)
+            </div>
+            <div className="text-[11px] mt-2 opacity-60">
+              If a figure here is out of date, the site is wrong and would like
+              to know: tell us and we will fix it and date the fix.
+            </div>
+          </div>
+
           <p className="font-mono text-[11px] mt-8 opacity-60">
             VAT number: not applicable. This is a website.
           </p>

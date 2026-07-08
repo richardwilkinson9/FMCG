@@ -43,6 +43,41 @@ const ENTRIES = [
     translation: 'you’re delisted.',
     size: 116,
   },
+  {
+    n: 4,
+    slug: 'investment-behind-it',
+    phrase: 'we’d need to see some investment behind it',
+    translation: 'give us money.',
+    size: 96,
+  },
+  {
+    n: 5,
+    slug: 'price-sensitive-shopper',
+    phrase: 'our shopper is price-sensitive',
+    translation: 'permanent promo. you fund it.',
+    size: 112,
+  },
+  {
+    n: 6,
+    slug: 'long-term-play',
+    phrase: 'we see this as a long-term play',
+    translation: 'you fund year one.',
+    size: 112,
+  },
+  {
+    n: 7,
+    slug: 'we-will-trial-it',
+    phrase: 'we’ll trial it',
+    translation: 'four stores. bottom shelf. January.',
+    size: 140,
+  },
+  {
+    n: 8,
+    slug: 'behind-it-in-h2',
+    phrase: 'we’ll get behind it in H2',
+    translation: 'we won’t.',
+    size: 120,
+  },
 ]
 
 // EAN-style bar widths (ink bars on bile), same rhythm as the site's Barcode.
@@ -52,14 +87,14 @@ const BARS = [
 ]
 const barcode = BARS.map((w) => `<div style="width:${w * 3}px;background:${INK}"></div>`).join('')
 
-function card({ n, phrase, translation, size = 128 }) {
+function card({ n, phrase, translation, size = 128 }, w = 1200, h = 1200) {
   const no = String(n).padStart(2, '0')
   return `<!doctype html><html><head><meta charset="utf-8"><style>
     @font-face{font-family:'Anton';src:url(data:font/woff2;base64,${anton}) format('woff2');}
     @font-face{font-family:'Space Mono';font-weight:400;src:url(data:font/woff2;base64,${mono}) format('woff2');}
     @font-face{font-family:'Space Mono';font-weight:700;src:url(data:font/woff2;base64,${monoB}) format('woff2');}
     *{margin:0;padding:0;box-sizing:border-box}
-    html,body{width:1200px;height:1200px}
+    html,body{width:${w}px;height:${h}px}
     body{background:${BILE};color:${INK}}
     .pad{position:absolute;inset:0;padding:88px;display:flex;flex-direction:column;justify-content:space-between}
     .row{display:flex;justify-content:space-between;align-items:baseline}
@@ -88,14 +123,21 @@ const browser = await chromium.launch({
   executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
   args: ['--no-sandbox'],
 })
+// Two sizes per entry: 1200×1200 square + 1080×1350 portrait (more feed height)
+mkdirSync(resolve(OUT, 'portrait'), { recursive: true })
 const page = await browser.newPage({ viewport: { width: 1200, height: 1200 } })
 await page.goto(pathToFileURL(resolve(OUT, '..')).href)
 for (const entry of ENTRIES) {
+  const name = `${String(entry.n).padStart(2, '0')}-${entry.slug}`
+  await page.setViewportSize({ width: 1200, height: 1200 })
   await page.setContent(card(entry), { waitUntil: 'load' })
   await page.evaluate(() => document.fonts.ready)
-  const name = `${String(entry.n).padStart(2, '0')}-${entry.slug}`
   await page.screenshot({ path: resolve(OUT, `${name}.png`) })
-  console.log('dictionary:', name + '.png')
+  await page.setViewportSize({ width: 1080, height: 1350 })
+  await page.setContent(card({ ...entry, size: Math.round((entry.size ?? 128) * 0.9) }, 1080, 1350), { waitUntil: 'load' })
+  await page.evaluate(() => document.fonts.ready)
+  await page.screenshot({ path: resolve(OUT, `portrait/${name}.png`) })
+  console.log('dictionary:', name + '.png (+portrait)')
 }
 await browser.close()
-console.log('done —', ENTRIES.length, 'card(s)')
+console.log('done —', ENTRIES.length, 'card(s) × 2 sizes')

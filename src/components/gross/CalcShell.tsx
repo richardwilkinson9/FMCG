@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { useStore } from '../../store/useStore'
-import { encodeStateToUrl } from '../../utils/urlState'
+import { encodeStateToUrl, encodeBlob } from '../../utils/urlState'
 import { downloadExcelModel } from '../../utils/excelExport'
 import { logEvent } from '../../utils/analytics'
 import { useSession } from '../../store/session'
@@ -101,11 +101,21 @@ export function CalcActions() {
 
   const copyLink = () => {
     const { products, activeProductId, activeCalculator, scenario } = useStore.getState()
+    // Copy the long link inside the click (clipboard needs the user gesture)…
     const url = encodeStateToUrl(products, activeProductId, activeCalculator, scenario)
     navigator.clipboard?.writeText(url).catch(() => {})
     logEvent('share', activeCalculator)
     setCopied(true)
     setTimeout(() => setCopied(false), 1800)
+    // …then swap in a short link if the cloud answers fast enough. If it
+    // doesn't, the long link already on the clipboard works fine.
+    const blob = encodeBlob(products, activeProductId, activeCalculator, scenario)
+    import('../../store/cloud')
+      .then(({ createShortLink }) => createShortLink(blob, activeCalculator))
+      .then((id) => {
+        if (id) navigator.clipboard?.writeText(`${window.location.origin}/s/${id}`).catch(() => {})
+      })
+      .catch(() => {})
   }
 
   const runExport = async () => {
@@ -144,6 +154,28 @@ export function CalcActions() {
     // Fire-and-forget onto the Ledger list — the export must never wait on it
     import('../../store/cloud').then(({ unionSignup }) => void unionSignup(email)).catch(() => {})
     void runExport()
+  }
+
+  const [imgState, setImgState] = useState<'idle' | 'rendering' | 'failed'>('idle')
+  const saveReceiptImage = async () => {
+    // The visible receipt, rendered to a PNG — a ready-made post. Same pixels
+    // the user is already looking at, so nothing can disagree with the site.
+    const node = document.querySelector<HTMLElement>('.print-block')
+    if (!node || imgState === 'rendering') return
+    setImgState('rendering')
+    try {
+      const { toPng } = await import('html-to-image')
+      const dataUrl = await toPng(node, { pixelRatio: 2, backgroundColor: '#F7F5EF' })
+      const a = document.createElement('a')
+      a.href = dataUrl
+      a.download = `GROSS_receipt_${useStore.getState().activeCalculator}.png`
+      a.click()
+      logEvent('receipt_image', useStore.getState().activeCalculator)
+      setImgState('idle')
+    } catch {
+      setImgState('failed')
+      setTimeout(() => setImgState('idle'), 3000)
+    }
   }
 
   const exportLabel =
@@ -196,7 +228,58 @@ export function CalcActions() {
           </button>
         </div>
       )}
+      <button
+        onClick={() => void saveReceiptImage()}
+        className="w-full border-2 border-t-0 border-ink bg-receipt font-mono text-[11px] tracking-[0.06em] py-2 cursor-pointer hover:bg-bile"
+        style={imgState === 'failed' ? { color: '#E4002B' } : undefined}
+      >
+        {imgState === 'rendering' ? 'RENDERING…' : imgState === 'failed' ? 'DID NOT RENDER — TRY A REFRESH' : 'SAVE THE RECEIPT AS AN IMAGE — POST IT, WE DARE YOU'}
+      </button>
       <SaveStrip />
+      <LedgerNudge />
+    </div>
+  )
+}
+
+/**
+ * The return-visit nudge — one line, third visit onwards, dismissable, and
+ * never shown to someone already on the list (they gave an email at export).
+ */
+function LedgerNudge() {
+  const setActiveCalculator = useStore((s) => s.setActiveCalculator)
+  const [dismissed, setDismissed] = useState(false)
+  let show = false
+  try {
+    show =
+      !dismissed &&
+      Number(localStorage.getItem('gross-visits') ?? 0) >= 3 &&
+      !localStorage.getItem('gross-nudge-dismissed') &&
+      !localStorage.getItem('gross-export-email')
+  } catch {
+    show = false
+  }
+  if (!show) return null
+  return (
+    <div className="flex items-center justify-between gap-3 border-2 border-ink bg-receipt font-mono text-[12px] py-2.5 px-3.5 mt-3">
+      <span>
+        Third visit. The Ledger is monthly — the rate card, kept current.{' '}
+        <button
+          onClick={() => { setActiveCalculator('ledger'); window.scrollTo(0, 0) }}
+          className="underline font-bold bg-transparent border-0 p-0 cursor-pointer font-mono text-[12px]"
+        >
+          Sign up
+        </button>
+      </span>
+      <button
+        onClick={() => {
+          setDismissed(true)
+          try { localStorage.setItem('gross-nudge-dismissed', '1') } catch { /* fine */ }
+        }}
+        aria-label="Dismiss"
+        className="bg-transparent border-0 p-0 cursor-pointer font-mono text-[14px] opacity-60 hover:opacity-100"
+      >
+        ×
+      </button>
     </div>
   )
 }

@@ -36,11 +36,8 @@ interface DecodedState {
   scenario: Scenario
 }
 
-export function decodeStateFromUrl(): DecodedState | null {
-  const params = new URLSearchParams(window.location.search)
-  const encoded = params.get('s')
-  if (!encoded) return null
-
+/** Decode one `?s=` blob (also used by short links, which store the same blob). */
+export function decodeBlob(encoded: string): DecodedState | null {
   try {
     const json = decodeURIComponent(atob(encoded))
     const data = JSON.parse(json) as Partial<DecodedState>
@@ -54,4 +51,21 @@ export function decodeStateFromUrl(): DecodedState | null {
   } catch {
     return null
   }
+}
+
+export function decodeStateFromUrl(): DecodedState | null {
+  const params = new URLSearchParams(window.location.search)
+  const encoded = params.get('s')
+  if (!encoded) return null
+  return decodeBlob(encoded)
+}
+
+/** The raw blob for the current state — what a short link stores. */
+export function encodeBlob(
+  products: Product[],
+  activeProductId: string | null,
+  activeCalculator: string,
+  scenario: Scenario,
+): string {
+  return btoa(encodeURIComponent(JSON.stringify({ products, activeProductId, activeCalculator, scenario })))
 }

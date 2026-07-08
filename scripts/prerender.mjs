@@ -41,6 +41,10 @@ const PAGES = [...pagesTs.matchAll(/\{\s*id:\s*'[^']*'[\s\S]*?indexed:\s*(?:true
 // THE WORKINGS — per-tool explainer copy, shared with the React app.
 const EXPLAINERS = JSON.parse(readFileSync(resolve(ROOT, 'src/config/explainers.json'), 'utf8'))
 
+// THE GUIDES — full long-read content, shared with the React app.
+const GUIDES = JSON.parse(readFileSync(resolve(ROOT, 'src/config/guides.json'), 'utf8'))
+const guideById = (id) => GUIDES.find((g) => `guide-${g.key}` === id)
+
 // Fail the build if the registry parse looks wrong — never ship broken SEO silently.
 if (PAGES.length < 10) {
   throw new Error(`prerender: parsed only ${PAGES.length} pages from config/pages.ts — the registry format changed; fix the parser before shipping.`)
@@ -62,9 +66,42 @@ try {
 } catch { /* not a git checkout (fine) */ }
 
 /** JSON-LD: the site + org on home; each tool as a free WebApplication;
- *  a Ledger issue as an Article. */
+ *  a Ledger issue as an Article; a guide as Article + FAQPage. */
 function jsonLd(page) {
   const url = page.slug ? `${SITE}/${page.slug}` : SITE
+  const guide = guideById(page.id)
+  if (guide) {
+    return [
+      {
+        '@context': 'https://schema.org',
+        '@type': 'Article',
+        headline: guide.title,
+        description: page.description,
+        url,
+        publisher: { '@type': 'Organization', name: 'GROSS.', url: SITE, logo: `${SITE}/og/home.png` },
+        datePublished: LASTMOD,
+        dateModified: LASTMOD,
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: guide.faq.map((f) => ({
+          '@type': 'Question',
+          name: f.q,
+          acceptedAnswer: { '@type': 'Answer', text: f.a },
+        })),
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'GROSS.', item: SITE },
+          { '@type': 'ListItem', position: 2, name: 'The Guides', item: `${SITE}/guides` },
+          { '@type': 'ListItem', position: 3, name: guide.title, item: url },
+        ],
+      },
+    ]
+  }
   if (page.id.startsWith('ledger-')) {
     return [
       {
@@ -149,6 +186,7 @@ function staticBody(page) {
       <p>${esc(page.description)}</p>
       ${page.intro ? `<p>${esc(page.intro)}</p>` : ''}
       ${(EXPLAINERS[page.id] || []).length ? `<h2 style="font-size:1.1em;margin-top:24px">The workings</h2>\n      ${EXPLAINERS[page.id].map((p) => `<p>${esc(p)}</p>`).join('\n      ')}` : ''}
+      ${guideBody(page)}
       <h2 style="font-size:1.1em;margin-top:24px">The other calculators</h2>
       <ul style="padding-left:18px">
         ${links}
@@ -157,12 +195,29 @@ function staticBody(page) {
     </div>`
 }
 
+/** A guide's full content, statically crawlable — the point of the page. */
+function guideBody(page) {
+  const g = guideById(page.id)
+  if (!g) return ''
+  const sections = g.sections
+    .map((s) => `${s.heading ? `<h2 style="font-size:1.15em;margin-top:24px">${esc(s.heading)}</h2>` : ''}\n      ${s.paras.map((p) => `<p>${esc(p)}</p>`).join('\n      ')}`)
+    .join('\n      ')
+  const faq = g.faq
+    .map((f) => `<h3 style="font-size:1em;margin-top:14px">${esc(f.q)}</h3>\n      <p>${esc(f.a)}</p>`)
+    .join('\n      ')
+  return `${sections}
+      <h2 style="font-size:1.15em;margin-top:24px">Asked a lot</h2>
+      ${faq}`
+}
+
 function rewrite(base, page) {
   const url = page.slug ? `${SITE}/${page.slug}` : SITE
   const img = `${SITE}/og/${(page.slug || 'home').replace(/\//g, '-')}.png`
   const t = esc(page.seoTitle)
   const d = esc(page.description)
   const ld = `<script type="application/ld+json">${JSON.stringify(jsonLd(page))}</script>`
+  // Unlisted pages (indexed: false, e.g. The Till) get an explicit noindex.
+  const robots = page.indexed ? '' : '<meta name="robots" content="noindex, nofollow">\n  '
   let out = base
     .replace(/<title>[\s\S]*?<\/title>/, `<title>${t}</title>`)
     .replace(/(<meta name="description" content=")[^"]*(")/s, `$1${d}$2`)
@@ -174,7 +229,7 @@ function rewrite(base, page) {
     .replace(/(<meta name="twitter:title" content=")[^"]*(")/, `$1${t}$2`)
     .replace(/(<meta name="twitter:description" content=")[^"]*(")/, `$1${d}$2`)
     .replace(/(<meta name="twitter:image" content=")[^"]*(")/, `$1${img}$2`)
-    .replace('</head>', `${ld}\n  </head>`)
+    .replace('</head>', `${robots}${ld}\n  </head>`)
     .replace('<div id="root"></div>', `<div id="root">${staticBody(page)}</div>`)
   return out
 }

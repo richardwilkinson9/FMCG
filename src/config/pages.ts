@@ -194,6 +194,70 @@ export const PAGE_META: PageMeta[] = [
     indexed: true,
   },
   {
+    id: 'guides',
+    slug: 'guides',
+    navTitle: 'The Guides',
+    seoTitle: `The Guides — the maths of UK FMCG, written down | ${SUFFIX}`,
+    description:
+      'How retailer margin works, where gross-to-net revenue goes, what Amazon FBA really costs, and what margins UK FMCG brands actually make. The long reads behind the calculators.',
+    intro:
+      'The long reads behind the calculators: retailer margin, gross-to-net, FBA fees and margin benchmarks, written down properly.',
+    indexed: true,
+  },
+  {
+    id: 'guide-retailer-margin',
+    slug: 'guides/retailer-margin',
+    navTitle: 'How retailer margin actually works',
+    seoTitle: `How retailer margin actually works (UK grocery) | ${SUFFIX}`,
+    description:
+      'Front margin vs back margin, margin vs mark-up, VAT, the wholesaler layer — the most argued-about number in UK grocery taken apart line by line, with a free calculator.',
+    intro:
+      'Front margin, back margin, margin vs mark-up and the wholesaler layer — with the arithmetic shown.',
+    indexed: true,
+  },
+  {
+    id: 'guide-gross-to-net',
+    slug: 'guides/gross-to-net',
+    navTitle: 'Gross-to-net: where your revenue goes',
+    seoTitle: `Gross-to-net in FMCG: GSV, NSV and trade spend | ${SUFFIX}`,
+    description:
+      'GSV, NSV, promo funding and back margin: the waterfall between your invoice and your bank, what a healthy one looks like, and how to model yours free.',
+    intro:
+      'GSV, NSV, promo funding and back margin — the waterfall between invoice and bank, and what a healthy one looks like.',
+    indexed: true,
+  },
+  {
+    id: 'guide-amazon-fba-fees-uk',
+    slug: 'guides/amazon-fba-fees-uk',
+    navTitle: 'Amazon FBA fees in the UK',
+    seoTitle: `Amazon FBA fees UK: what FBA really costs FMCG brands | ${SUFFIX}`,
+    description:
+      'Referral, fulfilment, storage and the selling plan added up honestly — why case size beats fee negotiation, and the break-even price to check before you list.',
+    intro:
+      'Referral, fulfilment, storage and the plan, added up honestly — plus the break-even price nobody checks.',
+    indexed: true,
+  },
+  {
+    id: 'guide-fmcg-margin-benchmarks',
+    slug: 'guides/fmcg-margin-benchmarks',
+    navTitle: 'FMCG margin benchmarks',
+    seoTitle: `FMCG margin benchmarks UK: what brands actually make | ${SUFFIX}`,
+    description:
+      'Indicative UK gross-margin ranges by category — confectionery, soft drinks, snacks, chilled, beauty — measured properly, dated, and honest about being ranges.',
+    intro:
+      'Indicative UK brand gross-margin ranges by category, measured on the right base and honest about being ranges.',
+    indexed: true,
+  },
+  {
+    id: 'till',
+    slug: 'the-till',
+    navTitle: 'The Till',
+    seoTitle: `The Till | ${SUFFIX}`,
+    description: 'Back office. Nothing to see here.',
+    intro: '',
+    indexed: false,
+  },
+  {
     id: 'methodology',
     slug: 'the-rate-card',
     navTitle: 'The Rate Card',

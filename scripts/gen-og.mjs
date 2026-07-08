@@ -53,6 +53,12 @@ const TAGLINE = {
   'the-wait': 'Margin is an opinion. Cash is a fact.',
   'the-ledger': 'One receipt a week. No selling.',
   'the-rate-card': 'Every fee, dated and sourced.',
+  'guides': 'The maths, written down properly.',
+  'guides/retailer-margin': 'Their 35% is not your 35%.',
+  'guides/gross-to-net': 'Where the invoice pound goes.',
+  'guides/amazon-fba-fees-uk': 'What FBA really costs. Added up.',
+  'guides/fmcg-margin-benchmarks': 'What brands actually make.',
+  'the-till': 'Back office. Nothing to see.',
 }
 
 // Custom Ledger issue cards — the masthead, the title and THE NUMBER, huge.
@@ -93,6 +99,8 @@ function cardHtml({ slug, navTitle }) {
   const tagline = TAGLINE[slug] || ''
   const bg = isHome ? '#C6F215' : '#F7F5EF'
   const bar = isHome ? '#0A0A0A' : '#C6F215'
+  // Long titles (the guides) scale down instead of overflowing the card
+  const markSize = wordmark.length > 26 ? 68 : wordmark.length > 15 ? 92 : 120
   return `<!doctype html><html><head><meta charset="utf-8"><style>
     @font-face{font-family:'Anton';src:url(data:font/woff2;base64,${anton}) format('woff2');}
     @font-face{font-family:'Space Mono';src:url(data:font/woff2;base64,${mono}) format('woff2');}
@@ -101,7 +109,7 @@ function cardHtml({ slug, navTitle }) {
     body{background:${bg};color:#0A0A0A;font-family:'Space Mono',monospace;
       border:16px solid #0A0A0A;display:flex;flex-direction:column;justify-content:space-between;padding:64px 72px}
     .top{display:flex;justify-content:space-between;align-items:flex-start;font-size:26px;letter-spacing:.08em}
-    .mark{font-family:'Anton';font-size:120px;line-height:.9;letter-spacing:-.03em;margin-top:40px}
+    .mark{font-family:'Anton';font-size:${markSize}px;line-height:.9;letter-spacing:-.03em;margin-top:40px}
     .tag{font-size:34px;margin-top:26px;max-width:20ch}
     .foot{display:flex;justify-content:space-between;align-items:center;font-size:24px}
     .bar{height:34px;background:${bar};border:3px solid #0A0A0A;flex:1;margin-right:28px}

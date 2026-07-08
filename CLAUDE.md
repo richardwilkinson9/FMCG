@@ -137,6 +137,27 @@ SETUP_SUPABASE.md; the publishable key in `src/config/supabase.ts` is public by
 design. Buyers (named term sets) live in `scenario.buyers` — arrays in the
 scenario must REPLACE on merge (see updateScenario/mergeScenario).
 
+## Short links, guides, The Till & the marketing engine
+- **Short links**: `getgross.co.uk/s/<id>` — Copy share link copies the long
+  `?s=` URL inside the click, then swaps a short link onto the clipboard if
+  Supabase answers (share_links table, SETUP_SUPABASE.md §4; opens logged as
+  events 'shortlink_open'). App.tsx resolves `/s/<id>` on boot; dead links
+  land on home.
+- **The Guides** (`/guides` + four long reads): content in
+  `src/config/guides.json` (typed by guides.ts), rendered by GuidePage,
+  injected statically by the prerender with Article + FAQPage JSON-LD.
+  Adding a guide = JSON entry + pages.ts entry + PAGES line.
+- **The Till** (`/the-till`, indexed:false → noindex): owner stats, RLS-gated
+  weekly_stats view (owner's email only). Fails honest when signed out.
+- **Receipt→PNG**: "Save the receipt as an image" under CalcActions renders
+  the visible `.print-block` via html-to-image (lazy).
+- **Ledger nudge**: third localStorage-counted visit, dismissable, skipped if
+  an export email is on file.
+- Marketing assets/scripts live in `marketing/` + `scripts/gen-*.mjs`
+  (dictionary, series, linkedin, carousel) — entries are data, re-run to
+  render square + portrait. Docs: CAPTIONS/CALENDAR/PITCH/OUTREACH/CHECKLIST,
+  email shells in marketing/email/.
+
 ## Routing, SEO & share cards
 `src/config/pages.ts` is the single registry (id ↔ slug ↔ title/description/intro)
 that drives client routing, the document `<title>`/meta/OG (`utils/routeMeta.ts`),

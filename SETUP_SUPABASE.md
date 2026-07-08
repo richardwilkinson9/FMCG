@@ -131,3 +131,51 @@ from union_signups;
 Optional: save the funnel query as a Supabase **scheduled** query with an
 email destination if you want it landing in your inbox on Mondays — the
 dashboard supports it under Database → Cron (pg_cron).
+
+## 4. Short links + The Till (run once)
+
+Short share links (`getgross.co.uk/s/abc1234`) and the owner-only stats view
+behind `/the-till`. Paste into the SQL Editor and run.
+
+```sql
+-- SHORT SHARE LINKS — the site writes and reads them; nobody can update or
+-- delete through the public key. Opens are counted via the events table.
+create table public.share_links (
+  id text primary key,
+  blob text not null,
+  tool text not null default '',
+  source text not null default 'site',
+  created_at timestamptz not null default now()
+);
+
+alter table public.share_links enable row level security;
+
+create policy "anyone can create a share link" on public.share_links
+  for insert with check (true);
+
+create policy "anyone can resolve a share link" on public.share_links
+  for select using (true);
+
+-- THE TILL — weekly stats, readable ONLY when signed in as the owner. The
+-- view runs as its creator (so it can read the write-only events table) and
+-- filters on the caller's JWT email; anyone else gets zero rows.
+create view public.weekly_stats
+with (security_invoker = off, security_barrier = on) as
+select
+  date_trunc('week', created_at)::date::text as week,
+  count(*) filter (where name = 'view')           as views,
+  count(*) filter (where name = 'share')          as shares,
+  count(*) filter (where name = 'export')         as exports,
+  count(*) filter (where name = 'export_email')   as export_emails,
+  count(*) filter (where name = 'union')          as ledger_signups,
+  count(*) filter (where name = 'shortlink_open') as shortlink_opens
+from public.events
+where (auth.jwt() ->> 'email') = 'richardwilkinson9@gmail.com'
+group by 1;
+
+revoke all on public.weekly_stats from anon;
+grant select on public.weekly_stats to authenticated;
+```
+
+Signed out, or signed in as anyone else, the query returns nothing and
+The Till says so. `/the-till` is unlisted and noindexed either way.

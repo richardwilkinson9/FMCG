@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '../store/useStore'
-import { activeWholesalerMargin, effectiveAmazonFees, effectiveTikTokFees } from '../store/scenario'
+import { activeWholesalerMargin, defaultScenario, effectiveAmazonFees, effectiveTikTokFees } from '../store/scenario'
 import { crossChannelComparison, rspExVat, logisticsPerUnit } from '../utils/calculations'
 import { gbp, pct, BILE, REDUCED, REDPEN, INK } from '../components/gross/format'
 import { receiptStamp } from '../components/gross/Receipt'
@@ -86,12 +86,34 @@ export default function Home() {
           <div className="font-display text-[clamp(26px,4.5vw,54px)] leading-[0.95] tracking-[-0.02em] mt-[22px] text-ink">
             Calculators for FMCG's grossest maths.
           </div>
-          <button
-            onClick={() => { startProduct(); go('products') }}
-            className="inline-flex items-center gap-3 mt-[34px] bg-ink text-receipt border-2 border-ink py-4 px-[26px] text-base font-semibold cursor-pointer hover:bg-receipt hover:text-ink"
-          >
-            Feed me a product. <span className="font-mono">→</span>
-          </button>
+          <div className="flex flex-wrap gap-3 mt-[34px]">
+            <button
+              onClick={() => { startProduct(); go('products') }}
+              className="inline-flex items-center gap-3 bg-ink text-receipt border-2 border-ink py-4 px-[26px] text-base font-semibold cursor-pointer hover:bg-receipt hover:text-ink"
+            >
+              Feed me a product. <span className="font-mono">→</span>
+            </button>
+            <button
+              onClick={() => {
+                // The Ledger 001 worked example, pre-loaded — feel the tool in
+                // ten seconds without typing anything
+                const s = defaultScenario()
+                s.grocery.retailerMargin = 0.448
+                s.minMargin.targetBrandMargin = 0.348
+                s.minMargin.solveMode = 'cost'
+                s.listing.stores = 300
+                useStore.setState({
+                  products: [{ id: 'ledger-eg', name: 'Worked example — Ledger 001', cogsPerUnit: 0.9, unitsPerCase: 24, rrpIncVat: 2.5, vatRate: 0, weeklyRateOfSale: 2 }],
+                  activeProductId: 'ledger-eg',
+                  scenario: s,
+                })
+                go('min-margin')
+              }}
+              className="inline-flex items-center gap-3 bg-bile text-ink border-2 border-ink py-4 px-[26px] text-base font-semibold cursor-pointer hover:bg-ink hover:text-bile"
+            >
+              See a real listing worked. <span className="font-mono">→</span>
+            </button>
+          </div>
         </div>
       </div>
 

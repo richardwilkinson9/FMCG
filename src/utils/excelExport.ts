@@ -195,6 +195,12 @@ export async function downloadExcelModel(
     const f = sheet.getCell(r, 2)
     f.value = 'VAT number: not applicable. This is a spreadsheet of a website.'
     mono(f, { size: 8, color: 'FF666666' })
+    r++
+    // The deck travels — into buyers' inboxes, category teams, finance packs.
+    // Every sheet says where it came from.
+    const src = sheet.getCell(r, 2)
+    src.value = 'Built free at getgross.co.uk — margins, trade spend, cash, the lot.'
+    mono(src, { size: 8, bold: true })
     return r + 1
   }
   const toolHeader = (sheet: Worksheet, tool: string, subline: string) => {
@@ -258,7 +264,7 @@ export async function downloadExcelModel(
   how4.font = { name: MONO, size: 10, color: { argb: BILE } }
   const foot1 = cover.getCell('B14')
   foot1.value = 'GROSS. // FREE COMMERCIAL CALCULATORS FOR UK FMCG BRAND TEAMS — getgross.co.uk'
-  foot1.font = { name: MONO, size: 8, color: { argb: BILE } }
+  foot1.font = { name: MONO, size: 11, bold: true, color: { argb: BILE } }
   const foot2 = cover.getCell('B15')
   foot2.value = 'VAT NUMBER: NOT APPLICABLE. THIS IS A SPREADSHEET.'
   foot2.font = { name: MONO, size: 8, color: { argb: RECEIPT } }

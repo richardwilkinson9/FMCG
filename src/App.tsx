@@ -1,6 +1,6 @@
 import { useEffect, useRef, lazy, Suspense, Component, type ComponentType, type LazyExoticComponent, type ReactNode } from 'react'
 import { useStore } from './store/useStore'
-import { decodeStateFromUrl, encodeStateToUrl } from './utils/urlState'
+import { decodeStateFromUrl, decodeBlob, encodeStateToUrl } from './utils/urlState'
 import { pageIdFromPath, pathForPageId } from './config/pages'
 import { applyRouteMeta } from './utils/routeMeta'
 import { logEvent } from './utils/analytics'
@@ -33,6 +33,12 @@ const PAGES: Record<string, ComponentType | LazyExoticComponent<ComponentType>> 
   'cash-flow': lazy(() => import('./calculators/CashFlow')),
   'ledger': lazy(() => import('./pages/Ledger')),
   'ledger-001': lazy(() => import('./pages/LedgerIssue')),
+  'till': lazy(() => import('./pages/Till')),
+  'guides': lazy(() => import('./pages/Guides')),
+  'guide-retailer-margin': lazy(() => import('./pages/GuidePage')),
+  'guide-gross-to-net': lazy(() => import('./pages/GuidePage')),
+  'guide-amazon-fba-fees-uk': lazy(() => import('./pages/GuidePage')),
+  'guide-fmcg-margin-benchmarks': lazy(() => import('./pages/GuidePage')),
   'methodology': lazy(() => import('./pages/Methodology')),
 }
 
@@ -84,9 +90,31 @@ function App() {
   // Set when a change came from Back/Forward, so we don't push it back on.
   const fromPopstate = useRef(false)
 
-  // Restore state on load. A shared `?s=` blob wins (full model). Otherwise the
-  // clean path decides the tool (deep links from search / a pasted URL).
+  // Restore state on load. A short link (/s/<id>) resolves to a blob first;
+  // otherwise a shared `?s=` blob wins (full model); otherwise the clean path
+  // decides the tool (deep links from search / a pasted URL).
   useEffect(() => {
+    const short = window.location.pathname.match(/^\/s\/([a-z0-9]{4,16})$/)
+    if (short) {
+      void (async () => {
+        const { resolveShortLink } = await import('./store/cloud')
+        const blob = await resolveShortLink(short[1])
+        const decoded = blob ? decodeBlob(blob) : null
+        if (decoded) {
+          useStore.setState({
+            products: decoded.products,
+            activeProductId: decoded.activeProductId,
+            activeCalculator: decoded.activeCalculator in PAGES ? decoded.activeCalculator : 'home',
+            scenario: decoded.scenario,
+          })
+        } else {
+          // Dead or mistyped link — land on home rather than a broken path
+          useStore.setState({ activeCalculator: 'home' })
+          window.history.replaceState(null, '', '/')
+        }
+      })()
+      return
+    }
     const decoded = decodeStateFromUrl()
     if (decoded) {
       useStore.setState({
@@ -101,6 +129,18 @@ function App() {
         useStore.setState({ activeCalculator: fromPath })
       }
     }
+  }, [])
+
+  // Count distinct visits (once per browser session) — the Ledger nudge under
+  // the calculators fires on the third visit. Storage failures are ignored.
+  useEffect(() => {
+    try {
+      if (!sessionStorage.getItem('gross-session')) {
+        sessionStorage.setItem('gross-session', '1')
+        const n = Number(localStorage.getItem('gross-visits') ?? 0) + 1
+        localStorage.setItem('gross-visits', String(n))
+      }
+    } catch { /* private mode etc — no nudge, no harm */ }
   }, [])
 
   // Back/Forward stay inside GROSS: restore the tool from the history entry

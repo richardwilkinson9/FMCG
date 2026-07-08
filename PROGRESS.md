@@ -412,6 +412,37 @@ The maths was not touched — every formula still comes from calculations.ts.
       there); the £15,000 launch-investment input (declared assumption, no
       external source); email shell still unratified so the email is NOT built.
 
+## The growth programme (July 2026)
+Distribution became the constraint, so the build turned outward — all 27
+support items from the growth plan, in one programme:
+- [x] **Short share links** — /s/<id> via a share_links table (SQL in
+      SETUP_SUPABASE.md §4), created on Copy share link (long link first,
+      short swap-in), resolved on boot, opens counted, dead links land home.
+- [x] **The Guides** — /guides + four long reads (retailer margin,
+      gross-to-net, FBA fees UK, margin benchmarks) as data
+      (config/guides.json), prerendered with Article + FAQPage JSON-LD,
+      linked from the footer; 21-URL sitemap.
+- [x] **The Till** (/the-till, noindexed) — owner-only weekly stats over an
+      RLS-gated view; the digest on a phone.
+- [x] **Receipt→PNG** — every calculator can save its receipt as an image
+      ("post it, we dare you"); **Ledger nudge** on the third visit; homepage
+      **"See a real listing worked."** CTA (Ledger 001 pre-loaded); the deck
+      now credits getgross.co.uk on every sheet; Rate Card gains a CITE THIS
+      block; LinkedIn Insight Tag already site-wide.
+- [x] **The asset engine** — Dictionary /04–/08 rendered (square + portrait),
+      three new series generators (THE NUMBER / THE RECEIPT / THE BAD DAY)
+      with first cards, captions for everything (marketing/CAPTIONS.md),
+      8-week calendar, pitch kit, outreach targets + ready-to-send drafts
+      (researched Jul 2026), owner checklist.
+- [x] **Email** — three shell mockups (A till receipt — recommended, B ink
+      poster, C memo), Ledger 001 poured into shell A (send blocked on shell
+      ratification), welcome email, ESP setup + list export SQL
+      (marketing/email/).
+- [x] **Ledger 002 draft** ("Their 35% isn't your 35%") — maths hand-computed
+      with proposed tests; copy awaiting ratification (marketing/ledger-drafts/).
+- [x] **Standing Monday routine** — deploy-health check + digest/calendar
+      reminder fires into the build session weekly.
+
 ## Where we are (05 Jul 2026)
 The product is feature-complete for launch and deploys automatically. The
 remaining work is GO-TO-MARKET, not build:

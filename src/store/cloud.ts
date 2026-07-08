@@ -173,6 +173,83 @@ export function logEvent(name: string, slug = ''): void {
   }
 }
 
+// ── The Till (owner stats) ───────────────────────────────────────────────────
+// Reads the weekly_stats view. RLS restricts it to the owner's signed-in email
+// (SETUP_SUPABASE.md §4) — everyone else gets an empty result, which the page
+// reports honestly.
+
+export interface WeeklyStatsRow {
+  week: string
+  views: number
+  shares: number
+  exports: number
+  export_emails: number
+  ledger_signups: number
+  shortlink_opens: number
+}
+
+export async function fetchWeeklyStats(): Promise<WeeklyStatsRow[] | null> {
+  try {
+    const { data, error } = await withTimeout(
+      supabase().from('weekly_stats').select('*').order('week', { ascending: false }).limit(12),
+      { data: null, error: { message: 'timeout' } } as never,
+    )
+    if (error || !data) return null
+    return data as WeeklyStatsRow[]
+  } catch {
+    return null
+  }
+}
+
+// ── Short share links ────────────────────────────────────────────────────────
+// getgross.co.uk/s/<id> instead of a 2,000-character blob. The table stores the
+// blob; opens are counted through the events table ('shortlink_open', id) so
+// nothing here is updatable by the public key. Fail-soft: callers fall back to
+// the long ?s= link if this returns null.
+
+const SHORT_ID_ALPHABET = 'abcdefghjkmnpqrstuvwxyz23456789' // no 0/O/1/l/i
+
+function shortId(len = 7): string {
+  const out: string[] = []
+  const rnd = new Uint32Array(len)
+  crypto.getRandomValues(rnd)
+  for (let i = 0; i < len; i++) out.push(SHORT_ID_ALPHABET[rnd[i] % SHORT_ID_ALPHABET.length])
+  return out.join('')
+}
+
+export async function createShortLink(blob: string, tool: string, source = 'site'): Promise<string | null> {
+  try {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const id = shortId()
+      const { error } = await withTimeout(
+        supabase().from('share_links').insert({ id, blob, tool, source }),
+        { error: { message: 'timeout', code: 'timeout' } } as never,
+        2500,
+      )
+      if (!error) return id
+      if (error.code !== '23505') return null // only retry on an id collision
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+export async function resolveShortLink(id: string): Promise<string | null> {
+  try {
+    const { data, error } = await withTimeout(
+      supabase().from('share_links').select('blob').eq('id', id).maybeSingle(),
+      { data: null, error: { message: 'timeout' } } as never,
+      6000,
+    )
+    if (error || !data?.blob) return null
+    logEvent('shortlink_open', id)
+    return data.blob as string
+  } catch {
+    return null
+  }
+}
+
 // ── The Union ────────────────────────────────────────────────────────────────
 
 export async function unionSignup(email: string): Promise<{ ok: boolean }> {
