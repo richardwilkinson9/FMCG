@@ -20,6 +20,13 @@ a day to catch up).
 One post per day, ever: if a date somehow has two entries, the first
 APPROVED one wins and the rest stay put.
 
+Low stock: whenever fewer than three APPROVED posts remain ahead of today,
+the routine tells the owner it's time to bulk approve the next batch.
+
+Dead image: if an entry's image URL isn't fetchable at post time, the
+routine skips the post and tells the owner — it never posts image-less
+or improvises a substitute.
+
 ## Ground rules baked into every entry
 
 - Target: company page Gross. (company_id 136074586) only.
@@ -93,21 +100,18 @@ your buyer:
 
 ### Q-025
 - date: 2026-07-22 (Wed 07:45 UK)
-- item: INSIDER /01 — the origin story (pinned-post copy from
-  LINKEDIN_PLAYBOOK.md §1, verbatim). Pin it from the page UI after it
-  posts, if wanted. Optional image: the `marketing/linkedin/pinned/` set
-  exists if a card is preferred over plain text.
-- image: none
-- status: PENDING
+- item: INSIDER /01 — the origin story. Copy approved by owner 9 Jul 2026;
+  image being chosen from the `marketing/linkedin/pinned/` set. Pin it from
+  the page UI after it posts, if wanted.
+- image: TBC (owner picking from pinned/ set)
+- status: PENDING (copy approved — awaiting image pick)
 
 ```
 nobody runs GROSS.
 
-it's maintained by a serving commercial director who has watched too many good brands lose meetings to arithmetic, and who would like to keep their badge.
+it's maintained by a long-suffering FMCG veteran who's watched too many good brands f*ck up listings with bad maths. 
 
-so the tools are free, the fee defaults are dated and sourced, and the working is always shown. if a number on the site is wrong, say so — it gets fixed and the fix gets dated.
-
-that's it. that's the company.
+so the tools are free, and the working is always shown. if a number on the site is wrong, say so — it gets fixed and the fix gets dated.
 ```
 
 ### Q-006
@@ -118,18 +122,9 @@ that's it. that's the company.
 
 ### Q-026
 - date: 2026-07-24 (Fri 08:30 UK)
-- item: INSIDER /02 — who writes this (from the playbook's Ledger-page
-  line). Plain text.
-- image: none
-- status: PENDING
-
-```
-'who writes this?'
-
-a serving UK grocery commercial director. that's all you get.
-
-the maths doesn't need a name. it needs checking — the fees are dated and sourced so you can.
-```
+- item: INSIDER /02 — who writes this. Cut by owner, 9 Jul 2026. Slot
+  stays empty; the routine skips the day (missed slots stay missed).
+- status: CUT
 
 ## Week 3
 
@@ -194,15 +189,17 @@ your buyer:
 
 ### Q-027
 - date: 2026-08-05 (Wed 07:45 UK)
-- item: INSIDER /03 — why no name (anonymity as the feature, playbook §1).
+- item: INSIDER /03 — why no name (anonymity as the feature). Copy approved
+  by owner 9 Jul 2026 (exclamation marks are the owner's deliberate
+  exception to the house rule); image being chosen from the pinned/ set.
   Fallback for this slot if the guide post isn't built.
-- image: none
-- status: PENDING
+- image: TBC (owner picking from pinned/ set)
+- status: PENDING (copy approved — awaiting image pick)
 
 ```
 why there's no name on the site: the person who maintains it still sits in the meetings the calculators are for.
 
-anonymity keeps the candour. the dated fees and the working shown keep it honest.
+anonymity keeps the candour. oooo secretive!! 
 ```
 
 ### Q-012
