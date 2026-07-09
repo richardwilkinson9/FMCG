@@ -15,12 +15,17 @@ a day to catch up).
 - `BUILD` — asset or copy doesn't exist yet. The routine skips it. Replace
   with real text/image and set PENDING when built.
 - `MANUAL` — can't be posted by the connector (polls, reshares). Yours.
+- `CUT` — dropped by the owner. Never posts; kept for the record.
+
+One post per day, ever: if a date somehow has two entries, the first
+APPROVED one wins and the rest stay put.
 
 ## Ground rules baked into every entry
 
 - Target: company page Gross. (company_id 136074586) only.
-- The connector cannot post a first comment, so links sit in the post body
-  as plain URLs with UTM tags (house rule fallback).
+- No links in the post body (owner's rule, Jul 2026). The connector cannot
+  post a first comment either, so posts carry no links at all; the page
+  About section carries the site link.
 - Every number traces to the site or repo docs. The 45%/44.8% post is
   sourced from `src/config/ledger.ts` (Ledger 001).
 - Parentheses in post text are escaped at post time per LinkedIn's
@@ -36,43 +41,35 @@ a day to catch up).
 - date: 2026-07-13 (Mon 07:45 UK)
 - item: DICTIONARY /04 — investment behind it
 - image: https://getgross.co.uk/linkedin/dictionary/04-investment-behind-it.png
-- status: PENDING
+- status: APPROVED
 
 ```
-your buyer:
-
 'we'd need to see some investment behind it' — give us money.
 
-at least know what the money does to the listing before you say yes.
-
-what customer investment does to a listing, worked: https://getgross.co.uk/the-listing?utm_source=linkedin&utm_medium=organic&utm_campaign=dictionary-04
+at least know what the money buys you before you say yes.
 ```
 
 ### Q-002
 - date: 2026-07-15 (Wed 07:45 UK)
 - item: RECEIPT /01 — you bank 49p
 - image: https://getgross.co.uk/linkedin/receipt/01-you-bank-49p.png
-- status: PENDING
+- status: APPROVED
 
 ```
 a £1.50 bestseller, read like a till receipt.
 
 VAT takes 25p. the retailer takes 44p. the factory takes 32p.
-you bank 49p — and promo funding, freight and the buyer's next email all come out of that.
-
-free calculators that read your numbers the same way: https://getgross.co.uk/the-pnl?utm_source=linkedin&utm_medium=organic&utm_campaign=receipt-01
+you bank 49p - before you pay your supplier, your transport, your promo, your trade spend. you're lucky if you're left with 10p.
 ```
 
 ### Q-003
 - date: 2026-07-17 (Fri 08:30 UK)
 - item: Teaser — 03-truism (margin is an opinion, cash is a fact)
 - image: https://getgross.co.uk/linkedin/03-truism.png
-- status: PENDING
+- status: APPROVED
 
 ```
-a listing can be all margin on paper and still put you underwater — the retailer pays in 60 days, your supplier wants paying in 30.
-
-the gap has a number. free tool: https://getgross.co.uk/the-wait?utm_source=linkedin&utm_medium=organic&utm_campaign=teaser-03-truism
+a listing can be all sunshine and sparkles on paper...and still put you underwater when the retailer pays in 60 days end of month, and your supplier wants paying in 30.
 ```
 
 ## Week 2
@@ -81,49 +78,57 @@ the gap has a number. free tool: https://getgross.co.uk/the-wait?utm_source=link
 - date: 2026-07-20 (Mon 07:45 UK)
 - item: DICTIONARY /05 — price-sensitive shopper
 - image: https://getgross.co.uk/linkedin/dictionary/05-price-sensitive-shopper.png
-- status: PENDING
+- status: APPROVED
 
 ```
 your buyer:
 
-'our shopper is price-sensitive' — permanent promo. you fund it.
-
-what a promo actually costs: https://getgross.co.uk/the-payback?utm_source=linkedin&utm_medium=organic&utm_campaign=dictionary-05
+'our shopper is price-sensitive' — permanent promo. funded by you.
 ```
 
 ### Q-005
 - date: 2026-07-22 (Wed 07:45 UK)
-- item: NUMBER /01 — 48p. DEPENDENCY: Ledger 001 must be live on-site and
-  emailed the same day (calendar week 2 anchor). If Ledger 001 slips, hold
-  this at PENDING.
-- image: https://getgross.co.uk/linkedin/number/01-forty-eight-p.png
-- status: PENDING
+- item: NUMBER /01 — 48p. Cut by owner, 9 Jul 2026. Slot taken by Q-025.
+- status: CUT
 
-```
-48p.
-
-the margin per unit that survives a halved rate of sale — on one worked example. yours is a different number, and you should know it before the buyer asks for two more points.
-
-working shown, free: https://getgross.co.uk/the-ledger/001?utm_source=linkedin&utm_medium=organic&utm_campaign=number-01
-```
-
-### Q-006
-- date: 2026-07-24 (Fri 08:30 UK)
-- item: Plain-text — the 45% vs 44.8% story (no image). Numbers from
-  Ledger 001 (`src/config/ledger.ts`).
+### Q-025
+- date: 2026-07-22 (Wed 07:45 UK)
+- item: INSIDER /01 — the origin story (pinned-post copy from
+  LINKEDIN_PLAYBOOK.md §1, verbatim). Pin it from the page UI after it
+  posts, if wanted. Optional image: the `marketing/linkedin/pinned/` set
+  exists if a card is preferred over plain text.
 - image: none
 - status: PENDING
 
 ```
-the plan says 4 a store a week. say the honest downside is half.
+nobody runs GROSS.
 
-£15,000 of launch money is £288 a week. at 2 a store across 300 stores that's 600 units. £288 ÷ 600 = 48p — the margin per unit that breaks even in the bad year.
+it's maintained by a serving commercial director who has watched too many good brands lose meetings to arithmetic, and who would like to keep their badge.
 
-48p on 90p COGS is a £1.38 cost price. £1.38 into £2.50 leaves the retailer 44.8%.
+so the tools are free, the fee defaults are dated and sourced, and the working is always shown. if a number on the site is wrong, say so — it gets fixed and the fix gets dated.
 
-the buyer asking 45% instead of 44.8% sounds like rounding. it's the difference between surviving the miss and not.
+that's it. that's the company.
+```
 
-the whole working: https://getgross.co.uk/the-ledger/001?utm_source=linkedin&utm_medium=organic&utm_campaign=ledger-001-plaintext
+### Q-006
+- date: 2026-07-24 (Fri 08:30 UK)
+- item: Plain-text — the 45% vs 44.8% story. Cut by owner, 9 Jul 2026.
+  Slot taken by Q-026.
+- status: CUT
+
+### Q-026
+- date: 2026-07-24 (Fri 08:30 UK)
+- item: INSIDER /02 — who writes this (from the playbook's Ledger-page
+  line). Plain text.
+- image: none
+- status: PENDING
+
+```
+'who writes this?'
+
+a serving UK grocery commercial director. that's all you get.
+
+the maths doesn't need a name. it needs checking — the fees are dated and sourced so you can.
 ```
 
 ## Week 3
@@ -132,16 +137,12 @@ the whole working: https://getgross.co.uk/the-ledger/001?utm_source=linkedin&utm
 - date: 2026-07-27 (Mon 07:45 UK)
 - item: DICTIONARY /06 — long-term play
 - image: https://getgross.co.uk/linkedin/dictionary/06-long-term-play.png
-- status: PENDING
+- status: APPROVED
 
 ```
 your buyer:
 
-'we see this as a long-term play' — you fund year one.
-
-year one has a number. nobody puts it on the table in the meeting.
-
-put a number on year one: https://getgross.co.uk/the-wait?utm_source=linkedin&utm_medium=organic&utm_campaign=dictionary-06
+'we see this as a long-term play' - you fund year one. (and year two and year three)
 ```
 
 ### Q-008
@@ -156,7 +157,7 @@ the year said 2 a store a week and nothing.
 
 same listing. same buyer. same margin. the only thing that changed was the forecast being wrong — which is the one thing forecasts are reliably good at.
 
-stress-test the listing before you sign it, free: https://getgross.co.uk/the-listing?utm_source=linkedin&utm_medium=organic&utm_campaign=badday-01
+stress-test the listing before you sign it. free, on the site.
 ```
 
 ### Q-009
@@ -167,8 +168,6 @@ stress-test the listing before you sign it, free: https://getgross.co.uk/the-lis
 
 ```
 same number. two different bases. one of you is measuring off the wrong one, and it's usually not the person who wrote the terms.
-
-the working: https://getgross.co.uk/guides/retailer-margin?utm_source=linkedin&utm_medium=organic&utm_campaign=teaser-05-thirty-five
 ```
 
 ## Week 4
@@ -183,16 +182,28 @@ the working: https://getgross.co.uk/guides/retailer-margin?utm_source=linkedin&u
 your buyer:
 
 'we'll trial it' — four stores. bottom shelf. January.
-
-https://getgross.co.uk?utm_source=linkedin&utm_medium=organic&utm_campaign=dictionary-07
 ```
 
 ### Q-011
 - date: 2026-08-05 (Wed 07:45 UK)
 - item: Guide launch post — retailer-margin guide. Caption is written on the
-  day per the calendar.
+  day per the calendar. If the guide ships in time, approve this and leave
+  Q-027 pending for a later slot.
 - image: none yet
 - status: BUILD
+
+### Q-027
+- date: 2026-08-05 (Wed 07:45 UK)
+- item: INSIDER /03 — why no name (anonymity as the feature, playbook §1).
+  Fallback for this slot if the guide post isn't built.
+- image: none
+- status: PENDING
+
+```
+why there's no name on the site: the person who maintains it still sits in the meetings the calculators are for.
+
+anonymity keeps the candour. the dated fees and the working shown keep it honest.
+```
 
 ### Q-012
 - date: 2026-08-07 (Fri 08:30 UK)
@@ -212,8 +223,6 @@ https://getgross.co.uk?utm_source=linkedin&utm_medium=organic&utm_campaign=dicti
 your buyer:
 
 'we'll get behind it in H2' — we won't.
-
-https://getgross.co.uk?utm_source=linkedin&utm_medium=organic&utm_campaign=dictionary-08
 ```
 
 ### Q-014
@@ -265,8 +274,6 @@ https://getgross.co.uk?utm_source=linkedin&utm_medium=organic&utm_campaign=dicti
 
 ```
 most brand teams know their margin to one decimal place and the retailer's to none. the buyer knows both.
-
-level the table: https://getgross.co.uk/the-pnl?utm_source=linkedin&utm_medium=organic&utm_campaign=teaser-01-provocation
 ```
 
 ## Week 8
