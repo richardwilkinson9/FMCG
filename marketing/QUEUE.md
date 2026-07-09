@@ -100,11 +100,10 @@ your buyer:
 
 ### Q-025
 - date: 2026-07-22 (Wed 07:45 UK)
-- item: INSIDER /01 — the origin story. Copy approved by owner 9 Jul 2026;
-  image being chosen from the `marketing/linkedin/pinned/` set. Pin it from
-  the page UI after it posts, if wanted.
-- image: TBC (owner picking from pinned/ set)
-- status: PENDING (copy approved — awaiting image pick)
+- item: INSIDER /01 — the origin story. Copy and image approved by owner
+  9 Jul 2026. Pin it from the page UI after it posts, if wanted.
+- image: https://getgross.co.uk/linkedin/pinned/03-type-only.png
+- status: APPROVED
 
 ```
 nobody runs GROSS.
@@ -191,10 +190,11 @@ your buyer:
 - date: 2026-08-05 (Wed 07:45 UK)
 - item: INSIDER /03 — why no name (anonymity as the feature). Copy approved
   by owner 9 Jul 2026 (exclamation marks are the owner's deliberate
-  exception to the house rule); image being chosen from the pinned/ set.
+  exception to the house rule); image is the org-chart card, re-rendered
+  9 Jul without the rat box and the job-title line, owner approved.
   Fallback for this slot if the guide post isn't built.
-- image: TBC (owner picking from pinned/ set)
-- status: PENDING (copy approved — awaiting image pick)
+- image: https://getgross.co.uk/linkedin/pinned/04-org-chart.png
+- status: APPROVED
 
 ```
 why there's no name on the site: the person who maintains it still sits in the meetings the calculators are for.

@@ -105,21 +105,14 @@ const c3 = shell(INK, `
     </div>
   </div>`)
 
-// 4 — THE ORG CHART: one redacted box, one rat
+// 4 — THE ORG CHART: one redacted box, the whole company
 const c4 = shell(RECEIPT, `
   <div class="pad">
     <div class="row"><span class="mark">GROSS.</span><span style="font-weight:700;font-size:24px;letter-spacing:.14em">THE ORG CHART</span></div>
     <div style="display:flex;flex-direction:column;align-items:center">
-      <div style="border:3px solid ${INK};background:${BILE};padding:22px 44px;text-align:center">
+      <div style="border:3px solid ${INK};background:${BILE};padding:30px 56px;text-align:center">
         <div style="font-size:18px;letter-spacing:.1em;opacity:.65">FOUNDER, CEO, ENTIRE STAFF</div>
         <div style="font-family:'Anton';font-size:52px;margin-top:6px"><span style="background:${INK};color:${INK}">████████████</span></div>
-        <div style="font-size:17px;margin-top:8px">(a serving commercial director)</div>
-      </div>
-      <div style="width:3px;height:64px;background:${INK}"></div>
-      <div style="border:3px solid ${INK};background:${INK};padding:18px 40px;text-align:center">
-        <div style="font-size:16px;letter-spacing:.1em;color:${BILE}">HEAD OF MORALE</div>
-        <div style="font-family:'Anton';font-size:40px;color:${BILE};margin-top:4px">THE RAT</div>
-        <div style="font-size:15px;margin-top:6px;color:${RECEIPT}">(not real)</div>
       </div>
     </div>
     <div class="row">
