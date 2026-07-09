@@ -7,6 +7,7 @@ import { logEvent } from '../../utils/analytics'
 import { useSession } from '../../store/session'
 import { pageById } from '../../config/pages'
 import EXPLAINERS from '../../config/explainers.json'
+import { GUIDE_FOR_TOOL } from '../../config/guideLinks'
 import GrossFooter from './GrossFooter'
 import LedgerRat from './LedgerRat'
 
@@ -433,7 +434,9 @@ export default function CalcShell({
  */
 export function TheWorkings() {
   const activeCalculator = useStore((s) => s.activeCalculator)
+  const setActiveCalculator = useStore((s) => s.setActiveCalculator)
   const paras = (EXPLAINERS as Record<string, string[]>)[activeCalculator]
+  const guide = GUIDE_FOR_TOOL[activeCalculator]
   if (!paras?.length) return null
   return (
     <div className="px-[clamp(20px,4vw,44px)] pb-10">
@@ -446,6 +449,14 @@ export function TheWorkings() {
             {paras.map((p, i) => (
               <p key={i} className="text-[13.5px] leading-relaxed mb-3 opacity-80">{p}</p>
             ))}
+            {guide && (
+              <button
+                onClick={() => { setActiveCalculator(guide.pageId); window.scrollTo(0, 0) }}
+                className="font-mono text-[12px] underline bg-transparent border-0 p-0 cursor-pointer opacity-80 hover:opacity-100"
+              >
+                The longer read: {guide.title} →
+              </button>
+            )}
           </div>
         </details>
       </div>

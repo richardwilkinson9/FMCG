@@ -39,6 +39,8 @@ const PAGES: Record<string, ComponentType | LazyExoticComponent<ComponentType>> 
   'guide-gross-to-net': lazy(() => import('./pages/GuidePage')),
   'guide-amazon-fba-fees-uk': lazy(() => import('./pages/GuidePage')),
   'guide-fmcg-margin-benchmarks': lazy(() => import('./pages/GuidePage')),
+  'guide-payment-terms-uk-grocery': lazy(() => import('./pages/GuidePage')),
+  'guide-what-a-promo-costs': lazy(() => import('./pages/GuidePage')),
   'methodology': lazy(() => import('./pages/Methodology')),
 }
 

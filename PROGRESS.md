@@ -443,6 +443,28 @@ support items from the growth plan, in one programme:
 - [x] **Standing Monday routine** — deploy-health check + digest/calendar
       reminder fires into the build session weekly.
 
+## Overnight sprint (Jul 2026): guides ×2, interlinks, beacon, QA sweep
+- [x] Two new guides: **payment-terms-uk-grocery** (→ The Wait) and
+      **what-a-promo-costs** (→ The Payback) — six guides live, all
+      prerendered with Article + FAQPage JSON-LD; sitemap at 23 URLs.
+- [x] **Tool → guide interlinks**: THE WORKINGS on each calculator now ends
+      with "The longer read: …" (config/guideLinks.ts, a light map so
+      CalcShell doesn't carry guides.json).
+- [x] **Prerender guard**: every guide-* route must have guides.json content
+      and vice versa — a mismatch fails the build instead of shipping an
+      empty SEO page.
+- [x] **Client error beacon**: first error/unhandled rejection per session
+      logs an anonymous 'client_error' event (name only, 90 chars, fail-soft)
+      so breakage shows in the events table.
+- [x] **375px sweep**: all 24 routes checked for horizontal overflow —
+      all clean, no fixes needed.
+- [x] **Keyboard focus**: global :focus-visible outline in brand ink (bile on
+      ink grounds); mouse clicks unaffected.
+- [x] **Share-blob tests**: urlState round-trip locked (unicode products,
+      mergeScenario healing, junk rejection) — 48 tests total.
+- [x] Banned-word sweep across guides/explainers copy: three violations found
+      (two mine from the first guide batch) and fixed.
+
 ## Where we are (05 Jul 2026)
 The product is feature-complete for launch and deploys automatically. The
 remaining work is GO-TO-MARKET, not build:

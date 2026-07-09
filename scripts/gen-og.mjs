@@ -58,6 +58,8 @@ const TAGLINE = {
   'guides/gross-to-net': 'Where the invoice pound goes.',
   'guides/amazon-fba-fees-uk': 'What FBA really costs. Added up.',
   'guides/fmcg-margin-benchmarks': 'What brands actually make.',
+  'guides/payment-terms-uk-grocery': 'Sixty days is working capital.',
+  'guides/what-a-promo-costs': 'The uplift is the soft number.',
   'the-till': 'Back office. Nothing to see.',
 }
 

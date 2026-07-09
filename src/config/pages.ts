@@ -249,6 +249,28 @@ export const PAGE_META: PageMeta[] = [
     indexed: true,
   },
   {
+    id: 'guide-payment-terms-uk-grocery',
+    slug: 'guides/payment-terms-uk-grocery',
+    navTitle: 'Payment terms in UK grocery',
+    seoTitle: `Payment terms in UK grocery: the cash cost of 60 days | ${SUFFIX}`,
+    description:
+      'How supermarket payment terms turn into working capital: the debtor-day maths, the shelf-fill trap, what faster payment is worth, and a free tool to model your own cash curve.',
+    intro:
+      'Sixty days is not a detail — it is working capital, and it is yours. The debtor-day maths, the shelf-fill trap, and what terms are worth.',
+    indexed: true,
+  },
+  {
+    id: 'guide-what-a-promo-costs',
+    slug: 'guides/what-a-promo-costs',
+    navTitle: 'What a promotion actually costs',
+    seoTitle: `What a supermarket promotion actually costs the brand | ${SUFFIX}`,
+    description:
+      'Supplier funding mechanics, the uplift myth, cannibalised base sales and the payback test — what UK grocery promotions really cost, with a free calculator to run yours.',
+    intro:
+      'Funding off invoice, the uplift with the widest error bars in the building, and the payback test nobody runs. Worked openly.',
+    indexed: true,
+  },
+  {
     id: 'till',
     slug: 'the-till',
     navTitle: 'The Till',

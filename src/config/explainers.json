@@ -11,7 +11,7 @@
   ],
   "min-margin": [
     "The Floor works the chain backwards. Everyone else starts with a cost price and finds out the margin at the end; this starts with the margin you need and finds the cost price (or shelf price) that delivers it. The arithmetic is the same chain — VAT off, retailer margin off, wholesaler if there is one — run in reverse.",
-    "The number it returns is a ceiling on landed cost, not on cost of goods. Freight to the customer's depot has to fit inside it too, so the cost price you can actually pay your manufacturer is the ceiling less the freight per unit. Forget that and your target margin quietly loses a point or two in a lorry.",
+    "The number it returns is a ceiling on landed cost, not on cost of goods. Freight to the customer's depot has to fit inside it too, so the cost price you can actually pay your manufacturer is the ceiling less the freight per unit. Forget that and your target margin loses a point or two in a lorry.",
     "Use it before a range review, not after. Walking in knowing your floor is the difference between negotiating and being informed."
   ],
   "listing-model": [

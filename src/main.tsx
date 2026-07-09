@@ -20,6 +20,25 @@ window.addEventListener('vite:preloadError', (event) => {
   }
 })
 
+// Error beacon: one anonymous count per session when something throws, so
+// breakage shows up in the events table instead of nobody's inbox. No stack,
+// no URL params, no PII — just the error name and the page.
+let errorReported = false
+window.addEventListener('error', (e) => {
+  if (errorReported) return
+  errorReported = true
+  import('./utils/analytics')
+    .then(({ logEvent }) => logEvent('client_error', String(e?.message ?? 'unknown').slice(0, 90)))
+    .catch(() => {})
+})
+window.addEventListener('unhandledrejection', (e) => {
+  if (errorReported) return
+  errorReported = true
+  import('./utils/analytics')
+    .then(({ logEvent }) => logEvent('client_error', String(e?.reason?.message ?? e?.reason ?? 'rejection').slice(0, 90)))
+    .catch(() => {})
+})
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />

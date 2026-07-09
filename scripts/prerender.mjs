@@ -55,6 +55,19 @@ for (const p of PAGES) {
   }
 }
 
+// Guides must exist on both sides: every guide-* route has content, every
+// guide has a route. A mismatch would ship an empty SEO page silently.
+for (const p of PAGES.filter((p) => p.id.startsWith('guide-'))) {
+  if (!guideById(p.id)) {
+    throw new Error(`prerender: page '${p.id}' has no entry in guides.json — add the content or remove the route.`)
+  }
+}
+for (const g of GUIDES) {
+  if (!PAGES.some((p) => p.id === `guide-${g.key}`)) {
+    throw new Error(`prerender: guide '${g.key}' has no pages.ts entry — it would be invisible to search.`)
+  }
+}
+
 const html = readFileSync(resolve(DIST, 'index.html'), 'utf8')
 if (!html.includes('<div id="root">')) throw new Error('prerender: dist/index.html has no #root — build output changed.')
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')

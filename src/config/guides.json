@@ -61,7 +61,7 @@
     "sections": [
       {
         "paras": [
-          "Gross sales value (GSV) is your volume at full list price — the number on the invoice, and the one that never moves. Net sales value (NSV) is what survives after trade deductions: promotional funding, back margin, retro payments, range support. The journey between the two is the gross-to-net waterfall, and it is where FMCG businesses quietly lose track of their own economics.",
+          "Gross sales value (GSV) is your volume at full list price — the number on the invoice, and the one that never moves. Net sales value (NSV) is what survives after trade deductions: promotional funding, back margin, retro payments, range support. The distance between the two is the gross-to-net waterfall, and it is where FMCG businesses lose track of their own economics.",
           "The convention that matters most: when a promotion is supplier-funded, the price cut comes off your invoice, not the retailer's margin. The retailer keeps their percentage; you fund the discount. A 25%-off promotion on a supplier-funded deal deducts GSV × 25% from your line, week after week, for as long as the deal runs."
         ]
       },
@@ -183,6 +183,100 @@
       {
         "q": "Where do these numbers come from?",
         "a": "Published accounts, industry commentary and practitioner experience, held as ranges precisely because point figures in this territory are false precision. Each range is dated and sourced on The Rate Card, and corrected when someone shows us better data."
+      }
+    ]
+  },
+  {
+    "key": "payment-terms-uk-grocery",
+    "title": "Payment terms in UK grocery: the cash cost of being paid later",
+    "standfirst": "Sixty days is not a detail. It is working capital, and it is yours.",
+    "toolId": "cash-flow",
+    "toolLabel": "Model your own cash curve on The Wait",
+    "sections": [
+      {
+        "paras": [
+          "When a UK retailer lists your product, the commercial terms fix two clocks: how long the retailer takes to pay your invoice (often quoted as 30, 60 or, historically, 90 days), and how long your own supplier gives you to pay for the goods. The gap between those clocks, multiplied by your weekly sales, is cash you are lending to the trading relationship — permanently, for as long as the listing runs.",
+          "The arithmetic is short. Sell 5,000 units a week at an 81p invoice price and you are owed roughly £40,000 at any moment on 60-day terms. If your co-packer wants paying in 30 days, half of that gap is funded by somebody — and that somebody is you, your overdraft, or an invoice financier taking their own margin off your margin."
+        ]
+      },
+      {
+        "heading": "The shelf fill makes week one the worst week",
+        "paras": [
+          "Going live means shipping enough stock to fill every store before a single unit sells through: cases per store, times stores, bought and invoiced in week one. That one order front-loads both sides of the cash line, and on long payment terms the goods bill leaves your account weeks before the fill converts to cash. It is the single most common unpleasant surprise in a first listing, and it is entirely forecastable.",
+          "Promotions compound it: an uplift you agreed on paper is extra stock you buy early and extra invoices you wait on, while the funding for the price cut is deducted before payment. A heavily promoted launch on long terms can be profitable on every line of the P&L and still be the reason payroll is tight in month three."
+        ]
+      },
+      {
+        "heading": "Terms are negotiable — price it before you trade it",
+        "paras": [
+          "Payment terms are a commercial lever like any other, and both sides know it. Faster payment is worth a specific number of pounds to you (your funding cost on the gap); a retailer conceding terms will expect it back somewhere else. The mistake is trading a visible number (price, margin) for an invisible one (terms) without pricing both. Work out what 30 days versus 60 costs you per year, and negotiate with that number on the table.",
+          "Several of the large UK multiples have made public commitments to pay smaller suppliers faster, and the Groceries Supply Code of Practice constrains how the designated retailers handle deductions and delay. Do not rely on any of it in a model: put your actual contractual terms into the maths and let the cash curve tell you the truth."
+        ]
+      }
+    ],
+    "faq": [
+      {
+        "q": "What are typical supermarket payment terms in the UK?",
+        "a": "Broadly 30 to 60 days from invoice for branded suppliers, with faster terms increasingly offered to the smallest suppliers and longer terms not unheard of historically. Your contract is the only number that matters — model that, not the average."
+      },
+      {
+        "q": "How much working capital does a grocery listing need?",
+        "a": "As a rough frame: weekly invoiced sales × payment-term weeks, plus the one-off shelf fill, minus whatever your own supplier terms fund. A healthy mid-size listing on 60-day terms can need tens of thousands of pounds before it pays for itself — work yours out properly rather than by rule of thumb."
+      },
+      {
+        "q": "Can I negotiate payment terms with a supermarket?",
+        "a": "Yes — terms are commercial, not fixed. The discipline is to price what faster payment is worth to you (your funding cost on the receivable) before the meeting, so a terms concession traded against margin is a calculation rather than a hope."
+      },
+      {
+        "q": "What is GSCOP?",
+        "a": "The Groceries Supply Code of Practice — rules governing how the UK's designated large grocery retailers deal with direct suppliers, including protections around deductions, delisting and variations. It is worth knowing, and it is not a cash-flow plan: model your actual terms."
+      }
+    ]
+  },
+  {
+    "key": "what-a-promo-costs",
+    "title": "What a supermarket promotion actually costs the brand",
+    "standfirst": "The mechanics of funding, the uplift you were promised, and the payback nobody checks.",
+    "toolId": "trade-spend",
+    "toolLabel": "Run the payback on The Payback",
+    "sections": [
+      {
+        "paras": [
+          "The default convention in UK grocery is that promotions are supplier-funded: the retailer keeps their margin percentage, and the consumer price cut comes off the brand's invoice. On a 25%-off deal, that means your gross sales value × 25% is deducted from your line for every promoted week. The shelf says the retailer is being generous; the ledger says you are.",
+          "That funding is only the visible cost. Around it sit the less visible ones: the extra stock bought early to service the uplift, the margin given away on volume that would have sold anyway, and any fixed contributions — gate fees, feature space, retail media — attached to the activity."
+        ]
+      },
+      {
+        "heading": "The uplift is the soft number",
+        "paras": [
+          "Every promo case rests on an uplift assumption, and the uplift is the number with the widest error bars in the building. Some of the promoted volume is genuinely incremental; some is your own base sales bought at a discount; some is shoppers stocking up on a product they would have bought next month at full price. A promotion that doubles volume can still lose money if half of that volume was coming anyway.",
+          "The honest test is arithmetic, not optimism: incremental units × margin on those units, set against the full funding cost plus any fixed fees. If the deal only pays back at the top of the uplift range, it does not pay back."
+        ]
+      },
+      {
+        "heading": "When promotions are worth it anyway",
+        "paras": [
+          "None of this means never promote. Promotions buy things the base rate of sale cannot: trial from new shoppers, defence of shelf space at range review, velocity data that supports distribution arguments. The discipline is to name what you are buying and its price before you sign — a promotion run as a strategic investment with a known cost is a decision; the same promotion run because the buyer asked is a leak.",
+          "The rule of thumb the trade actually uses: if a promotion cannot pay back within the deal period plus one buying cycle, it is brand investment — and brand investment should appear in the plan as brand investment, not disappear into the trade line."
+        ]
+      }
+    ],
+    "faq": [
+      {
+        "q": "Who pays for supermarket promotions?",
+        "a": "Usually the brand, through supplier funding: the retailer keeps their margin percentage and the discount is deducted from the supplier's invoice for every promoted week. Retailer-funded promotions exist but are the exception."
+      },
+      {
+        "q": "What uplift should I expect from a promotion?",
+        "a": "It varies enormously by mechanic, category and depth of cut — deep price cuts on impulse categories can multiply volume, shallow cuts on considered purchases barely move it. Treat any single figure as an assumption to stress-test, and model the case where the uplift halves."
+      },
+      {
+        "q": "Do supermarket promotions make money for brands?",
+        "a": "Sometimes — when the incremental margin clears the funding plus fixed costs, or when the promotion buys something strategic (trial, distribution defence) at a price you named in advance. Run the payback before you sign; most disappointing promotions were knowable in advance."
+      },
+      {
+        "q": "What is trade spend?",
+        "a": "The money that flows from brand to retailer around the trading relationship: promotional funding, retrospective discounts, back margin, range support. It nets off revenue (it is not marketing) and typically consumes 10–30% of a UK brand's invoiced sales."
       }
     ]
   }
