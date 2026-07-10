@@ -120,7 +120,7 @@ export default function Portfolio() {
               <RSection label="THE RANGE, PRODUCT BY PRODUCT" health={{ color: healthColor, label: healthLabel }} />
 
               {/* Table — margin by channel + period margin per product */}
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="The range, product by product">
                 <table className="w-full text-[13px] border-collapse min-w-[640px]">
                   <thead>
                     <tr className="border-b-2 border-ink text-[11px] tracking-[0.08em] opacity-60">

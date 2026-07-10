@@ -59,7 +59,7 @@ function DeltaRow({ label, a, b, fmt, badWhenUp }: {
     <div className="flex justify-between text-[13px] py-0.5">
       <span className="opacity-75">{label}</span>
       <span className="text-right font-mono">
-        {fmt(a)} <span className="opacity-50">→</span> {fmt(b)}{' '}
+        {fmt(a)} <span className="opacity-60">→</span> {fmt(b)}{' '}
         <span className="font-bold" style={{ color: bad ? REDPEN : INK }}>
           ({delta === 0 ? 'no change' : sign + fmt(delta)})
         </span>

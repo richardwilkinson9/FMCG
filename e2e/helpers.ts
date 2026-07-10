@@ -49,7 +49,11 @@ export async function goToCalculatorCard(page: Page, cardName: string, h1: strin
  * fragile way in without adding test ids to src/ (which we do not do).
  */
 export function receiptValue(page: Page, label: string) {
-  return page.locator('.print-block').locator(`span:text-is("${label}") + span`)
+  // RLine rows are span/span pairs; AnswerBlock rows are dt/dd (the receipt's
+  // answer reads as a definition list to screen readers).
+  return page
+    .locator('.print-block')
+    .locator(`span:text-is("${label}") + span, dt:text-is("${label}") + dd`)
 }
 
 /**

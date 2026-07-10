@@ -125,7 +125,7 @@ export default function CashFlow() {
 
           <Rule className="mt-3.5 mb-2.5" />
           <RSection label="THE YEAR BY MONTH — CASH (4-4-5)" />
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="The year by month, cash">
             <table className="w-full text-[12px] font-mono border-collapse min-w-[480px]">
               <thead>
                 <tr className="border-b-2 border-ink text-[10px] tracking-[0.08em] opacity-60">
@@ -162,7 +162,7 @@ export default function CashFlow() {
               </tbody>
             </table>
           </div>
-          <div className="font-mono text-[10px] mt-1.5 opacity-55">
+          <div className="font-mono text-[10px] mt-1.5 opacity-60">
             M12+ is money still moving after the year ends — the tail of your payment terms.
           </div>
 

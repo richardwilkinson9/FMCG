@@ -30,7 +30,7 @@ export default function CrossChannel() {
     <div className="flex items-center gap-2 font-mono text-[11px] tracking-[0.1em] mt-5 mb-3">
       <span className="w-3 h-3 border-2 border-ink bg-ink" />
       {label}
-      {tag && <span className="font-normal opacity-55 border-2 border-ink px-[5px] py-px">{tag}</span>}
+      {tag && <span className="font-normal opacity-60 border-2 border-ink px-[5px] py-px">{tag}</span>}
     </div>
   )
 

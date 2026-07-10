@@ -31,14 +31,23 @@ export function Receipt({
   children: ReactNode
 }) {
   return (
-    <div className="gross-reveal print-block bg-receipt border-2 border-ink font-mono">
-      <div className="border-t-2 border-dashed border-ink m-2.5 h-0" />
+    // role="region" + label: the receipt is the result surface, so screen
+    // reader users can jump straight to it from the landmark list.
+    <div
+      role="region"
+      aria-label={`The receipt — ${tool}`}
+      className="gross-reveal print-block bg-receipt border-2 border-ink font-mono"
+    >
+      <div className="border-t-2 border-dashed border-ink m-2.5 h-0" aria-hidden="true" />
       <div className="pt-1 px-[22px] pb-[22px]">
         <div className="flex justify-between text-xs">
           <span>GROSS. // {tool}</span>
           <span>{receiptStamp()}</span>
         </div>
-        <div className="text-[15px] font-bold mt-2">{name}</div>
+        {/* h2: the receipt's de-facto heading. Tailwind's preflight makes
+            headings inherit font size/weight and zeroes margins, so this
+            renders pixel-identically to the div it replaces. */}
+        <h2 className="text-[15px] font-bold mt-2">{name}</h2>
         <div className="text-xs opacity-70">{subline}</div>
 
         {children}
@@ -63,9 +72,9 @@ export function Receipt({
   )
 }
 
-/** Solid or dotted horizontal rule inside a receipt. */
+/** Solid or dotted horizontal rule inside a receipt. Decorative — hidden from AT. */
 export function Rule({ dotted = false, className = 'my-2' }: { dotted?: boolean; className?: string }) {
-  return <div className={`border-t-2 border-ink ${dotted ? 'border-dotted' : ''} ${className}`} />
+  return <div className={`border-t-2 border-ink ${dotted ? 'border-dotted' : ''} ${className}`} aria-hidden="true" />
 }
 
 /** One receipt line item: label left, value right. */
@@ -103,7 +112,8 @@ export function RSection({
       <span className="text-[11px] tracking-[0.1em] opacity-60">{label}</span>
       {health && (
         <span className="flex items-center gap-2 text-[11px] tracking-[0.06em]">
-          <span className="w-3 h-3 border-2 border-ink inline-block" style={{ background: health.color }} />
+          {/* The swatch is decoration — the adjacent text label carries the status */}
+          <span aria-hidden="true" className="w-3 h-3 border-2 border-ink inline-block" style={{ background: health.color }} />
           {health.label}
         </span>
       )}
@@ -118,18 +128,23 @@ export function AnswerBlock({
   rows: { label: string; value: string; big?: boolean; color?: string }[]
 }) {
   return (
-    <div className="bg-ink text-bile py-3.5 px-4 my-1.5">
-      {rows.map((r, i) => (
-        <div key={r.label} className={`flex justify-between items-baseline ${i > 0 ? 'mt-1.5' : ''}`}>
-          <span className="text-[13px]">{r.label}</span>
-          <span
-            className={`font-bold ${r.big === false ? 'text-lg' : 'text-2xl'}`}
-            style={{ color: r.color ?? '#C6F215' }}
-          >
-            {r.value}
-          </span>
-        </div>
-      ))}
+    // role="group" + label so the block announces as the answer; dl/dt/dd tie
+    // each label to its value. Preflight zeroes dl/dd margins, so the rendered
+    // pixels are identical to the previous div/span structure.
+    <div role="group" aria-label="The answer" className="bg-ink text-bile py-3.5 px-4 my-1.5">
+      <dl>
+        {rows.map((r, i) => (
+          <div key={r.label} className={`flex justify-between items-baseline ${i > 0 ? 'mt-1.5' : ''}`}>
+            <dt className="text-[13px]">{r.label}</dt>
+            <dd
+              className={`font-bold ${r.big === false ? 'text-lg' : 'text-2xl'}`}
+              style={{ color: r.color ?? '#C6F215' }}
+            >
+              {r.value}
+            </dd>
+          </div>
+        ))}
+      </dl>
     </div>
   )
 }

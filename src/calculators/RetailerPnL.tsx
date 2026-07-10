@@ -188,7 +188,7 @@ export default function RetailerPnL() {
                 <RLine label="Indicative range (of net revenue)" value={`${pct(bm.low)} – ${pct(bm.high)}`} dim />
                 <RLine label="You are at" value={pct(gmPct)} bold color={noMargin ? REDPEN : INK} />
                 <RLine label="Read" value={verdictText} dim color={color} />
-                <div className="font-mono text-[10px] mt-1 opacity-55">Indicative only — checked {BENCHMARK_CHECKED}. See The Rate Card.</div>
+                <div className="font-mono text-[10px] mt-1 opacity-60">Indicative only — checked {BENCHMARK_CHECKED}. See The Rate Card.</div>
               </>
             )
           })()}
@@ -200,7 +200,7 @@ export default function RetailerPnL() {
               <div className="font-mono text-[11px] mb-1.5 opacity-65">
                 The same product under every buyer's saved terms — margin and the period, side by side.
               </div>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="The terms sheet">
                 <table className="w-full text-[12px] font-mono border-collapse min-w-[440px]">
                   <thead>
                     <tr className="border-b-2 border-ink text-[10px] tracking-[0.08em] opacity-60">
@@ -228,7 +228,7 @@ export default function RetailerPnL() {
                   </tbody>
                 </table>
               </div>
-              <div className="font-mono text-[10px] mt-1.5 opacity-55">
+              <div className="font-mono text-[10px] mt-1.5 opacity-60">
                 Period GM uses your Listing settings. Save or edit buyers in THE BUYERS above.
               </div>
             </>

@@ -71,7 +71,7 @@ export default function BuyerStrip() {
   return (
     <div className="mt-4">
       <div className="font-mono text-[11px] tracking-[0.1em] opacity-60 mb-2">
-        THE BUYERS <span className="font-normal opacity-70">(saved terms — one click reprices every page)</span>
+        THE BUYERS <span className="font-normal">(saved terms — one click reprices every page)</span>
       </div>
       <div className="flex gap-2 flex-wrap items-center">
         {buyers.map((b) => {
