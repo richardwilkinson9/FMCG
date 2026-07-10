@@ -25,7 +25,7 @@ const CARDS = [
 /**
  * The card families, in shelf order. Each renders an ink section bar over its
  * cards; members and counts are derived from CARDS so nothing is ever dropped
- * or double-listed. pending copy sign-off — family header labels + count wording.
+ * or double-listed.
  */
 const FAMILIES: { key: string; label: string }[] = [
   { key: 'SPINE', label: 'THE SPINE' },
@@ -175,7 +175,6 @@ export default function Home() {
                     className={`flex items-center justify-between bg-ink text-bile font-mono text-[11px] tracking-[0.12em] px-3 py-2 ${fi > 0 ? 'border-t-2 border-ink' : ''}`}
                   >
                     <span>{fam.label}</span>
-                    {/* pending copy sign-off — family count wording */}
                     <span>{cards.length} {cards.length === 1 ? 'TOOL' : 'TOOLS'}</span>
                   </div>
                   <div className="grid grid-cols-1 min-[821px]:grid-cols-3">

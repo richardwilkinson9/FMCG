@@ -369,7 +369,6 @@ export function EmptyState() {
             <h2 className="font-display text-[clamp(34px,5vw,48px)] tracking-[-0.02em] leading-[0.92] mt-3.5 mb-0">
               No product yet.
             </h2>
-            {/* pending copy sign-off — empty-state support line */}
             <p className="font-mono text-[12px] leading-normal mt-3 mb-0 opacity-80 max-w-[34ch] mx-auto min-[560px]:mx-0">
               Nothing to add up. Give us a product and the receipt prints itself.
             </p>
