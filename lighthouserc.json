@@ -13,7 +13,7 @@
       "numberOfRuns": 3,
       "settings": {
         "preset": "desktop",
-        "chromeFlags": "--no-sandbox --headless=new"
+        "chromeFlags": "--no-sandbox --headless=new --disable-dev-shm-usage --disable-gpu"
       }
     },
     "assert": {
