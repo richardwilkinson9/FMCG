@@ -5,6 +5,10 @@ import { defineConfig } from 'vitest/config'
 // hand-computed regression suite plus the property-based invariants.
 export default defineConfig({
   test: {
-    include: ['src/utils/calculations.test.ts', 'src/utils/calculations.property.test.ts'],
+    include: [
+      'src/utils/calculations.test.ts',
+      'src/utils/calculations.property.test.ts',
+      'src/utils/calculations.mutation.test.ts',
+    ],
   },
 })
