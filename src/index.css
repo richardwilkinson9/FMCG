@@ -1,8 +1,12 @@
 @import "tailwindcss";
 
 /*
- * Fonts — self-hosted (latin subsets from Google Fonts) so the site has no
- * third-party runtime dependency and loads identically everywhere.
+ * Fonts — self-hosted so the site has no third-party runtime dependency and
+ * loads identically everywhere. Subset from the Google Fonts latin builds to
+ * the glyphs GROSS actually renders: Basic Latin + Latin-1 Supplement (user-
+ * typed product names keep their accents), dashes/quotes/ellipsis, £ € ↑ and
+ * the true minus U+2212 every receipt deduction wears. Resubsetting recipe
+ * and glyph rationale: PERF_BUDGET.md.
  */
 @font-face {
   font-family: "Anton";

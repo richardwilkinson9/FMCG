@@ -49,7 +49,7 @@ export default function Waterfall() {
         </div>
 
         <InputSection>
-          TRADE SPEND <span className="font-normal opacity-70">(% of your list price)</span>
+          TRADE SPEND <span className="font-normal">(% of your list price)</span>
         </InputSection>
         <div className="mb-4">
           <MonoToggle

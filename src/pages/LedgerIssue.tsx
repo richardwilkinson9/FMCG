@@ -109,7 +109,7 @@ export default function LedgerIssue() {
               <div className="mt-6">
                 <RSection label="THE NUMBER" />
                 <AnswerBlock rows={[{ label: 'Survives a halved rate of sale', value: issue.theNumber }]} />
-                <div className="text-[11px] leading-relaxed opacity-55 mt-1.5">
+                <div className="text-[11px] leading-relaxed opacity-60 mt-1.5">
                   {issue.theNumberSource.map((l, i) => (
                     <div key={i}>{l}</div>
                   ))}
@@ -158,7 +158,7 @@ export default function LedgerIssue() {
               >
                 {issue.shareButtonLabel}
               </a>
-              <p className="text-[11px] leading-relaxed opacity-55 mt-2">{issue.shareSupport}</p>
+              <p className="text-[11px] leading-relaxed opacity-60 mt-2">{issue.shareSupport}</p>
 
               {/* THE MARGIN NOTE */}
               <Rule className="mt-4 mb-3" />

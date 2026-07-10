@@ -69,7 +69,7 @@ export default function ChannelPlan({ channel }: { channel: 'amazon' | 'tiktok' 
       </div>
 
       {/* Column headers */}
-      <div className="grid grid-cols-[1fr_auto_auto] gap-2 text-[10px] tracking-[0.08em] opacity-55 border-b-2 border-ink pb-1.5">
+      <div className="grid grid-cols-[1fr_auto_auto] gap-2 text-[10px] tracking-[0.08em] opacity-60 border-b-2 border-ink pb-1.5">
         <span>SKU</span>
         <span className="text-right w-[76px]">CASES / YR</span>
         <span className="text-right w-[64px]">GM / YR</span>

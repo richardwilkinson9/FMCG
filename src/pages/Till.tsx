@@ -68,7 +68,7 @@ export default function Till() {
                     <span className="opacity-60 self-end">last {rows.length} wks</span>
                   </div>
                 )}
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Weekly stats">
                   <table className="w-full text-[12px] border-collapse min-w-[560px]">
                     <thead>
                       <tr className="border-b-2 border-ink text-[10px] tracking-[0.08em] opacity-60">
@@ -99,7 +99,7 @@ export default function Till() {
               </>
             )}
           </div>
-          <div className="font-mono text-[10px] mt-3 opacity-55">
+          <div className="font-mono text-[10px] mt-3 opacity-60">
             Cookieless counts from the events table. The full funnel SQL lives in SETUP_SUPABASE.md §3.
           </div>
         </div>

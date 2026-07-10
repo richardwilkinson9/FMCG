@@ -33,7 +33,7 @@ export default function GrossNav() {
   const link = 'text-ink no-underline text-sm font-medium cursor-pointer bg-transparent border-0 p-0 font-body'
 
   return (
-    <div className="no-print flex items-center justify-between gap-3 py-3.5 px-[clamp(20px,4vw,44px)] bg-receipt border-b-2 border-ink">
+    <header className="no-print flex items-center justify-between gap-3 py-3.5 px-[clamp(20px,4vw,44px)] bg-receipt border-b-2 border-ink">
       <button
         onClick={() => {
           setActiveCalculator('home')
@@ -61,6 +61,6 @@ export default function GrossNav() {
           {session ? 'THE ARCHIVE' : 'SIGN IN'}
         </button>
       </div>
-    </div>
+    </header>
   )
 }

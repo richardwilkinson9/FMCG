@@ -9,6 +9,18 @@ function clean(value: number): string {
 const AFFIX =
   'w-11 flex items-center justify-center font-mono text-[15px] bg-receipt shrink-0'
 
+/** Spoken names for the £/% affix boxes — the affixes are meaningful (they say
+ * whether the field wants pounds or a percentage), so they join the input's
+ * accessible name; the visual boxes themselves are aria-hidden to avoid the
+ * screen reader announcing a lone "£" between label and value. */
+const AFFIX_SPOKEN: Record<string, string> = { '£': 'pounds', '%': 'percent' }
+
+function accessibleName(label: string, prefix?: string, suffix?: string): string {
+  const unit = prefix ?? suffix
+  if (!unit) return label
+  return `${label}, ${AFFIX_SPOKEN[unit] ?? unit}`
+}
+
 interface FieldProps {
   label: string
   /** The committed numeric value (store units — e.g. 0.35 for 35%) */
@@ -55,7 +67,7 @@ export default function Field({ label, value, onCommit, scale = 1, prefix, suffi
         )}
       </span>
       <div className="flex border-2 border-ink bg-white h-[52px]">
-        {prefix && <span className={`${AFFIX} border-r-2 border-ink`}>{prefix}</span>}
+        {prefix && <span aria-hidden="true" className={`${AFFIX} border-r-2 border-ink`}>{prefix}</span>}
         <input
           id={id}
           value={text}
@@ -63,10 +75,10 @@ export default function Field({ label, value, onCommit, scale = 1, prefix, suffi
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           inputMode={inputMode}
-          aria-label={label}
+          aria-label={accessibleName(label, prefix, suffix)}
           className="flex-1 min-w-0 border-0 outline-none bg-transparent px-3.5 font-mono text-base text-ink"
         />
-        {suffix && <span className={`${AFFIX} border-l-2 border-ink text-[13px]`}>{suffix}</span>}
+        {suffix && <span aria-hidden="true" className={`${AFFIX} border-l-2 border-ink text-[13px]`}>{suffix}</span>}
       </div>
     </label>
   )

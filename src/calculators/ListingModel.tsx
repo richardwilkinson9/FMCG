@@ -64,7 +64,7 @@ export default function ListingModel() {
         </div>
 
         <InputSection>
-          THE PROMO CALENDAR <span className="font-normal opacity-70">({listing.promos.length} of {MAX_PROMOS} — two to six a year is normal)</span>
+          THE PROMO CALENDAR <span className="font-normal">({listing.promos.length} of {MAX_PROMOS} — two to six a year is normal)</span>
         </InputSection>
 
         {listing.promos.length === 0 && (
@@ -255,7 +255,7 @@ export default function ListingModel() {
             return (
               <>
                 <RSection label="THE YEAR BY MONTH (4-4-5)" />
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="The year by month">
                   <table className="w-full text-[12px] font-mono border-collapse min-w-[520px]">
                     <thead>
                       <tr className="border-b-2 border-ink text-[10px] tracking-[0.08em] opacity-60">
@@ -283,7 +283,7 @@ export default function ListingModel() {
                     </tbody>
                   </table>
                 </div>
-                <div className="font-mono text-[10px] mt-1.5 opacity-55">
+                <div className="font-mono text-[10px] mt-1.5 opacity-60">
                   4-4-5 retail calendar. Investment instalments land in M1, M4, M7, M10. NET = gross margin less investment.
                 </div>
                 <Rule className="mt-3.5 mb-2.5" />

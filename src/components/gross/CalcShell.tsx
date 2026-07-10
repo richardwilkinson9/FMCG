@@ -442,7 +442,7 @@ export function TheWorkings() {
     <div className="px-[clamp(20px,4vw,44px)] pb-10">
       <div className="max-w-[1180px] mx-auto">
         <details className="border-t-2 border-dotted border-ink pt-4 group">
-          <summary className="font-mono text-[11px] tracking-[0.1em] opacity-50 cursor-pointer list-none select-none hover:opacity-100">
+          <summary className="font-mono text-[11px] tracking-[0.1em] opacity-60 cursor-pointer list-none select-none hover:opacity-100">
             THE WORKINGS — the small print, for people who read the small print ▾
           </summary>
           <div className="mt-4 max-w-[64ch]">
