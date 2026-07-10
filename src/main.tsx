@@ -22,21 +22,22 @@ window.addEventListener('vite:preloadError', (event) => {
 
 // Error beacon: one anonymous count per session when something throws, so
 // breakage shows up in the events table instead of nobody's inbox. No stack,
-// no URL params, no PII — just the error name and the page.
+// no URL params, no PII — just the release id, the error name and the page.
+// The release prefix (short commit SHA, or 'dev') says WHICH deploy threw it.
+const RELEASE = typeof __RELEASE__ === 'string' ? __RELEASE__ : 'dev'
 let errorReported = false
-window.addEventListener('error', (e) => {
+const reportClientError = (message: string) => {
   if (errorReported) return
   errorReported = true
   import('./utils/analytics')
-    .then(({ logEvent }) => logEvent('client_error', String(e?.message ?? 'unknown').slice(0, 90)))
+    .then(({ logEvent }) => logEvent('client_error', `${RELEASE} ${message}`.slice(0, 90)))
     .catch(() => {})
+}
+window.addEventListener('error', (e) => {
+  reportClientError(String(e?.message ?? 'unknown'))
 })
 window.addEventListener('unhandledrejection', (e) => {
-  if (errorReported) return
-  errorReported = true
-  import('./utils/analytics')
-    .then(({ logEvent }) => logEvent('client_error', String(e?.reason?.message ?? e?.reason ?? 'rejection').slice(0, 90)))
-    .catch(() => {})
+  reportClientError(String(e?.reason?.message ?? e?.reason ?? 'rejection'))
 })
 
 createRoot(document.getElementById('root')!).render(

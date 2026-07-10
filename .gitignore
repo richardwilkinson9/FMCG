@@ -26,3 +26,5 @@ reports/
 .stryker-tmp/
 test-results/
 playwright-report/
+lighthouse-report/
+.lighthouseci/
