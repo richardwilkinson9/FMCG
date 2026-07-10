@@ -1,6 +1,6 @@
 {
-  "lastFollowerCount": 0,
-  "lastScanIso": "2026-07-10T07:01:00Z",
-  "lastScanCompleted": false,
-  "lastErrorSignature": "zapier-write-tool-permission-prompt-stream-closed"
+  "lastFollowerCount": 1,
+  "lastScanIso": "2026-07-10T07:15:00Z",
+  "lastScanCompleted": true,
+  "lastErrorSignature": null
 }
