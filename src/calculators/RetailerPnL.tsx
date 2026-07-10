@@ -7,7 +7,7 @@ import { vatMismatch } from '../config/vat'
 import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
 import BuyerStrip from '../components/gross/BuyerStrip'
 import Field, { TextField, InputSection, MonoToggle } from '../components/gross/Field'
-import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
+import { Receipt, Rule, RLine, RSection, AnswerBlock, BreakdownLabel } from '../components/gross/Receipt'
 import { gbp, neg, pct, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components/gross/format'
 
 const DATED_TAG = 'dated default — check the rate card'
@@ -113,25 +113,27 @@ export default function RetailerPnL() {
 
     return (
       <div>
-        <Receipt tool="THE P&L" name={product.name} subline="who takes what · per unit" verdict={verdict} verdictColor={noMargin ? REDPEN : INK}>
+        <Receipt tool="THE P&L" name={product.name} subline="who takes what · per unit" verdict={verdict} verdictColor={noMargin ? REDPEN : INK} stickyHero>
+          <BreakdownLabel />
           <Rule className="mt-4 mb-2.5" />
           <RSection label="THE WATERFALL" />
-          <RLine label="Consumer pays (inc VAT)" value={gbp(product.rrpIncVat)} />
-          <RLine label="less VAT" value={neg(vatCut)} dim />
-          <RLine label="Shelf price ex-VAT" value={gbp(rsp)} bold />
-          <RLine label={`less retailer margin (${Math.round(grocery.retailerMargin * 100)}%)`} value={neg(result.retailerMarginPerUnit)} dim />
+          <RLine label="Consumer pays (inc VAT)" value={gbp(product.rrpIncVat)} bold />
+          <RLine label="less VAT" value={neg(vatCut)} deduction />
+          <RLine label="Shelf price ex-VAT" value={gbp(rsp)} subtotal />
+          <RLine label={`less retailer margin (${Math.round(grocery.retailerMargin * 100)}%)`} value={neg(result.retailerMarginPerUnit)} deduction />
           {wsOn && (
-            <RLine label={`less wholesaler margin (${Math.round(grocery.wholesalerMargin * 100)}%)`} value={neg(result.wholesalerMarginPerUnit)} dim />
+            <RLine label={`less wholesaler margin (${Math.round(grocery.wholesalerMargin * 100)}%)`} value={neg(result.wholesalerMarginPerUnit)} deduction />
           )}
-          <RLine label="You bank / unit" value={gbp(result.brandNetRevenue)} bold />
+          <RLine label="You bank / unit" value={gbp(result.brandNetRevenue)} subtotal />
           <RLine label="Net as % of shelf (gross)" value={pct(rsp > 0 ? result.brandNetRevenue / rsp : 0)} dim />
-          <RLine label="less cost price" value={neg(product.cogsPerUnit)} dim />
-          <RLine label={`less inbound logistics (${gbp(logistics.perCase)}/case)`} value={neg(logUnit)} dim />
+          <RLine label="less cost price" value={neg(product.cogsPerUnit)} deduction />
+          <RLine label={`less inbound logistics (${gbp(logistics.perCase)}/case)`} value={neg(logUnit)} deduction />
           <RLine label="Landed cost / unit" value={neg(result.landedCostPerUnit)} dim />
 
           <Rule className="mt-3.5 mb-2.5" />
           <RSection label="YOUR MARGIN" health={{ color: healthColor, label: healthLabel }} />
           <AnswerBlock
+            hero
             rows={[
               { label: 'Gross margin / unit', value: gbp(gmUnit), color: noMargin ? REDPEN : BILE },
               { label: 'Margin % (of net revenue)', value: pct(gmPct), big: false, color: noMargin ? REDPEN : BILE },
@@ -160,10 +162,10 @@ export default function RetailerPnL() {
                 <RLine
                   label={`spread per unit (annual volume ${Math.round(annual.totalVolume).toLocaleString('en-GB')} units)`}
                   value={neg(invPerUnit)}
-                  dim
+                  deduction
                   color={invPerUnit > 0 ? REDPEN : undefined}
                 />
-                <RLine label="Margin after investment / unit" value={gbp(afterInv)} bold color={afterInv <= 0 ? REDPEN : INK} />
+                <RLine label="Margin after investment / unit" value={gbp(afterInv)} subtotal color={afterInv <= 0 ? REDPEN : INK} />
               </>
             )
           })()}

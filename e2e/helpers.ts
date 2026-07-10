@@ -50,10 +50,15 @@ export async function goToCalculatorCard(page: Page, cardName: string, h1: strin
  */
 export function receiptValue(page: Page, label: string) {
   // RLine rows are span/span pairs; AnswerBlock rows are dt/dd (the receipt's
-  // answer reads as a definition list to screen readers).
+  // answer reads as a definition list). Waterfall rows also carry a decorative
+  // prefix on the label — "− " (U+2212) on deductions, "= " on subtotals — so
+  // match the label with or without it. The value is always the next sibling.
   return page
     .locator('.print-block')
-    .locator(`span:text-is("${label}") + span, dt:text-is("${label}") + dd`)
+    .locator(
+      `span:text-is("${label}") + span, span:text-is("− ${label}") + span, ` +
+        `span:text-is("= ${label}") + span, dt:text-is("${label}") + dd`,
+    )
 }
 
 /**

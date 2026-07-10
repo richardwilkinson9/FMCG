@@ -3,7 +3,7 @@ import { activeWholesalerMargin } from '../store/scenario'
 import { weeklyProjection, cashPhasing, monthlyPhasing, retailerPnL, logisticsPerUnit } from '../utils/calculations'
 import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
 import Field, { TextField, InputSection } from '../components/gross/Field'
-import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
+import { Receipt, Rule, RLine, RSection, AnswerBlock, BreakdownLabel } from '../components/gross/Receipt'
 import { gbp, neg, n0, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components/gross/format'
 
 /**
@@ -110,10 +110,13 @@ export default function CashFlow() {
           subline={`paid in ${cash.debtorDays} days · you pay in ${cash.creditorDays} · ${listing.weeksInPeriod}-week plan`}
           verdict={verdict}
           verdictColor={funded ? INK : REDPEN}
+          stickyHero
         >
+          <BreakdownLabel />
           <Rule className="mt-4 mb-2.5" />
           <RSection label="THE GAP" health={{ color: healthColor, label: healthLabel }} />
           <AnswerBlock
+            hero
             rows={[
               { label: 'Peak cash gap', value: funded ? gbp(0) : gbp(flow.peakGap), color: funded ? BILE : REDPEN },
               { label: funded ? 'never underwater' : `worst week: ${flow.peakGapWeek}`, value: '', big: false },

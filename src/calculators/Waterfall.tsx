@@ -4,7 +4,7 @@ import { retailerPnL, rspExVat, listingModel, logisticsPerUnit } from '../utils/
 import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
 import BuyerStrip from '../components/gross/BuyerStrip'
 import Field, { TextField, InputSection, MonoToggle } from '../components/gross/Field'
-import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
+import { Receipt, Rule, RLine, RSection, AnswerBlock, BreakdownLabel } from '../components/gross/Receipt'
 import { gbp, neg, pct, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components/gross/format'
 
 /**
@@ -124,33 +124,34 @@ export default function Waterfall() {
 
     return (
       <div>
-        <Receipt tool="THE WATERFALL" name={product.name} subline="gross to net · per unit" verdict={verdict} verdictColor={noMargin ? REDPEN : INK}>
+        <Receipt tool="THE WATERFALL" name={product.name} subline="gross to net · per unit" verdict={verdict} verdictColor={noMargin ? REDPEN : INK} stickyHero>
+          <BreakdownLabel />
           <Rule className="mt-4 mb-2.5" />
-          <RLine label="Shelf price ex-VAT" value={gbp(rsp)} />
-          <RLine label={`less retailer margin (${Math.round(grocery.retailerMargin * 100)}%)`} value={neg(pnl.retailerMarginPerUnit)} dim />
+          <RLine label="Shelf price ex-VAT" value={gbp(rsp)} bold />
+          <RLine label={`less retailer margin (${Math.round(grocery.retailerMargin * 100)}%)`} value={neg(pnl.retailerMarginPerUnit)} deduction />
           {grocery.wholesalerEnabled && (
-            <RLine label={`less wholesaler margin (${Math.round(grocery.wholesalerMargin * 100)}%)`} value={neg(pnl.wholesalerMarginPerUnit)} dim />
+            <RLine label={`less wholesaler margin (${Math.round(grocery.wholesalerMargin * 100)}%)`} value={neg(pnl.wholesalerMarginPerUnit)} deduction />
           )}
-          <RLine label="Your list price" value={gbp(list)} bold />
-          <RLine label={`less promo funding (${parseFloat((effectivePromoFunding * 100).toFixed(4))}%${waterfall.promoFromCalendar ? ', from calendar' : ''})`} value={neg(promoCut)} dim />
-          <RLine label={`less back margin (${parseFloat((waterfall.backMargin * 100).toFixed(4))}%)`} value={neg(retroCut)} dim />
-          <RLine label={`less other trade (${parseFloat((waterfall.otherTrade * 100).toFixed(4))}%)`} value={neg(otherCut)} dim />
+          <RLine label="Your list price" value={gbp(list)} subtotal />
+          <RLine label={`less promo funding (${parseFloat((effectivePromoFunding * 100).toFixed(4))}%${waterfall.promoFromCalendar ? ', from calendar' : ''})`} value={neg(promoCut)} deduction />
+          <RLine label={`less back margin (${parseFloat((waterfall.backMargin * 100).toFixed(4))}%)`} value={neg(retroCut)} deduction />
+          <RLine label={`less other trade (${parseFloat((waterfall.otherTrade * 100).toFixed(4))}%)`} value={neg(otherCut)} deduction />
           <RLine
             label={`Total trade spend (${pct(list > 0 ? tradeTotal / list : 0)} of list)`}
             value={neg(tradeTotal)}
-            bold
+            subtotal
             color={REDPEN}
           />
-          <Rule dotted className="my-2" />
-          <RLine label="Net net revenue" value={gbp(net)} bold color={net < 0 ? REDPEN : INK} />
+          <RLine label="Net net revenue" value={gbp(net)} subtotal color={net < 0 ? REDPEN : INK} />
           <RLine label="Net as % of list (gross)" value={pct(list > 0 ? net / list : 0)} dim />
           <RLine label="Net as % of shelf ex-VAT" value={pct(rsp > 0 ? net / rsp : 0)} dim />
-          <RLine label="less cost price" value={neg(product.cogsPerUnit)} dim />
-          <RLine label={`less inbound logistics (${gbp(logistics.perCase)}/case)`} value={neg(logUnit)} dim />
+          <RLine label="less cost price" value={neg(product.cogsPerUnit)} deduction />
+          <RLine label={`less inbound logistics (${gbp(logistics.perCase)}/case)`} value={neg(logUnit)} deduction />
 
           <Rule className="mt-3.5 mb-2.5" />
           <RSection label="WHAT IS LEFT" health={{ color: healthColor, label: healthLabel }} />
           <AnswerBlock
+            hero
             rows={[
               { label: 'Net net margin / unit', value: gbp(gm), color: noMargin ? REDPEN : BILE },
               { label: 'Margin on list', value: pct(gmPct), big: false, color: noMargin ? REDPEN : BILE },

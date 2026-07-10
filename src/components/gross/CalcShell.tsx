@@ -344,23 +344,46 @@ function SaveStrip() {
 export function EmptyState() {
   const setActiveCalculator = useStore((s) => s.setActiveCalculator)
   return (
-    <div className="py-[clamp(50px,7vw,110px)] px-[clamp(20px,4vw,44px)]">
-      <div className="max-w-[640px] mx-auto text-center">
-        <div className="w-[210px] mx-auto text-ink">
-          <LedgerRat holeColor="#F7F5EF" />
+    <div className="py-[clamp(40px,6vw,90px)] px-[clamp(20px,4vw,44px)]">
+      <div className="max-w-[720px] mx-auto">
+        <div className="border-2 border-ink bg-receipt p-[clamp(24px,4vw,36px)] flex flex-col items-center gap-8 min-[560px]:flex-row">
+          {/* A blank "waiting" receipt — dashed tear-lines, ghost rows and an
+              empty answer block — so the empty state previews the output shape
+              instead of just an apology. Decorative, hidden from AT. */}
+          <div aria-hidden="true" className="shrink-0 w-[160px] bg-receipt border-2 border-ink font-mono">
+            <div className="border-t-2 border-dashed border-ink m-2 h-0" />
+            <div className="px-3 pt-0.5 pb-3.5">
+              <div className="text-[9px]">GROSS. // THE RECEIPT</div>
+              <div className="border-t-2 border-ink my-2.5" />
+              <div className="h-2 bg-ink opacity-[0.12] my-[7px] w-full" />
+              <div className="h-2 bg-ink opacity-[0.12] my-[7px] w-4/5" />
+              <div className="h-2 bg-ink opacity-[0.12] my-[7px] w-[90%]" />
+              <div className="bg-ink text-bile text-center py-2.5 mt-2.5 text-xl font-bold">£ ——</div>
+            </div>
+            <div className="border-b-2 border-dashed border-ink m-2 h-0" />
+          </div>
+          <div className="text-center min-[560px]:text-left">
+            <div className="w-[96px] mx-auto min-[560px]:mx-0 text-ink">
+              <LedgerRat holeColor="#F7F5EF" />
+            </div>
+            <h2 className="font-display text-[clamp(34px,5vw,48px)] tracking-[-0.02em] leading-[0.92] mt-3.5 mb-0">
+              No product yet.
+            </h2>
+            {/* pending copy sign-off — empty-state support line */}
+            <p className="font-mono text-[12px] leading-normal mt-3 mb-0 opacity-80 max-w-[34ch] mx-auto min-[560px]:mx-0">
+              Nothing to add up. Give us a product and the receipt prints itself.
+            </p>
+            <button
+              onClick={() => {
+                setActiveCalculator('products')
+                window.scrollTo(0, 0)
+              }}
+              className="inline-flex items-center gap-3 mt-5 bg-ink text-receipt border-2 border-ink py-4 px-[22px] text-base font-semibold cursor-pointer hover:bg-bile hover:text-ink"
+            >
+              Start with a product <span className="font-mono">→</span>
+            </button>
+          </div>
         </div>
-        <h2 className="font-display text-[clamp(34px,5vw,58px)] tracking-[-0.02em] leading-[0.95] mt-[22px] mb-0">
-          No product yet.
-        </h2>
-        <button
-          onClick={() => {
-            setActiveCalculator('products')
-            window.scrollTo(0, 0)
-          }}
-          className="inline-flex items-center gap-3 mt-7 bg-ink text-receipt border-2 border-ink py-4 px-[26px] text-base font-semibold cursor-pointer hover:bg-bile hover:text-ink"
-        >
-          Start with a product <span className="font-mono">→</span>
-        </button>
       </div>
     </div>
   )

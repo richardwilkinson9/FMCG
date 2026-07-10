@@ -22,6 +22,18 @@ const CARDS = [
   { id: 'portfolio', name: 'The Range', sub: 'The whole portfolio on one till roll.', sku: '50 11027', group: 'COMPARE' },
 ]
 
+/**
+ * The card families, in shelf order. Each renders an ink section bar over its
+ * cards; members and counts are derived from CARDS so nothing is ever dropped
+ * or double-listed. pending copy sign-off — family header labels + count wording.
+ */
+const FAMILIES: { key: string; label: string }[] = [
+  { key: 'SPINE', label: 'THE SPINE' },
+  { key: 'GROCERY', label: 'GROCERY' },
+  { key: 'MARKETPLACE', label: 'MARKETPLACE' },
+  { key: 'COMPARE', label: 'COMPARE' },
+]
+
 /** Traffic light for the mock receipt, on gp as a share of shelf ex-VAT. */
 function light(share: number, negative: boolean): string {
   if (negative || share < 0.12) return REDPEN
@@ -149,32 +161,55 @@ export default function Home() {
             <h2 className="font-display text-[clamp(28px,3.6vw,48px)] tracking-[-0.02em] m-0">The calculators</h2>
             <div className="font-mono text-xs tracking-[0.08em] opacity-60">12 TOOLS · ONE SPINE · NO SIGN-UP</div>
           </div>
-          <div className="grid grid-cols-1 min-[821px]:grid-cols-3">
-            {CARDS.map((card) => (
-              <button
-                key={card.id}
-                onClick={() => go(card.id)}
-                className="relative flex flex-col justify-between min-h-[210px] border-2 border-ink -m-px bg-receipt text-ink text-left p-[22px] cursor-pointer hover:bg-bile"
-              >
-                <div>
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-[11px] tracking-[0.1em] border-2 border-ink py-0.5 px-[7px]">{card.group}</span>
-                    <span className="font-mono text-xl leading-none" aria-hidden="true">→</span>
+          {/* Grouped by family under full-width ink section bars. The whole
+              stack is one bordered sheet; cards keep the -1px margin collapse so
+              the borders read as one continuous ruled grid. */}
+          <div className="border-2 border-ink">
+            {FAMILIES.map((fam, fi) => {
+              const cards = CARDS.filter((c) => c.group === fam.key)
+              if (cards.length === 0) return null
+              const fillers = (3 - (cards.length % 3)) % 3
+              return (
+                <div key={fam.key}>
+                  <div
+                    className={`flex items-center justify-between bg-ink text-bile font-mono text-[11px] tracking-[0.12em] px-3 py-2 ${fi > 0 ? 'border-t-2 border-ink' : ''}`}
+                  >
+                    <span>{fam.label}</span>
+                    {/* pending copy sign-off — family count wording */}
+                    <span>{cards.length} {cards.length === 1 ? 'TOOL' : 'TOOLS'}</span>
                   </div>
-                  <div className="font-display text-[clamp(26px,2.6vw,34px)] tracking-[-0.01em] leading-[0.95] mt-5">{card.name}</div>
-                  <div className="text-[13.5px] mt-2 max-w-[26ch]">{card.sub}</div>
-                </div>
-                <div className="flex items-end justify-between border-t-2 border-ink mt-[18px] pt-2.5">
-                  <span className="font-mono text-xs tracking-[0.05em]">SKU {card.sku}</span>
-                </div>
-                {card.isNew && (
-                  <div className="absolute -top-4 -right-3.5 w-[74px] h-[74px] !rounded-full bg-reduced border-2 border-ink flex flex-col items-center justify-center rotate-[-9deg] font-mono text-center leading-[1.05]">
-                    <span className="text-[10px] tracking-[0.06em]">JUST IN</span>
-                    <span className="text-[15px] font-bold">NEW</span>
+                  <div className="grid grid-cols-1 min-[821px]:grid-cols-3">
+                    {cards.map((card) => (
+                      <button
+                        key={card.id}
+                        onClick={() => go(card.id)}
+                        className="relative flex flex-col justify-between min-h-[190px] border-2 border-ink -m-px bg-receipt text-ink text-left p-[20px] cursor-pointer hover:bg-bile"
+                      >
+                        <div>
+                          <div className="flex justify-end">
+                            <span className="font-mono text-xl leading-none" aria-hidden="true">→</span>
+                          </div>
+                          <div className="font-display text-[clamp(26px,2.6vw,34px)] tracking-[-0.01em] leading-[0.95] mt-3">{card.name}</div>
+                          <div className="text-[13.5px] mt-2 max-w-[26ch]">{card.sub}</div>
+                        </div>
+                        <div className="flex items-end justify-between border-t-2 border-ink mt-[18px] pt-2.5">
+                          <span className="font-mono text-xs tracking-[0.05em]">SKU {card.sku}</span>
+                        </div>
+                        {card.isNew && (
+                          <div className="absolute -top-4 -right-3.5 w-[74px] h-[74px] !rounded-full bg-reduced border-2 border-ink flex flex-col items-center justify-center rotate-[-9deg] font-mono text-center leading-[1.05]">
+                            <span className="text-[10px] tracking-[0.06em]">JUST IN</span>
+                            <span className="text-[15px] font-bold">NEW</span>
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                    {Array.from({ length: fillers }).map((_, i) => (
+                      <div key={`fill-${i}`} aria-hidden="true" className="hidden min-[821px]:block border-2 border-ink -m-px bg-receipt" />
+                    ))}
                   </div>
-                )}
-              </button>
-            ))}
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>

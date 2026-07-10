@@ -3,7 +3,7 @@ import { activeWholesalerMargin } from '../store/scenario'
 import { retailerPnL, rspExVat, tradeSpendROI, logisticsPerUnit } from '../utils/calculations'
 import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
 import Field, { TextField, InputSection } from '../components/gross/Field'
-import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
+import { Receipt, Rule, RLine, RSection, AnswerBlock, BreakdownLabel } from '../components/gross/Receipt'
 import { gbp, ceil0, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components/gross/format'
 
 /** The Payback — how much volume a promo needs to pay itself back. */
@@ -68,7 +68,8 @@ export default function TradeSpendROI() {
 
     return (
       <div>
-        <Receipt tool="THE PAYBACK" name={product.name} subline="trade spend payback · per unit basis" verdict={verdict} verdictColor={noMargin ? REDPEN : INK}>
+        <Receipt tool="THE PAYBACK" name={product.name} subline="trade spend payback · per unit basis" verdict={verdict} verdictColor={noMargin ? REDPEN : INK} stickyHero>
+          <BreakdownLabel />
           <Rule className="mt-4 mb-2.5" />
           <RSection label="THE PRODUCT" />
           <RLine label="Cost price / unit" value={gbp(product.cogsPerUnit)} />
@@ -84,6 +85,7 @@ export default function TradeSpendROI() {
           <Rule className="mt-3.5 mb-2.5" />
           <RSection label="THE ANSWER" />
           <AnswerBlock
+            hero
             rows={[
               { label: 'Break-even units', value: ceil0(result.breakEvenUnits), color: noMargin ? REDPEN : BILE },
               { label: 'Break-even cases', value: ceil0(result.breakEvenCases), big: false, color: noMargin ? REDPEN : BILE },
