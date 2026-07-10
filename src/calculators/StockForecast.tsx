@@ -2,7 +2,7 @@ import { useStore } from '../store/useStore'
 import { stockLedger, promoUpliftForWeek } from '../utils/calculations'
 import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
 import Field, { TextField, InputSection } from '../components/gross/Field'
-import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
+import { Receipt, Rule, RLine, RSection, AnswerBlock, BreakdownLabel } from '../components/gross/Receipt'
 import { n0, BILE, REDPEN, INK } from '../components/gross/format'
 
 /**
@@ -75,7 +75,9 @@ export default function StockForecast() {
           subline={`${stock.planWeeks}-week supply plan`}
           verdict={verdict}
           verdictColor={ok ? INK : REDPEN}
+          stickyHero
         >
+          <BreakdownLabel />
           <Rule className="mt-4 mb-2.5" />
           <RSection label="STOCK ON HAND, EACH WEEK" />
           <div className="flex items-end gap-[2px] h-[70px] border-b-2 border-ink">
@@ -103,6 +105,7 @@ export default function StockForecast() {
           <Rule className="mt-3.5 mb-2.5" />
           <RSection label="THE ORDER" health={{ color: ok ? BILE : REDPEN, label: ok ? 'COVERED' : 'STOCKOUT' }} />
           <AnswerBlock
+            hero
             rows={[
               { label: 'Total to order', value: `${n0(plan.totalOrderedCases)} cases` },
               { label: 'In units', value: n0(plan.totalOrdered), big: false },

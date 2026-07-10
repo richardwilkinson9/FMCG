@@ -3,7 +3,7 @@ import { activeWholesalerMargin } from '../store/scenario'
 import { retailerPnL, solveForCostPrice, solveForRrp, logisticsPerUnit } from '../utils/calculations'
 import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
 import Field, { TextField, InputSection } from '../components/gross/Field'
-import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
+import { Receipt, Rule, RLine, RSection, AnswerBlock, BreakdownLabel } from '../components/gross/Receipt'
 import { gbp, pct, BILE, REDPEN, INK } from '../components/gross/format'
 
 /** The Floor — the lowest cost price (or RRP) that still clears the target margin. */
@@ -116,7 +116,8 @@ export default function MinimumMargin() {
 
     return (
       <div>
-        <Receipt tool="THE FLOOR" name={product.name} subline={subline} verdict={verdict} verdictColor={ok ? INK : REDPEN}>
+        <Receipt tool="THE FLOOR" name={product.name} subline={subline} verdict={verdict} verdictColor={ok ? INK : REDPEN} stickyHero>
+          <BreakdownLabel />
           <Rule className="mt-4 mb-2.5" />
           <RSection label="THE TARGET" />
           <RLine label="Retailer margin" value={`${Math.round(ret * 100)}%`} />
@@ -125,7 +126,7 @@ export default function MinimumMargin() {
 
           <Rule className="mt-3.5 mb-2.5" />
           <RSection label="THE ANSWER" health={{ color: ok ? BILE : REDPEN, label: ok ? 'CLEARS' : 'MISSES' }} />
-          <AnswerBlock rows={[{ label: answerLabel, value: answerStr, color: ok ? BILE : REDPEN }]} />
+          <AnswerBlock hero rows={[{ label: answerLabel, value: answerStr, color: ok ? BILE : REDPEN }]} />
           <RLine label={`Your ${currentLabel}`} value={currentStr} />
           <RLine label="Headroom" value={gbp(headVal)} color={ok ? INK : REDPEN} />
           <RLine label="Brand margin at your price" value={pct(curMarginPct)} color={ok ? INK : REDPEN} />

@@ -61,13 +61,22 @@ export default function Field({ label, value, onCommit, scale = 1, prefix, suffi
       <span className="flex items-center justify-between text-xs font-semibold mb-1.5">
         <span>{label}</span>
         {tag && (
-          <span className="font-mono text-[10px] font-normal border-2 border-ink px-1.5 py-0.5 tracking-[0.03em]">
-            {tag}
+          // The long "dated default — check the rate card" caption compresses
+          // to a compact ink chip so it never wraps on a 375px column; the
+          // "check the rate card" half moves to a note under the field below.
+          <span className="font-mono text-[10px] font-bold tracking-[0.06em] bg-ink text-bile px-[7px] py-0.5">
+            DATED DEFAULT
           </span>
         )}
       </span>
-      <div className="flex border-2 border-ink bg-white h-[52px]">
-        {prefix && <span aria-hidden="true" className={`${AFFIX} border-r-2 border-ink`}>{prefix}</span>}
+      {/* group + focus-within: the active field inverts its £/% affix to ink
+          + bile and shows an ink caret — the existing two colours only. */}
+      <div className="group flex border-2 border-ink bg-white h-[52px]">
+        {prefix && (
+          <span aria-hidden="true" className={`${AFFIX} border-r-2 border-ink group-focus-within:bg-ink group-focus-within:text-bile`}>
+            {prefix}
+          </span>
+        )}
         <input
           id={id}
           value={text}
@@ -76,10 +85,15 @@ export default function Field({ label, value, onCommit, scale = 1, prefix, suffi
           onBlur={() => setFocused(false)}
           inputMode={inputMode}
           aria-label={accessibleName(label, prefix, suffix)}
-          className="flex-1 min-w-0 border-0 outline-none bg-transparent px-3.5 font-mono text-base text-ink"
+          className="flex-1 min-w-0 border-0 outline-none bg-transparent px-3.5 font-mono text-base text-ink caret-ink"
         />
-        {suffix && <span aria-hidden="true" className={`${AFFIX} border-l-2 border-ink text-[13px]`}>{suffix}</span>}
+        {suffix && (
+          <span aria-hidden="true" className={`${AFFIX} border-l-2 border-ink text-[13px] group-focus-within:bg-ink group-focus-within:text-bile`}>
+            {suffix}
+          </span>
+        )}
       </div>
+      {tag && <span className="block font-mono text-[10px] opacity-70 mt-1">check the rate card</span>}
     </label>
   )
 }
@@ -106,7 +120,9 @@ export function TextField({ label, value, onChange }: { label: string; value: st
 /** Section eyebrow inside the inputs column, e.g. "THE PRODUCT". */
 export function InputSection({ children, first = false }: { children: React.ReactNode; first?: boolean }) {
   return (
-    <div className={`font-mono text-[11px] tracking-[0.1em] opacity-60 mb-3 ${first ? '' : 'mt-[22px]'}`}>
+    // Full ink weight + a 2px ink bottom rule per group, so the input column
+    // scans top-down (replaces the old 60%-opacity label).
+    <div className={`font-mono text-[11px] tracking-[0.1em] font-bold border-b-2 border-ink pb-2 mb-3 ${first ? '' : 'mt-[22px]'}`}>
       {children}
     </div>
   )

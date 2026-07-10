@@ -3,7 +3,7 @@ import { activeWholesalerMargin, suggestPromoTiming, PROMO_MECHANICS, MAX_PROMOS
 import { listingModel, retailerPnL, logisticsPerUnit, monthlyPhasing } from '../utils/calculations'
 import CalcShell, { InputsHeader, CalcActions } from '../components/gross/CalcShell'
 import Field, { TextField, InputSection, MonoToggle } from '../components/gross/Field'
-import { Receipt, Rule, RLine, RSection, AnswerBlock } from '../components/gross/Receipt'
+import { Receipt, Rule, RLine, RSection, AnswerBlock, BreakdownLabel } from '../components/gross/Receipt'
 import { gbp, neg, pct, n0, BILE, REDUCED, REDPEN, INK, HEALTH } from '../components/gross/format'
 
 /** The Listing — model the range review before the buyer does. */
@@ -183,7 +183,9 @@ export default function ListingModel() {
           subline={`${listing.weeksInPeriod}-week projection · ${listing.stores} stores · ${listing.promos.length} promo${listing.promos.length === 1 ? '' : 's'}`}
           verdict={verdict}
           verdictColor={noMargin || investmentSinksIt ? REDPEN : INK}
+          stickyHero
         >
+          <BreakdownLabel />
           <Rule className="mt-4 mb-2.5" />
           <RSection label="WEEKLY VOLUME" />
           <div className="flex items-end gap-[2px] h-[70px] border-b-2 border-ink">
@@ -221,11 +223,11 @@ export default function ListingModel() {
 
           <Rule className="mt-3.5 mb-2.5" />
           <RSection label="THE ANNUAL PLAN — GROSS TO NET" />
-          <RLine label="GSV (invoice, full list)" value={gbp(result.totalGsv)} bold />
-          <RLine label="less promo funding" value={neg(result.totalFunding)} dim color={result.totalFunding > 0 ? REDPEN : undefined} />
-          <RLine label="NSV" value={gbp(result.totalNsv)} bold />
+          <RLine label="GSV (invoice, full list)" value={gbp(result.totalGsv)} subtotal />
+          <RLine label="less promo funding" value={neg(result.totalFunding)} deduction color={result.totalFunding > 0 ? REDPEN : undefined} />
+          <RLine label="NSV" value={gbp(result.totalNsv)} subtotal />
           <RLine label="NSV as % of GSV" value={pct(result.nsvPctOfGsv)} dim />
-          <RLine label={`less COGS + logistics (${gbp(logistics.perCase)}/case)`} value={neg(result.totalVolume * (product.cogsPerUnit + logisticsPerUnit(logistics.perCase, product.unitsPerCase)))} dim />
+          <RLine label={`less COGS + logistics (${gbp(logistics.perCase)}/case)`} value={neg(result.totalVolume * (product.cogsPerUnit + logisticsPerUnit(logistics.perCase, product.unitsPerCase)))} deduction />
           <RLine label="Retail sales value (consumer £)" value={gbp(result.totalRetailSalesValue)} dim />
 
           {result.promoSummaries.length > 0 && (
@@ -292,6 +294,7 @@ export default function ListingModel() {
           })()}
           <RSection label="THE PRIZE" health={{ color: healthColor, label: healthLabel }} />
           <AnswerBlock
+            hero
             rows={[
               { label: 'Gross margin, period', value: gbp(result.totalGrossMargin), color: noMargin ? REDPEN : BILE },
               { label: 'GM as % of NSV', value: pct(result.gmPctOfNsv), big: false, color: noMargin ? REDPEN : BILE },
@@ -301,13 +304,13 @@ export default function ListingModel() {
           <RLine
             label={`less customer investment (${instalments} quarterly instalment${instalments === 1 ? '' : 's'} of ${gbp(listing.annualInvestment / 4)})`}
             value={neg(result.totalInvestment)}
-            dim
+            deduction
             color={result.totalInvestment > 0 ? REDPEN : undefined}
           />
           <RLine
             label="Margin after investment, period"
             value={gbp(result.marginAfterInvestment)}
-            bold
+            subtotal
             color={result.marginAfterInvestment <= 0 ? REDPEN : INK}
           />
 
