@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
+import { existsSync } from 'node:fs'
 
 /**
  * VISUAL REGRESSION GATE — "the brand is the pixels".
@@ -27,6 +28,12 @@ import { defineConfig, devices } from '@playwright/test'
  * maxDiffPixelRatio below absorbs sub-pixel antialiasing; a real brand drift
  * (colour, spacing, glyph) moves far more than that.
  */
+// Use the sandbox's Chromium only when it exists; in the CI container the file
+// is absent and Playwright's bundled browser is used (a non-existent
+// executablePath is NOT ignored — it makes every launch fail).
+const SANDBOX_CHROME = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
+const launchOptions = existsSync(SANDBOX_CHROME) ? { executablePath: SANDBOX_CHROME } : {}
+
 export default defineConfig({
   testDir: './e2e-visual',
   fullyParallel: true,
@@ -36,11 +43,7 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:4183',
     trace: 'off',
-    // The sandbox ships chromium build 1194 in /opt/pw-browsers; point at it
-    // directly rather than downloading (browser installs are not available
-    // here). Mirrors a11y.config.ts. In the CI container the bundled browser
-    // is used, so this path is simply ignored there.
-    launchOptions: { executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' },
+    launchOptions,
   },
   expect: {
     toHaveScreenshot: {

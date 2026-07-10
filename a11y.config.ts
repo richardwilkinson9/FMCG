@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
+import { existsSync } from 'node:fs'
 
 /**
  * The accessibility gate — separate from the main playwright.config.ts on
@@ -8,6 +9,14 @@ import { defineConfig, devices } from '@playwright/test'
  *
  * Run with: npx playwright test --config a11y.config.ts
  */
+
+// The sandbox ships Chromium build 1194 in /opt/pw-browsers and can't download
+// browsers, so point at it — but ONLY when it exists. In the CI Playwright
+// container the file is absent, so we fall through to Playwright's own bundled
+// browser (setting a non-existent executablePath would make every launch fail).
+const SANDBOX_CHROME = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
+const launchOptions = existsSync(SANDBOX_CHROME) ? { executablePath: SANDBOX_CHROME } : {}
+
 export default defineConfig({
   testDir: './e2e-a11y',
   fullyParallel: true,
@@ -17,9 +26,7 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:5177',
     trace: 'off',
-    // The sandbox ships chromium build 1194 in /opt/pw-browsers; point at it
-    // directly rather than downloading (browser installs are not available).
-    launchOptions: { executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' },
+    launchOptions,
   },
   projects: [
     {

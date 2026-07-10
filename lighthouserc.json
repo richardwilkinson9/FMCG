@@ -12,7 +12,8 @@
       ],
       "numberOfRuns": 3,
       "settings": {
-        "preset": "desktop"
+        "preset": "desktop",
+        "chromeFlags": "--no-sandbox --headless=new"
       }
     },
     "assert": {

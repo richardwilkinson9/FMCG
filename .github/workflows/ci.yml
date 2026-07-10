@@ -67,6 +67,11 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.61.1-jammy
+    # GitHub sets HOME=/github/home (uid 1001) in containers, but Firefox
+    # refuses to launch unless $HOME is owned by the running user (root here).
+    # /root is root-owned, so this makes every engine start.
+    env:
+      HOME: /root
     strategy:
       fail-fast: false
       matrix:
@@ -97,6 +102,8 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.61.1-jammy
+    env:
+      HOME: /root
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -123,6 +130,8 @@ jobs:
     continue-on-error: true
     container:
       image: mcr.microsoft.com/playwright:v1.61.1-jammy
+    env:
+      HOME: /root
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -151,6 +160,8 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: mcr.microsoft.com/playwright:v1.61.1-jammy
+    env:
+      HOME: /root
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -162,4 +173,10 @@ jobs:
         with:
           name: dist
           path: dist
-      - run: npx --yes @lhci/cli@0.14.x autorun
+      # lhci's chrome-launcher can't find Chrome in the container by name, so
+      # point CHROME_PATH at Playwright's bundled Chromium; --no-sandbox is set
+      # in lighthouserc.json because Lighthouse runs as root here.
+      - run: |
+          export CHROME_PATH="$(node -e "console.log(require('playwright').chromium.executablePath())")"
+          echo "CHROME_PATH=$CHROME_PATH"
+          npx --yes @lhci/cli@0.14.x autorun
