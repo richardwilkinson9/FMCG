@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { describe, it, expect } from 'vitest'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
@@ -15,7 +16,7 @@ const COPY_ROOTS = ['src/config', 'src/pages', 'src/components', 'src/App.tsx', 
 
 function walk(path: string): string[] {
   if (statSync(path).isFile()) return [path]
-  return readdirSync(path).flatMap((entry) => walk(join(path, entry)))
+  return readdirSync(path).flatMap((entry: string) => walk(join(path, entry)))
 }
 
 describe('the voice', () => {
@@ -25,7 +26,7 @@ describe('the voice', () => {
       for (const file of walk(root)) {
         if (file.includes('.test.')) continue
         const lines = readFileSync(file, 'utf8').split('\n')
-        lines.forEach((line, i) => {
+        lines.forEach((line: string, i: number) => {
           const hit = line.match(BANNED)
           if (hit) offenders.push(`${file}:${i + 1} — "${hit[0]}"`)
         })
