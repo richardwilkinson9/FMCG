@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { useStore } from '../store/useStore'
 import { GUIDES } from '../config/guides'
 import GrossFooter from '../components/gross/GrossFooter'
@@ -6,6 +7,15 @@ import GrossFooter from '../components/gross/GrossFooter'
 export default function Guides() {
   const setActiveCalculator = useStore((s) => s.setActiveCalculator)
   const go = (id: string) => { setActiveCalculator(id); window.scrollTo(0, 0) }
+
+  // Every guide opens the same lazy GuidePage chunk — warm it on the first
+  // hover/focus of any card so the read is instant. Fire-and-forget, once.
+  const guideWarmed = useRef(false)
+  const warmGuidePage = () => {
+    if (guideWarmed.current) return
+    guideWarmed.current = true
+    import('./GuidePage').catch(() => {})
+  }
 
   return (
     <div className="bg-receipt text-ink font-body min-h-screen">
@@ -23,6 +33,8 @@ export default function Guides() {
               <button
                 key={g.key}
                 onClick={() => go(`guide-${g.key}`)}
+                onMouseEnter={warmGuidePage}
+                onFocus={warmGuidePage}
                 className="text-left border-2 border-ink bg-white p-[clamp(18px,3vw,26px)] cursor-pointer hover:bg-bile"
               >
                 <h2 className="font-display text-[clamp(22px,3vw,30px)] leading-[0.98]">{g.title}</h2>

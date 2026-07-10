@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import { useStore } from '../../store/useStore'
 import { generateId } from '../../store/useStore'
 import type { Buyer } from '../../store/scenario'
@@ -9,7 +9,7 @@ import type { Buyer } from '../../store/scenario'
  * every grocery page reads — so one click reprices the whole site for Tesco
  * vs Booker vs anyone else. The chip stays lit while the live terms match.
  */
-export default function BuyerStrip() {
+function BuyerStrip() {
   const grocery = useStore((s) => s.scenario.grocery)
   const waterfall = useStore((s) => s.scenario.waterfall)
   const buyers = useStore((s) => s.scenario.buyers)
@@ -120,3 +120,11 @@ export default function BuyerStrip() {
     </div>
   )
 }
+
+/**
+ * Memoised: BuyerStrip takes no props and subscribes only to the grocery,
+ * waterfall and buyers scenario slices — so an unrelated product keystroke on
+ * The P&L no longer re-renders it. It still re-renders when those slices change
+ * (its own store subscriptions fire), so the live chip stays in step.
+ */
+export default memo(BuyerStrip)

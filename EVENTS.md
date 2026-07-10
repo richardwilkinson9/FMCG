@@ -30,7 +30,7 @@ The exceptions are called out below (`union`, `shortlink_open`, `client_error`).
 | `receipt_image` | "Save the receipt as an image" renders the `.print-block` to PNG and the download anchor is clicked. | page id of the current tool | `CalcShell.tsx` ~L174 (`saveReceiptImage`) | *save-receipt-as-image emits receipt_image* → `['receipt_image:min-margin']` |
 | `union` | A Union sign-up **succeeds** (`unionSignup` returns `ok`). Gated on success — a failed/aborted sign-up emits nothing. | `''` from the homepage form (`Home.tsx`); `'the-ledger'` from the Ledger page (`Ledger.tsx`) | `src/pages/Home.tsx` ~L45 · `src/pages/Ledger.tsx` ~L24 | *a successful union sign-up emits union* → `['union:']` (homepage) |
 | `shortlink_open` | A `/s/<id>` short link resolves to a stored blob on boot (`resolveShortLink` finds a row). Fires before the model is restored. | the short-link **id** | `src/store/cloud.ts` ~L246 (`resolveShortLink`) | *resolving a short link emits shortlink_open* → tail contains `shortlink_open:rat123` |
-| `client_error` | A `window.onerror` or `unhandledrejection` fires at runtime. | first 90 chars of the error message | `src/main.tsx` ~L31, L38 | Not driven directly (see below); the drift sweep asserts it does **not** appear in a clean session |
+| `client_error` | A `window.onerror` or `unhandledrejection` fires at runtime. | `<release> <error message>`, whole thing sliced to 90 chars — `<release>` is the build's short commit SHA (`VERCEL_GIT_COMMIT_SHA` first 7, injected via Vite `define` as `__RELEASE__`), or `dev` locally, so the beacon says which deploy threw it | `src/main.tsx` ~L31 (`reportClientError`) | Not driven directly (see below); the drift sweep asserts it does **not** appear in a clean session |
 
 ## Journey trails at a glance
 
@@ -73,8 +73,10 @@ because `logEvent` is fire-and-forget (lazy `import()` + async insert).
   `window.onerror` / `unhandledrejection` would require injecting a runtime
   fault into `src/`, which is out of scope for a black-box journey suite. It is
   covered *negatively*: the drift-sweep test asserts a clean multi-step session
-  emits **no** `client_error`. Its shape (name + truncated-message slug) is
-  documented above from `src/main.tsx`.
+  emits **no** `client_error`. Its shape (name + release-prefixed,
+  truncated-message slug) is documented above from `src/main.tsx`. The release
+  prefix is fail-soft: a missing `__RELEASE__` falls back to `dev` and never
+  throws.
 - **`union` and `shortlink_open` require the cloud to succeed.** Under real
   sandbox conditions (Supabase blocked) `union` never fires from a failed
   sign-up and `shortlink_open` never fires from a dead link — both fail soft.

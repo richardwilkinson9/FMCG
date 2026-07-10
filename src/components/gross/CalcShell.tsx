@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useState } from 'react'
+import { memo, useRef, useState } from 'react'
 import { useStore } from '../../store/useStore'
 import { encodeStateToUrl, encodeBlob } from '../../utils/urlState'
 import { downloadExcelModel } from '../../utils/excelExport'
@@ -92,9 +92,10 @@ function exportEmailOnFile(): boolean {
 }
 
 /** Copy share link + Export, beneath the receipt. */
-export function CalcActions() {
-  // No store subscription — state is read at click time, so this button row
-  // doesn't re-render on every keystroke elsewhere on the page.
+function CalcActionsImpl() {
+  // No store subscription — state is read at click time, and the component is
+  // memoised (no props), so this button row doesn't re-render on every
+  // keystroke elsewhere on the page.
   const [copied, setCopied] = useState(false)
   const [exportState, setExportState] = useState<'idle' | 'email' | 'building' | 'failed'>('idle')
   const [email, setEmail] = useState('')
@@ -133,6 +134,19 @@ export function CalcActions() {
       setExportState('failed')
       setTimeout(() => setExportState('idle'), 4000)
     }
+  }
+
+  // Warm the ~930KB Excel engine on INTENT (hover / keyboard focus of the
+  // Export button) so it's already in cache by the time the click lands.
+  // exceljs is the heavy lazy chunk — downloadExcelModel does `import('exceljs')`
+  // at run time; this points at the SAME dynamic chunk, so it stays a separate
+  // lazy bundle (never in first-load) but arrives sooner. Fire-and-forget,
+  // guarded to fire at most once.
+  const excelWarmed = useRef(false)
+  const warmExcelEngine = () => {
+    if (excelWarmed.current) return
+    excelWarmed.current = true
+    import('exceljs').catch(() => {})
   }
 
   const doExport = () => {
@@ -221,6 +235,8 @@ export function CalcActions() {
           </button>
           <button
             onClick={doExport}
+            onMouseEnter={warmExcelEngine}
+            onFocus={warmExcelEngine}
             className={`${base} bg-receipt text-ink`}
             disabled={exportState === 'building'}
             style={exportState === 'failed' ? { color: '#E4002B' } : undefined}
@@ -241,6 +257,13 @@ export function CalcActions() {
     </div>
   )
 }
+
+/**
+ * Memoised: CalcActions takes no props and reads the store only at click time,
+ * so it never needs to re-render when the receipt above it reprices on a
+ * keystroke. Its own useState (copy/export/email/image) still re-renders it.
+ */
+export const CalcActions = memo(CalcActionsImpl)
 
 /**
  * The return-visit nudge — one line, third visit onwards, dismissable, and
