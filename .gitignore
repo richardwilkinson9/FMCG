@@ -24,3 +24,5 @@ dist-ssr
 *.sw?
 reports/
 .stryker-tmp/
+test-results/
+playwright-report/
