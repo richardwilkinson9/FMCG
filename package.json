@@ -13,6 +13,7 @@
     "test:e2e:visual": "playwright test --config visual.config.ts",
     "test:mutation": "stryker run",
     "audit:seo": "node scripts/seo-audit.mjs",
+    "audit:budget": "node scripts/check-bundle-budget.mjs",
     "pentest:rls": "node scripts/rls-pentest.mjs",
     "gen:og": "node scripts/gen-og.mjs",
     "lint": "oxlint",

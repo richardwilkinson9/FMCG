@@ -1,0 +1,153 @@
+name: CI
+
+# The pipeline the excellence sprint asked for: typecheck -> unit/property/
+# fuzz -> build + prerender guards -> e2e matrix (Chromium/Firefox/WebKit +
+# iPhone SE) -> axe -> visual -> Lighthouse + bundle budget. Every job runs on
+# every PR into the deploy branch; main stays deployable. Mutation testing is
+# heavier and runs nightly (and on demand) rather than blocking each PR.
+
+on:
+  pull_request:
+    branches: [claude/fmcg-maths-mvp-f72yht]
+  push:
+    branches: [claude/fmcg-maths-mvp-f72yht]
+  workflow_dispatch:
+
+# A new push to a branch cancels the previous run for that branch.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The e2e config adds Firefox/WebKit projects only when this is set; the
+  # Playwright container ships every browser, so CI runs the full matrix.
+  PW_WEBKIT: '1'
+  PLAYWRIGHT_VERSION: v1.61.1
+
+jobs:
+  # ── Fast feedback: lint, types, the whole vitest suite ──────────────────────
+  verify:
+    name: Lint · typecheck · unit/property/fuzz
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+
+  # ── Build once, guard the prerender, budget the bytes, share dist ───────────
+  build:
+    name: Build · prerender guards · SEO · budget
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run audit:seo
+      - run: npm run audit:budget
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+          retention-days: 1
+
+  # ── The cross-browser matrix, in the pinned Playwright container ────────────
+  e2e:
+    name: e2e (${{ matrix.project }})
+    needs: build
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.1-jammy
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [chromium, firefox, webkit, iphone-se, iphone-se-webkit]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - run: npx playwright test --project=${{ matrix.project }}
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-${{ matrix.project }}
+          path: playwright-report
+          retention-days: 7
+
+  # ── Accessibility gate (axe over every route, two viewports) ────────────────
+  a11y:
+    name: axe accessibility gate
+    needs: build
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.1-jammy
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run test:e2e:a11y
+
+  # ── Visual regression (receipts at two widths) — container gives font parity ─
+  visual:
+    name: visual regression
+    needs: build
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.1-jammy
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - run: npm run test:e2e:visual
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: visual-diff
+          path: test-results
+          retention-days: 7
+
+  # ── Lighthouse: category scores per route against lighthouserc.json ─────────
+  lighthouse:
+    name: Lighthouse budget
+    needs: build
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.1-jammy
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - run: npx --yes @lhci/cli@0.14.x autorun
