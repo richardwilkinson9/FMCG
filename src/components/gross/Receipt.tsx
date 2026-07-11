@@ -95,7 +95,6 @@ export function Receipt({
  * Hidden on desktop, where the answer sits in its normal place.
  */
 export function BreakdownLabel() {
-  // pending copy sign-off — the mobile "the breakdown" label wording
   return (
     <div className="min-[901px]:hidden font-mono text-[11px] tracking-[0.1em] opacity-60 mt-2.5 mb-1">
       THE BREAKDOWN ↓

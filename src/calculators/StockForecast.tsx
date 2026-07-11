@@ -117,6 +117,13 @@ export default function StockForecast() {
           <Rule dotted className="mt-3 mb-2" />
           <RSection label="THE DIARY" />
           {(() => {
+            // Zero lead time: the order-up-to model has no lead window to cover,
+            // so it schedules nothing ahead — you replenish on the day. Say so
+            // plainly rather than leave the diary blank (the verdict still warns
+            // if that leaves you short). Display only; the maths is unchanged.
+            if (stock.leadWeeks === 0) {
+              return <RLine label="Zero lead time" value="replenish on the day — nothing to schedule ahead" dim />
+            }
             const orders = plan.rows.filter((r) => r.orderPlaced > 0)
             if (orders.length === 0) {
               return <RLine label="No orders needed" value="starting stock covers the period" dim />
