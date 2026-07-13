@@ -48,7 +48,7 @@ or improvises a substitute.
 - date: 2026-07-13 (Mon 07:45 UK)
 - item: DICTIONARY /04 — investment behind it
 - image: https://getgross.co.uk/linkedin/dictionary/04-investment-behind-it.png
-- status: APPROVED
+- status: POSTED (urn:li:share:7482345676249595904, 13 Jul 2026 07:45 UK)
 
 ```
 'we'd need to see some investment behind it' — give us money.
