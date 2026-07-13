@@ -27,6 +27,11 @@ Dead image: if an entry's image URL isn't fetchable at post time, the
 routine skips the post and tells the owner — it never posts image-less
 or improvises a substitute.
 
+Error-then-retry: a Zapier "Could not find entity" error can still have
+published the post (it did on 13 Jul). Before any retry, the routine runs
+the engagement read and checks the page for a post with identical text;
+if one exists, treat the post as made and do not retry.
+
 ## Ground rules baked into every entry
 
 - Target: company page Gross. (company_id 136074586) only.
