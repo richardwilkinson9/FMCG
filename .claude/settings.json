@@ -1,27 +1,21 @@
 {
   "permissions": {
     "allow": [
-      "mcp__Zapier__execute_zapier_write_action",
-      "mcp__Zapier__write_code_action",
-      "mcp__Zapier__create_zapier_skill",
-      "mcp__Zapier__update_zapier_skill",
-      "mcp__Claude_Code_Remote__create_trigger",
-      "mcp__Claude_Code_Remote__update_trigger",
-      "mcp__Claude_Code_Remote__delete_trigger",
-      "mcp__Claude_Code_Remote__send_later",
-      "mcp__Zapier__list_enabled_zapier_actions",
-      "mcp__Zapier__list_zapier_skills",
-      "mcp__Zapier__get_zapier_skill",
-      "mcp__Zapier__execute_zapier_read_action",
-      "mcp__Claude_Code_Remote__list_triggers",
-      "mcp__Vercel__get_project",
-      "mcp__Vercel__get_deployment",
-      "mcp__Vercel__list_deployments",
-      "mcp__Vercel__web_fetch_vercel_url",
-      "mcp__github__list_branches",
+      "mcp__Zapier",
+      "mcp__Claude_Code_Remote",
+      "mcp__Vercel",
+      "mcp__github",
       "mcp__Gmail__search_threads",
       "mcp__Notion__notion-search",
-      "mcp__Google_Drive__list_recent_files"
+      "mcp__Google_Drive__list_recent_files",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git pull *)",
+      "Bash(git fetch *)",
+      "Bash(git checkout *)",
+      "WebFetch(domain:getgross.co.uk)",
+      "WebFetch(domain:www.getgross.co.uk)"
     ]
   }
 }
