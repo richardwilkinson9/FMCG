@@ -1,7 +1,6 @@
 {
   "lastFollowerCount": 5,
-  "lastScanIso": "2026-07-13T19:58:43Z",
-  "lastScanCompleted": false,
-  "lastErrorSignature": "zapier-connector-down-15jul-evening",
-  "note": "next scan must cover the window since 2026-07-13T19:58:43Z, not just 13h"
+  "lastScanIso": "2026-07-16T10:38:54Z",
+  "lastScanCompleted": true,
+  "lastErrorSignature": null
 }
