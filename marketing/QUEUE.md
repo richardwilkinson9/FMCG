@@ -62,7 +62,9 @@ at least know what the money buys you before you say yes.
 ```
 
 ### Q-002
-- date: 2026-07-15 (Wed 07:45 UK)
+- date: 2026-07-24 (Fri 08:30 UK) — was Wed 15 Jul; the 07:45 trigger never
+  fired (infrastructure outage) and the slot passed, so it moved to the
+  empty 24 Jul slot rather than posting in the evening. Owner may re-date.
 - item: RECEIPT /01 — you bank 49p
 - image: https://getgross.co.uk/linkedin/receipt/01-you-bank-49p.png
 - status: APPROVED
@@ -127,7 +129,7 @@ so the tools are free, and the working is always shown. if a number on the site 
 ### Q-026
 - date: 2026-07-24 (Fri 08:30 UK)
 - item: INSIDER /02 — who writes this. Cut by owner, 9 Jul 2026. Slot
-  stays empty; the routine skips the day (missed slots stay missed).
+  now taken by the re-dated Q-002.
 - status: CUT
 
 ## Week 3
