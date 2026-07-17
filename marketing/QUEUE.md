@@ -80,7 +80,9 @@ you bank 49p - before you pay your supplier, your transport, your promo, your tr
 - date: 2026-07-17 (Fri 08:30 UK)
 - item: Teaser — 03-truism (margin is an opinion, cash is a fact)
 - image: https://getgross.co.uk/linkedin/03-truism.png
-- status: APPROVED
+- status: POSTED (urn:li:share:7483786271346130944, 17 Jul 2026 08:30 UK;
+  the connector returned its cosmetic "Could not find entity" error but
+  the duplicate check confirmed the post live — no retry made)
 
 ```
 a listing can be all sunshine and sparkles on paper...and still put you underwater when the retailer pays in 60 days end of month, and your supplier wants paying in 30.
