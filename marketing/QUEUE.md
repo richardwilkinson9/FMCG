@@ -94,7 +94,9 @@ a listing can be all sunshine and sparkles on paper...and still put you underwat
 - date: 2026-07-20 (Mon 07:45 UK)
 - item: DICTIONARY /05 — price-sensitive shopper
 - image: https://getgross.co.uk/linkedin/dictionary/05-price-sensitive-shopper.png
-- status: APPROVED
+- status: POSTED (urn:li:share:7484861367728975872, 20 Jul 2026 07:45 UK;
+  cosmetic connector error again, dup-check confirmed live, no retry;
+  first-comment link added by the page)
 
 ```
 your buyer:
