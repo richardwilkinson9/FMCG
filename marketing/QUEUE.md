@@ -40,8 +40,10 @@ if one exists, treat the post as made and do not retry.
   About section carries the site link.
 - Every number traces to the site or repo docs. The 45%/44.8% post is
   sourced from `src/config/ledger.ts` (Ledger 001).
-- Parentheses in post text are escaped at post time per LinkedIn's
-  little-text-format; keep them unescaped here.
+- Reserved little-text-format characters are escaped at post time:
+  parentheses, asterisks, and the rest of LinkedIn's reserved set
+  ( ) * [ ] { } < > @ | ~ _ — keep them unescaped here; the routine
+  escapes on the way out.
 - Image URLs point at getgross.co.uk/linkedin/… (served from `public/`).
   They resolve only after this branch reaches production.
 
@@ -114,7 +116,10 @@ your buyer:
 - item: INSIDER /01 — the origin story. Copy and image approved by owner
   9 Jul 2026. Pin it from the page UI after it posts, if wanted.
 - image: https://getgross.co.uk/linkedin/pinned/03-type-only.png
-- status: APPROVED
+- status: POSTED (urn:li:share:7485586512395460608, 22 Jul 2026 07:48 UK;
+  first attempt bounced on the unescaped asterisk in "f*ck" — reserved
+  in LinkedIn little-text-format; posted escaped, renders as written.
+  First-comment link added by the page)
 
 ```
 nobody runs GROSS.
