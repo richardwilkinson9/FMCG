@@ -69,7 +69,9 @@ at least know what the money buys you before you say yes.
   empty 24 Jul slot rather than posting in the evening. Owner may re-date.
 - item: RECEIPT /01 — you bank 49p
 - image: https://getgross.co.uk/linkedin/receipt/01-you-bank-49p.png
-- status: APPROVED
+- status: POSTED (urn:li:share:7486323079703412736, 24 Jul 2026 08:30 UK;
+  cosmetic connector error, dup-check confirmed single copy live;
+  first-comment link added by the page)
 
 ```
 a £1.50 bestseller, read like a till receipt.
