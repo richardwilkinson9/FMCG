@@ -1,6 +1,6 @@
 {
   "lastFollowerCount": 5,
   "lastScanIso": "2026-07-26T07:05:01Z",
-  "lastScanCompleted": true,
-  "lastErrorSignature": null
+  "lastScanCompleted": false,
+  "lastErrorSignature": "zapier-code-action-sandbox-execution-error"
 }
