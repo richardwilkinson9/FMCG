@@ -28,3 +28,6 @@ test-results/
 playwright-report/
 lighthouse-report/
 .lighthouseci/
+
+# Local Claude Code permissions
+.claude/settings.local.json
