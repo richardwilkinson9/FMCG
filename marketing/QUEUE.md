@@ -149,7 +149,10 @@ so the tools are free, and the working is always shown. if a number on the site 
 - date: 2026-07-27 (Mon 07:45 UK)
 - item: DICTIONARY /06 — long-term play
 - image: https://getgross.co.uk/linkedin/dictionary/06-long-term-play.png
-- status: APPROVED
+- status: POSTED (urn:li:share:7487398068561088512, 27 Jul 2026 07:45 UK;
+  cosmetic connector error, dup-check confirmed single copy on the fifth
+  scanner attempt; first-comment link added by the page. Owner to glance
+  that the escaped parentheses render clean in the feed)
 
 ```
 your buyer:
