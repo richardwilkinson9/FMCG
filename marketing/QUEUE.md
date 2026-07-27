@@ -23,6 +23,11 @@ APPROVED one wins and the rest stay put.
 Low stock: whenever fewer than three APPROVED posts remain ahead of today,
 the routine tells the owner it's time to bulk approve the next batch.
 
+Connection note (27 Jul 2026): Zapier's LinkedIn app lost its default
+connection. Until the owner restores it (mcp.zapier.com or the next
+permission prompt), every LinkedIn execute call must pass
+connection_id 64990859 explicitly.
+
 Dead image: if an entry's image URL isn't fetchable at post time, the
 routine skips the post and tells the owner — it never posts image-less
 or improvises a substitute.
