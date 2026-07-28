@@ -1,7 +1,7 @@
 {
   "lastFollowerCount": 5,
   "lastScanIso": "2026-07-28T07:06:32Z",
-  "lastScanCompleted": true,
-  "lastErrorSignature": null,
+  "lastScanCompleted": false,
+  "lastErrorSignature": "zapier-code-action-sandbox-execution-error",
   "note": "Pass connection_id 64990859 explicitly on every LinkedIn execute call until the default is restored"
 }
