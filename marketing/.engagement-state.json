@@ -1,6 +1,6 @@
 {
   "lastFollowerCount": 5,
-  "lastScanIso": "2026-08-01T16:03:47Z",
+  "lastScanIso": "2026-08-02T07:05:40Z",
   "lastScanCompleted": true,
   "lastErrorSignature": null,
   "note": "Pass connection_id 64990859 explicitly on every LinkedIn execute call until the default is restored"
