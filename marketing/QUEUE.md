@@ -220,7 +220,10 @@ your buyer:
   9 Jul without the rat box and the job-title line, owner approved.
   Fallback for this slot if the guide post isn't built.
 - image: https://getgross.co.uk/linkedin/pinned/04-org-chart.png
-- status: APPROVED
+- status: POSTED (urn:li:activity:7490659847986884611, 5 Aug 2026 07:46 UK;
+  the connector call timed out but the dup-check confirmed a single copy
+  live — no retry made. Activity URN recorded; the connector returned no
+  share URN this time)
 
 ```
 why there's no name on the site: the person who maintains it still sits in the meetings the calculators are for.
